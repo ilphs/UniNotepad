@@ -112,7 +112,7 @@ function tabFromEntry(entry: TabEntry, doc: string): Tab {
     eol,
     diskMtimeMs: entry.diskMtimeMs,
     missingOnDisk: false,
-    state: makeState(doc, entry.id, entry.cursor ?? undefined),
+    state: makeState(doc, entry.id, entry.cursor ?? undefined, entry.path),
     scrollTop: entry.scrollTop ?? 0,
     notice: null,
   };

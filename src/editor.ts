@@ -1,4 +1,4 @@
-import { EditorState } from "@codemirror/state";
+import { EditorState, Compartment } from "@codemirror/state";
 import {
   EditorView,
   keymap,
@@ -18,6 +18,7 @@ import {
 import type { Tab } from "./state";
 import { onDocChanged } from "./session";
 import { refreshStatusBar } from "./statusbar";
+import { highlighting, languageForPath } from "./language";
 
 let view: EditorView;
 let hostEl: HTMLElement;
@@ -32,7 +33,16 @@ let fontSize = BASE_FONT;
  * tab's id so edits route to the correct tab regardless of which state is
  * currently mounted in the single shared view.
  */
-export function makeState(doc: string, tabId: string, cursor?: number): EditorState {
+/** Per-state compartment holding the language, so it can be reconfigured
+ *  (e.g. after Save As changes the file extension) without losing history. */
+const language = new Compartment();
+
+export function makeState(
+  doc: string,
+  tabId: string,
+  cursor?: number,
+  path?: string | null,
+): EditorState {
   const head = cursor == null ? 0 : Math.max(0, Math.min(cursor, doc.length));
   return EditorState.create({
     doc,
@@ -46,6 +56,8 @@ export function makeState(doc: string, tabId: string, cursor?: number): EditorSt
       highlightActiveLine(),
       highlightSelectionMatches(),
       search({ top: true }),
+      language.of(languageForPath(path ?? null)),
+      highlighting,
       keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),
       EditorView.lineWrapping,
       EditorView.updateListener.of((u) => {
@@ -59,6 +71,11 @@ export function makeState(doc: string, tabId: string, cursor?: number): EditorSt
       }),
     ],
   });
+}
+
+/** Re-apply the language for the active tab's path (used after Save As). */
+export function reconfigureLanguage(path: string | null): void {
+  view.dispatch({ effects: language.reconfigure(languageForPath(path)) });
 }
 
 export function mountEditor(host: HTMLElement): void {

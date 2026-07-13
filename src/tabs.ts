@@ -1,7 +1,7 @@
 import { open, save, message } from "@tauri-apps/plugin-dialog";
 import { store, newId, type Tab, type EolId } from "./state";
 import { ipc } from "./ipc";
-import { makeState, showTab, syncTabFromView } from "./editor";
+import { makeState, showTab, syncTabFromView, reconfigureLanguage } from "./editor";
 import { flushNow, dropPending, markBackupDirty, basename } from "./session";
 
 function platformEol(): EolId {
@@ -48,7 +48,7 @@ export async function openPath(path: string): Promise<void> {
       eol: opened.eol,
       diskMtimeMs: opened.mtimeMs,
       missingOnDisk: false,
-      state: makeState(opened.content, id),
+      state: makeState(opened.content, id, undefined, path),
       scrollTop: 0,
       notice: null,
     };
@@ -86,6 +86,8 @@ async function saveTabAs(tab: Tab): Promise<boolean> {
   tab.path = path;
   tab.title = basename(path);
   tab.missingOnDisk = false;
+  // Re-highlight for the new extension (only the active tab is in the view).
+  if (store.state.activeTabId === tab.id) reconfigureLanguage(tab.path);
   return saveTab(tab);
 }
 
@@ -182,7 +184,7 @@ export async function reloadFromDisk(id: string): Promise<void> {
     tab.dirty = false;
     tab.notice = null;
     tab.missingOnDisk = false;
-    tab.state = makeState(opened.content, tab.id);
+    tab.state = makeState(opened.content, tab.id, undefined, tab.path);
     dropPending(tab.id);
     await ipc.deleteBackup(tab.id).catch(() => {});
     if (store.state.activeTabId === tab.id) showTab(tab);
