@@ -33,7 +33,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .separator()
         .item(&close_tab)
         .separator()
-        .item(&PredefinedMenuItem::quit(app, Some("Quit UniEditPlus"))?)
+        .item(&PredefinedMenuItem::quit(app, Some("Quit UniNotepad"))?)
         .build()?;
 
     // Edit — undo/redo are custom (must drive CodeMirror history), the rest are

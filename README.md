@@ -1,4 +1,4 @@
-# UniEditPlus
+# UniNotepad
 
 A lightweight, cross-platform (Windows / macOS / Linux) plain-text editor with
 tabs and **Notepad++-style session persistence**: your open tabs — including

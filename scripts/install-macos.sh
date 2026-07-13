@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# UniEditPlus — macOS 로컬 빌드 & 설치 스크립트
-# 릴리스 빌드 후 /Applications 에 UniEditPlus.app 을 설치한다.
+# UniNotepad — macOS 로컬 빌드 & 설치 스크립트
+# 릴리스 빌드 후 /Applications 에 UniNotepad.app 을 설치한다.
 #
 # 사용법:  ./scripts/install-macos.sh
 #
@@ -11,7 +11,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
-echo "==> UniEditPlus 로컬 설치 (macOS)"
+echo "==> UniNotepad 로컬 설치 (macOS)"
 
 # 1) 툴체인 확인 — cargo 가 PATH 에 없으면 rustup 환경을 로드
 if ! command -v cargo >/dev/null 2>&1; then
@@ -35,13 +35,13 @@ echo "==> 릴리스 빌드 — 처음이면 수 분 걸립니다"
 npm run tauri build
 
 # 4) 산출물 확인
-APP_SRC="src-tauri/target/release/bundle/macos/UniEditPlus.app"
+APP_SRC="src-tauri/target/release/bundle/macos/UniNotepad.app"
 if [ ! -d "$APP_SRC" ]; then
   echo "❌ 빌드 산출물을 찾지 못했습니다: $APP_SRC"; exit 1
 fi
 
 # 5) /Applications 에 설치
-DEST="/Applications/UniEditPlus.app"
+DEST="/Applications/UniNotepad.app"
 echo "==> 설치: $DEST"
 rm -rf "$DEST"
 cp -R "$APP_SRC" "$DEST"
@@ -53,7 +53,7 @@ DMG_DIR="src-tauri/target/release/bundle/dmg"
 echo ""
 echo "✅ 설치 완료"
 echo "   앱:  $DEST"
-echo "   실행: open \"$DEST\"   (또는 Launchpad/Spotlight 에서 'UniEditPlus')"
+echo "   실행: open \"$DEST\"   (또는 Launchpad/Spotlight 에서 'UniNotepad')"
 if ls "$DMG_DIR"/*.dmg >/dev/null 2>&1; then
   echo "   배포용 DMG: $(ls "$DMG_DIR"/*.dmg | head -1)"
 fi
