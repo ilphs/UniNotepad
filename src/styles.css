@@ -28,7 +28,7 @@
   --gutter-bg: #f3f3f3;
   --gutter-fg: #9aa0a6;
   --gutter-active-fg: #24292e;
-  --active-line-bg: #f5f5f5;
+  --active-line-bg: rgba(0, 0, 0, 0.04);
   --caret: #1e1e1e;
   --selection-bg: #b3d4fc;
 }
@@ -65,7 +65,7 @@
   --gutter-bg: #282a36;
   --gutter-fg: #6272a4;
   --gutter-active-fg: #f8f8f2;
-  --active-line-bg: #44475a;
+  --active-line-bg: rgba(255, 255, 255, 0.055);
   --caret: #f8f8f2;
   --selection-bg: #44475a;
 }
@@ -101,7 +101,7 @@
     --gutter-bg: #282a36;
     --gutter-fg: #6272a4;
     --gutter-active-fg: #f8f8f2;
-    --active-line-bg: #44475a;
+    --active-line-bg: rgba(255, 255, 255, 0.055);
     --caret: #f8f8f2;
     --selection-bg: #44475a;
   }
@@ -253,9 +253,8 @@ body {
   border-left-color: var(--caret);
 }
 .cm-editor .cm-selectionBackground,
-.cm-editor.cm-focused .cm-selectionBackground,
-.cm-editor .cm-content ::selection {
-  background: var(--selection-bg);
+.cm-editor.cm-focused .cm-selectionBackground {
+  background: var(--selection-bg) !important;
 }
 
 /* ---- Status bar ---- */

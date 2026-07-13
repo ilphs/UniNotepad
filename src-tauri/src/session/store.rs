@@ -118,7 +118,7 @@ mod tests {
 
     fn temp_paths() -> SessionPaths {
         let n = COUNTER.fetch_add(1, Ordering::SeqCst);
-        let dir = std::env::temp_dir().join(format!("uniedit-test-{}-{}", std::process::id(), n));
+        let dir = std::env::temp_dir().join(format!("uninotepad-test-{}-{}", std::process::id(), n));
         let _ = std::fs::remove_dir_all(&dir);
         SessionPaths::new(dir)
     }
