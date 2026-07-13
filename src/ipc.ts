@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
 import type { EncodingId, EolId } from "./state";
 
 export interface OpenedFile {
@@ -63,4 +64,11 @@ export function onOpenPaths(cb: (paths: string[]) => void): Promise<UnlistenFn> 
 
 export function onMenu(cb: (id: string) => void): Promise<UnlistenFn> {
   return listen<string>("menu", (e) => cb(e.payload));
+}
+
+/** Fires when the user drags file(s) from the OS file explorer onto the app window. */
+export function onFileDrop(cb: (paths: string[]) => void): Promise<UnlistenFn> {
+  return getCurrentWebview().onDragDropEvent((e) => {
+    if (e.payload.type === "drop") cb(e.payload.paths);
+  });
 }

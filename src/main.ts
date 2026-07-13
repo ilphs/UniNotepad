@@ -1,6 +1,6 @@
 import "./styles.css";
 import { store } from "./state";
-import { ipc, onMenu, onOpenPaths } from "./ipc";
+import { ipc, onMenu, onOpenPaths, onFileDrop } from "./ipc";
 import { mountEditor, showTab } from "./editor";
 import {
   initTabBar,
@@ -42,6 +42,7 @@ async function bootstrap(): Promise<void> {
   // Wire OS integration.
   await onMenu(handleMenu);
   await onOpenPaths((paths) => void openPaths(paths));
+  await onFileDrop((paths) => void openPaths(paths));
   initSessionTriggers();
 
   // Tell the backend we are listening so any queued file-opens are delivered.

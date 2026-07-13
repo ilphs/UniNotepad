@@ -6,8 +6,25 @@ unsaved edits and brand-new untitled documents — survive an app quit, a crash,
 or a full computer restart, and reappear exactly as you left them the next time
 you open the app. No manual save required.
 
-Syntax highlighting is available for common extensions (py, json, sql, java,
-sh/bash, html, css, js/jsx, ts/tsx, …); other files open as plain text.
+Syntax highlighting is available for the following extensions; other files open as plain text.
+
+| Language | Extensions |
+|---|---|
+| JSON | `.json` |
+| SQL | `.sql` |
+| Java | `.java` |
+| Python | `.py` |
+| Shell | `.sh`, `.bash` |
+| HTML | `.html`, `.htm`, `.xhtml` |
+| CSS | `.css` |
+| JavaScript | `.js`, `.mjs`, `.cjs`, `.jsx` |
+| TypeScript | `.ts`, `.mts`, `.cts`, `.tsx` |
+| Markdown | `.md`, `.markdown` |
+| XML | `.xml` |
+| YAML | `.yml`, `.yaml` |
+| C / C++ | `.c`, `.h`, `.cpp`, `.cc`, `.cxx`, `.hpp` |
+| Rust | `.rs` |
+| Go | `.go` |
 
 ## Stack
 

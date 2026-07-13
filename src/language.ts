@@ -8,7 +8,13 @@ import { python } from "@codemirror/lang-python";
 import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
 import { javascript } from "@codemirror/lang-javascript";
+import { markdown } from "@codemirror/lang-markdown";
+import { xml } from "@codemirror/lang-xml";
+import { yaml } from "@codemirror/lang-yaml";
+import { cpp } from "@codemirror/lang-cpp";
+import { rust } from "@codemirror/lang-rust";
 import { shell } from "@codemirror/legacy-modes/mode/shell";
+import { go } from "@codemirror/legacy-modes/mode/go";
 
 /**
  * Theme-aware highlight style. Colors are CSS variables (defined in styles.css
@@ -66,6 +72,25 @@ export function languageForPath(path: string | null): Extension {
       return javascript({ typescript: true });
     case "tsx":
       return javascript({ jsx: true, typescript: true });
+    case "md":
+    case "markdown":
+      return markdown();
+    case "xml":
+      return xml();
+    case "yml":
+    case "yaml":
+      return yaml();
+    case "c":
+    case "h":
+    case "cpp":
+    case "cc":
+    case "cxx":
+    case "hpp":
+      return cpp();
+    case "rs":
+      return rust();
+    case "go":
+      return StreamLanguage.define(go);
     // "txt" and everything else: plain text, no highlighting.
     default:
       return [];
