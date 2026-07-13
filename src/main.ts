@@ -1,7 +1,7 @@
 import "./styles.css";
 import { store } from "./state";
 import { ipc, onMenu, onOpenPaths, onFileDrop } from "./ipc";
-import { mountEditor, showTab } from "./editor";
+import { mountEditor, showTab, zoomIn } from "./editor";
 import {
   initTabBar,
   renderTabBar,
@@ -11,6 +11,10 @@ import {
 import { initStatusBar, refreshStatusBar } from "./statusbar";
 import { restoreSession, initSessionTriggers } from "./session";
 import { handleMenu } from "./menu";
+import { applyStoredTheme } from "./theme";
+
+// Apply the saved theme before first paint (system mode falls back to CSS).
+applyStoredTheme();
 
 async function bootstrap(): Promise<void> {
   const tabbar = document.getElementById("tabbar")!;
@@ -44,6 +48,16 @@ async function bootstrap(): Promise<void> {
   await onOpenPaths((paths) => void openPaths(paths));
   await onFileDrop((paths) => void openPaths(paths));
   initSessionTriggers();
+
+  // Zoom-in also on Cmd/Ctrl and "+" (Shift+=). The native menu accelerator
+  // only covers Cmd/Ctrl+= (one accelerator per menu item), so cover the Shift
+  // variant here and stop the WebView's built-in page zoom.
+  window.addEventListener("keydown", (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "+") {
+      e.preventDefault();
+      zoomIn();
+    }
+  });
 
   // Tell the backend we are listening so any queued file-opens are delivered.
   await ipc.frontendReady();

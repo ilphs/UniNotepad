@@ -1,5 +1,25 @@
-import { doUndo, doRedo, openFind, zoomIn, zoomOut, zoomReset } from "./editor";
-import { newUntitled, openDialog, saveActive, saveActiveAs, closeActive, activateTabByIndex, activateLastTab } from "./tabs";
+import {
+  doUndo,
+  doRedo,
+  openFind,
+  zoomIn,
+  zoomOut,
+  zoomReset,
+  openGotoLine,
+  toggleWordWrap,
+} from "./editor";
+import {
+  newUntitled,
+  openDialog,
+  saveActive,
+  saveActiveAs,
+  closeActive,
+  reopenClosed,
+  activateTabByIndex,
+  activateLastTab,
+} from "./tabs";
+import { openSaveOptions, openRecentDialog } from "./dialogs";
+import { setTheme } from "./theme";
 
 /** Map a native-menu item id (from the `menu` event) to a frontend action. */
 export function handleMenu(id: string): void {
@@ -10,11 +30,20 @@ export function handleMenu(id: string): void {
     case "file.open":
       void openDialog();
       break;
+    case "file.openRecent":
+      openRecentDialog();
+      break;
     case "file.save":
       saveActive();
       break;
     case "file.saveAs":
       saveActiveAs();
+      break;
+    case "file.saveOptions":
+      openSaveOptions();
+      break;
+    case "file.reopenClosed":
+      void reopenClosed();
       break;
     case "file.close":
       closeActive();
@@ -29,6 +58,12 @@ export function handleMenu(id: string): void {
     case "edit.replace":
       openFind();
       break;
+    case "view.gotoLine":
+      openGotoLine();
+      break;
+    case "view.toggleWrap":
+      toggleWordWrap();
+      break;
     case "view.zoomIn":
       zoomIn();
       break;
@@ -37,6 +72,15 @@ export function handleMenu(id: string): void {
       break;
     case "view.zoomReset":
       zoomReset();
+      break;
+    case "view.themeLight":
+      setTheme("light");
+      break;
+    case "view.themeDark":
+      setTheme("dark");
+      break;
+    case "view.themeSystem":
+      setTheme("system");
       break;
     case "view.gotoTab1": activateTabByIndex(0); break;
     case "view.gotoTab2": activateTabByIndex(1); break;

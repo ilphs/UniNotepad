@@ -1,4 +1,4 @@
-import { EditorState, Compartment } from "@codemirror/state";
+import { EditorState, Compartment, type Extension } from "@codemirror/state";
 import {
   EditorView,
   keymap,
@@ -8,17 +8,28 @@ import {
   drawSelection,
   rectangularSelection,
 } from "@codemirror/view";
-import { defaultKeymap, history, historyKeymap, undo, redo } from "@codemirror/commands";
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  indentWithTab,
+  undo,
+  redo,
+} from "@codemirror/commands";
+import { bracketMatching, indentOnInput } from "@codemirror/language";
+import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import {
   search,
   searchKeymap,
   highlightSelectionMatches,
   openSearchPanel,
+  gotoLine,
 } from "@codemirror/search";
-import type { Tab } from "./state";
+import { store, type Tab } from "./state";
 import { onDocChanged } from "./session";
 import { refreshStatusBar } from "./statusbar";
 import { highlighting, languageForPath } from "./language";
+import { isWordWrap, setWordWrap } from "./settings";
 
 let view: EditorView;
 let hostEl: HTMLElement;
@@ -36,6 +47,14 @@ let fontSize = BASE_FONT;
 /** Per-state compartment holding the language, so it can be reconfigured
  *  (e.g. after Save As changes the file extension) without losing history. */
 const language = new Compartment();
+
+/** Per-state compartment holding the line-wrap extension, toggled app-wide. */
+const wrap = new Compartment();
+
+/** Current wrap extension, driven by the persisted preference. */
+function wrapExtension(): Extension {
+  return isWordWrap() ? EditorView.lineWrapping : [];
+}
 
 export function makeState(
   doc: string,
@@ -56,10 +75,19 @@ export function makeState(
       highlightActiveLine(),
       highlightSelectionMatches(),
       search({ top: true }),
+      closeBrackets(),
+      bracketMatching(),
+      indentOnInput(),
       language.of(languageForPath(path ?? null)),
       highlighting,
-      keymap.of([...defaultKeymap, ...historyKeymap, ...searchKeymap]),
-      EditorView.lineWrapping,
+      keymap.of([
+        ...closeBracketsKeymap,
+        ...defaultKeymap,
+        ...historyKeymap,
+        ...searchKeymap,
+        indentWithTab,
+      ]),
+      wrap.of(wrapExtension()),
       EditorView.updateListener.of((u) => {
         // Ignore programmatic setState (tab switch): those carry no transactions.
         if (u.docChanged && u.transactions.length > 0) {
@@ -76,6 +104,25 @@ export function makeState(
 /** Re-apply the language for the active tab's path (used after Save As). */
 export function reconfigureLanguage(path: string | null): void {
   view.dispatch({ effects: language.reconfigure(languageForPath(path)) });
+}
+
+/** Open CodeMirror's "go to line" panel for the active view. */
+export function openGotoLine(): void {
+  gotoLine(view);
+}
+
+/** Flip the app-wide word-wrap preference and reconfigure every tab's state. */
+export function toggleWordWrap(): void {
+  setWordWrap(!isWordWrap());
+  const ext = wrapExtension();
+  const activeId = store.state.activeTabId;
+  // The active tab's live doc lives in the view; others live in tab.state.
+  view.dispatch({ effects: wrap.reconfigure(ext) });
+  for (const tab of store.state.tabs) {
+    if (tab.id === activeId) continue;
+    tab.state = tab.state.update({ effects: wrap.reconfigure(ext) }).state;
+  }
+  refreshStatusBar();
 }
 
 export function mountEditor(host: HTMLElement): void {

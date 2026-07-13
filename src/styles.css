@@ -1,4 +1,6 @@
-:root {
+/* Light palette (default, and when Light is explicitly chosen). */
+:root,
+:root[data-theme="light"] {
   --bg: #ffffff;
   --fg: #1e1e1e;
   --chrome-bg: #f3f3f3;
@@ -21,32 +23,87 @@
   --cm-operator: #24292e;
   --cm-variable: #24292e;
   --cm-invalid: #b31d28;
+
+  /* Editor chrome (gutter / active line / caret / selection) */
+  --gutter-bg: #f3f3f3;
+  --gutter-fg: #9aa0a6;
+  --gutter-active-fg: #24292e;
+  --active-line-bg: #f5f5f5;
+  --caret: #1e1e1e;
+  --selection-bg: #b3d4fc;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #1e1e1e;
-    --fg: #e4e4e4;
-    --chrome-bg: #2a2a2a;
-    --chrome-fg: #cfcfcf;
-    --border: #3a3a3a;
-    --tab-active-bg: #1e1e1e;
-    --tab-inactive-bg: #2f2f2f;
-    --accent: #4ea1ff;
-    --banner-conflict: #3a3120;
-    --banner-deleted: #3a2323;
+/* Dark palette. Applied when Dark is explicitly chosen, and (via the media
+   query below) when the choice is "system" and the OS prefers dark. Keep both
+   blocks in sync. */
+:root[data-theme="dark"] {
+  /* Dracula palette. Keep in sync with the system-dark block below. */
+  --bg: #282a36;
+  --fg: #f8f8f2;
+  --chrome-bg: #21222c;
+  --chrome-fg: #f8f8f2;
+  --border: #44475a;
+  --tab-active-bg: #282a36;
+  --tab-inactive-bg: #21222c;
+  --accent: #bd93f9;
+  --banner-conflict: #3a3320;
+  --banner-deleted: #3a2330;
 
-    /* Syntax highlighting (dark) */
-    --cm-comment: #8b949e;
-    --cm-keyword: #ff7b72;
-    --cm-string: #a5d6ff;
-    --cm-number: #79c0ff;
-    --cm-function: #d2a8ff;
-    --cm-type: #ffa657;
-    --cm-property: #79c0ff;
-    --cm-operator: #c9d1d9;
-    --cm-variable: #e4e4e4;
-    --cm-invalid: #f85149;
+  /* Syntax highlighting (Dracula) */
+  --cm-comment: #6272a4;
+  --cm-keyword: #ff79c6;
+  --cm-string: #f1fa8c;
+  --cm-number: #bd93f9;
+  --cm-function: #50fa7b;
+  --cm-type: #8be9fd;
+  --cm-property: #50fa7b;
+  --cm-operator: #f8f8f2;
+  --cm-variable: #f8f8f2;
+  --cm-invalid: #ff5555;
+
+  /* Editor chrome (Dracula) */
+  --gutter-bg: #282a36;
+  --gutter-fg: #6272a4;
+  --gutter-active-fg: #f8f8f2;
+  --active-line-bg: #44475a;
+  --caret: #f8f8f2;
+  --selection-bg: #44475a;
+}
+
+/* "System" choice = no data-theme attribute → follow the OS preference. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    /* Dracula palette — mirror of the :root[data-theme="dark"] block above. */
+    --bg: #282a36;
+    --fg: #f8f8f2;
+    --chrome-bg: #21222c;
+    --chrome-fg: #f8f8f2;
+    --border: #44475a;
+    --tab-active-bg: #282a36;
+    --tab-inactive-bg: #21222c;
+    --accent: #bd93f9;
+    --banner-conflict: #3a3320;
+    --banner-deleted: #3a2330;
+
+    /* Syntax highlighting (Dracula) */
+    --cm-comment: #6272a4;
+    --cm-keyword: #ff79c6;
+    --cm-string: #f1fa8c;
+    --cm-number: #bd93f9;
+    --cm-function: #50fa7b;
+    --cm-type: #8be9fd;
+    --cm-property: #50fa7b;
+    --cm-operator: #f8f8f2;
+    --cm-variable: #f8f8f2;
+    --cm-invalid: #ff5555;
+
+    /* Editor chrome (Dracula) */
+    --gutter-bg: #282a36;
+    --gutter-fg: #6272a4;
+    --gutter-active-fg: #f8f8f2;
+    --active-line-bg: #44475a;
+    --caret: #f8f8f2;
+    --selection-bg: #44475a;
   }
 }
 
@@ -173,6 +230,34 @@ body {
   font-family: "SFMono-Regular", "Consolas", "Menlo", monospace;
 }
 
+/* CM6 ships a light default baseTheme for gutter/active-line/caret/selection.
+   Bind them to the theme CSS variables so the editor chrome follows dark mode.
+   `.cm-editor` prefix matches CM's built-in specificity. */
+.cm-editor .cm-gutters {
+  background: var(--gutter-bg);
+  color: var(--gutter-fg);
+  border-right: 1px solid var(--border);
+}
+.cm-editor .cm-lineNumbers .cm-gutterElement {
+  color: var(--gutter-fg);
+}
+.cm-editor .cm-activeLineGutter {
+  background: var(--active-line-bg);
+  color: var(--gutter-active-fg);
+}
+.cm-editor .cm-activeLine {
+  background: var(--active-line-bg);
+}
+.cm-editor .cm-cursor,
+.cm-editor .cm-dropCursor {
+  border-left-color: var(--caret);
+}
+.cm-editor .cm-selectionBackground,
+.cm-editor.cm-focused .cm-selectionBackground,
+.cm-editor .cm-content ::selection {
+  background: var(--selection-bg);
+}
+
 /* ---- Status bar ---- */
 #statusbar {
   display: flex;
@@ -186,7 +271,103 @@ body {
 }
 
 .status-right {
+  display: flex;
+  gap: 14px;
+  align-items: center;
   opacity: 0.85;
+}
+
+/* Clickable EOL / encoding items in the status bar. */
+.status-item {
+  cursor: pointer;
+  padding: 0 4px;
+  border-radius: 3px;
+}
+.status-item:hover {
+  background: color-mix(in srgb, var(--fg) 15%, transparent);
+}
+
+/* Pop-up list anchored above a status-bar item. */
+.status-menu {
+  position: fixed;
+  z-index: 200;
+  min-width: 160px;
+  padding: 4px;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  font-size: 12px;
+}
+.status-menu-item {
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.status-menu-item:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+.status-menu-item.selected::before {
+  content: "✓ ";
+}
+.status-menu-item.selected {
+  font-weight: 600;
+}
+
+/* ---- Save-options checkboxes & recent-files list (modals) ---- */
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+.checkbox-row input {
+  cursor: pointer;
+}
+
+.recent-empty {
+  margin: 4px 0 16px;
+  font-size: 13px;
+  opacity: 0.7;
+}
+.recent-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+}
+.recent-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--fg);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+.recent-item:hover {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.recent-name {
+  font-size: 13px;
+}
+.recent-path {
+  font-size: 11px;
+  opacity: 0.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 360px;
 }
 
 /* ---- Modal ---- */

@@ -1,8 +1,10 @@
 import { open, save, message } from "@tauri-apps/plugin-dialog";
-import { store, newId, type Tab, type EolId } from "./state";
+import { store, newId, type Tab, type EncodingId, type EolId } from "./state";
 import { ipc } from "./ipc";
 import { makeState, showTab, syncTabFromView, reconfigureLanguage } from "./editor";
 import { flushNow, dropPending, markBackupDirty, basename } from "./session";
+import { recordRecent } from "./recent";
+import { applySaveOptions } from "./settings";
 
 function platformEol(): EolId {
   return navigator.userAgent.includes("Windows") ? "crlf" : "lf";
@@ -10,8 +12,20 @@ function platformEol(): EolId {
 
 // ---- Tab lifecycle ---------------------------------------------------------
 
+/** One past the highest "Untitled N" number among currently-open untitled
+ *  tabs (0 → 1 when none are open), so closed numbers are reused. */
+function nextUntitledNumber(): number {
+  let max = 0;
+  for (const t of store.state.tabs) {
+    if (t.path !== null) continue;
+    const m = /^Untitled (\d+)$/.exec(t.title);
+    if (m) max = Math.max(max, Number(m[1]));
+  }
+  return max + 1;
+}
+
 export function newUntitled(): void {
-  const n = store.state.nextUntitled++;
+  const n = nextUntitledNumber();
   const id = newId();
   const tab: Tab = {
     id,
@@ -33,11 +47,13 @@ export function newUntitled(): void {
 export async function openPath(path: string): Promise<void> {
   const existing = store.state.tabs.find((t) => t.path === path);
   if (existing) {
+    recordRecent(path);
     activateTab(existing.id);
     return;
   }
   try {
     const opened = await ipc.openFile(path);
+    recordRecent(path);
     const id = newId();
     const tab: Tab = {
       id,
@@ -105,7 +121,8 @@ export async function saveTab(tab: Tab): Promise<boolean> {
   if (!tab.path) return saveTabAs(tab);
   if (store.activeTab?.id === tab.id) syncTabFromView(tab);
   try {
-    const res = await ipc.saveFile(tab.path, tab.state.doc.toString(), tab.encoding, tab.eol);
+    const content = applySaveOptions(tab.state.doc.toString());
+    const res = await ipc.saveFile(tab.path, content, tab.encoding, tab.eol);
     tab.dirty = false;
     tab.diskMtimeMs = res.mtimeMs;
     tab.missingOnDisk = false;
@@ -131,6 +148,99 @@ export function saveActiveAs(): void {
   if (t) void saveTabAs(t);
 }
 
+// ---- Encoding / EOL (status-bar pickers) -----------------------------------
+
+/** Change the active tab's encoding. Re-saves file-backed tabs in the new
+ *  encoding immediately; untitled tabs just remember it for the next save. */
+export async function setActiveEncoding(enc: EncodingId): Promise<void> {
+  const t = store.activeTab;
+  if (!t || t.encoding === enc) return;
+  t.encoding = enc;
+  if (t.path) await saveTab(t);
+  else store.emit();
+}
+
+/** Change the active tab's line ending, with the same save semantics. */
+export async function setActiveEol(eol: EolId): Promise<void> {
+  const t = store.activeTab;
+  if (!t || t.eol === eol) return;
+  t.eol = eol;
+  if (t.path) await saveTab(t);
+  else store.emit();
+}
+
+// ---- Reopen closed tab -----------------------------------------------------
+
+interface ClosedTab {
+  path: string | null;
+  title: string;
+  doc: string;
+  cursor: number;
+  encoding: EncodingId;
+  eol: EolId;
+  scrollTop: number;
+  dirty: boolean;
+}
+
+const closedStack: ClosedTab[] = [];
+const CLOSED_STACK_MAX = 20;
+
+/** Snapshot a tab's content just before it is removed, for Reopen Closed Tab. */
+function pushClosed(tab: Tab): void {
+  // Ignore pristine, never-touched untitled tabs (nothing worth restoring).
+  if (tab.path === null && !tab.dirty && tab.state.doc.length === 0) return;
+  closedStack.push({
+    path: tab.path,
+    title: tab.title,
+    doc: tab.state.doc.toString(),
+    cursor: tab.state.selection.main.head,
+    encoding: tab.encoding,
+    eol: tab.eol,
+    scrollTop: tab.scrollTop,
+    dirty: tab.dirty,
+  });
+  if (closedStack.length > CLOSED_STACK_MAX) closedStack.shift();
+}
+
+/** Reopen the most recently closed tab (Cmd/Ctrl+Shift+T). */
+export async function reopenClosed(): Promise<void> {
+  const snap = closedStack.pop();
+  if (!snap) return;
+
+  // Clean, file-backed tab: just re-open from disk (single source of truth).
+  if (snap.path && !snap.dirty) {
+    await openPath(snap.path);
+    return;
+  }
+  // Already open (e.g. dirty snapshot but file re-opened meanwhile): focus it.
+  if (snap.path) {
+    const existing = store.state.tabs.find((t) => t.path === snap.path);
+    if (existing) {
+      activateTab(existing.id);
+      return;
+    }
+  }
+
+  // Restore the buffer (untitled, or unsaved edits) as a fresh tab.
+  const id = newId();
+  const tab: Tab = {
+    id,
+    path: snap.path,
+    title: snap.title,
+    dirty: snap.dirty,
+    encoding: snap.encoding,
+    eol: snap.eol,
+    diskMtimeMs: null,
+    missingOnDisk: false,
+    state: makeState(snap.doc, id, snap.cursor, snap.path),
+    scrollTop: snap.scrollTop,
+    notice: null,
+  };
+  store.state.tabs.push(tab);
+  if (snap.dirty || snap.path === null) markBackupDirty(id);
+  activateTab(id);
+}
+
 export function closeActive(): void {
   const t = store.activeTab;
   if (t) void closeTab(t.id);
@@ -151,6 +261,9 @@ export async function closeTab(id: string): Promise<void> {
 
   const idx = store.state.tabs.findIndex((t) => t.id === id);
   if (idx === -1) return;
+  // Capture the latest buffer (active tab's edits live in the view) before drop.
+  if (store.activeTab?.id === id) syncTabFromView(tab);
+  pushClosed(tab);
   dropPending(id);
   await ipc.deleteBackup(id).catch(() => {});
   store.state.tabs.splice(idx, 1);

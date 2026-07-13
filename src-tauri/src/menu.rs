@@ -14,11 +14,16 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let open = MenuItemBuilder::with_id("file.open", "Open…")
         .accelerator("CmdOrCtrl+O")
         .build(app)?;
+    let open_recent = MenuItemBuilder::with_id("file.openRecent", "Open Recent…").build(app)?;
     let save = MenuItemBuilder::with_id("file.save", "Save")
         .accelerator("CmdOrCtrl+S")
         .build(app)?;
     let save_as = MenuItemBuilder::with_id("file.saveAs", "Save As…")
         .accelerator("CmdOrCtrl+Shift+S")
+        .build(app)?;
+    let save_options = MenuItemBuilder::with_id("file.saveOptions", "Save Options…").build(app)?;
+    let reopen_closed = MenuItemBuilder::with_id("file.reopenClosed", "Reopen Closed Tab")
+        .accelerator("CmdOrCtrl+Shift+T")
         .build(app)?;
     let close_tab = MenuItemBuilder::with_id("file.close", "Close Tab")
         .accelerator("CmdOrCtrl+W")
@@ -27,10 +32,13 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let file_menu = SubmenuBuilder::new(app, "File")
         .item(&new_tab)
         .item(&open)
+        .item(&open_recent)
         .separator()
         .item(&save)
         .item(&save_as)
+        .item(&save_options)
         .separator()
+        .item(&reopen_closed)
         .item(&close_tab)
         .separator()
         .item(&PredefinedMenuItem::quit(app, Some("Quit UniNotepad"))?)
@@ -65,14 +73,24 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .build()?;
 
     // View — zoom
+    // Accelerator is "=" (not "Plus") so it fires on Cmd/Ctrl+= without Shift,
+    // matching what users actually press. The Shift variant (Cmd/Ctrl and "+")
+    // is handled by a keydown listener in the webview.
     let zoom_in = MenuItemBuilder::with_id("view.zoomIn", "Zoom In")
-        .accelerator("CmdOrCtrl+Plus")
+        .accelerator("CmdOrCtrl+=")
         .build(app)?;
     let zoom_out = MenuItemBuilder::with_id("view.zoomOut", "Zoom Out")
         .accelerator("CmdOrCtrl+-")
         .build(app)?;
     let zoom_reset = MenuItemBuilder::with_id("view.zoomReset", "Reset Zoom")
         .accelerator("CmdOrCtrl+0")
+        .build(app)?;
+
+    let goto_line = MenuItemBuilder::with_id("view.gotoLine", "Go to Line…")
+        .accelerator("CmdOrCtrl+G")
+        .build(app)?;
+    let toggle_wrap = MenuItemBuilder::with_id("view.toggleWrap", "Toggle Word Wrap")
+        .accelerator("Alt+Z")
         .build(app)?;
 
     let goto_tabs = (1..=9)
@@ -88,14 +106,28 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         })
         .collect::<tauri::Result<Vec<_>>>()?;
 
+    // Theme — manual light/dark selection; "System" follows the OS.
+    let theme_light = MenuItemBuilder::with_id("view.themeLight", "Light").build(app)?;
+    let theme_dark = MenuItemBuilder::with_id("view.themeDark", "Dark").build(app)?;
+    let theme_system = MenuItemBuilder::with_id("view.themeSystem", "System").build(app)?;
+    let theme_menu = SubmenuBuilder::new(app, "Theme")
+        .item(&theme_light)
+        .item(&theme_dark)
+        .item(&theme_system)
+        .build()?;
+
     let mut view_builder = SubmenuBuilder::new(app, "View")
         .item(&zoom_in)
         .item(&zoom_out)
         .item(&zoom_reset)
+        .separator()
+        .item(&goto_line)
+        .item(&toggle_wrap)
         .separator();
     for item in &goto_tabs {
         view_builder = view_builder.item(item);
     }
+    view_builder = view_builder.separator().item(&theme_menu);
     let view_menu = view_builder.build()?;
 
     Menu::with_items(app, &[&file_menu, &edit_menu, &view_menu])
