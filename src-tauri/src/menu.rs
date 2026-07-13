@@ -75,11 +75,28 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .accelerator("CmdOrCtrl+0")
         .build(app)?;
 
-    let view_menu = SubmenuBuilder::new(app, "View")
+    let goto_tabs = (1..=9)
+        .map(|n| {
+            let label = if n == 9 {
+                "Go to Last Tab".to_string()
+            } else {
+                format!("Go to Tab {n}")
+            };
+            MenuItemBuilder::with_id(format!("view.gotoTab{n}"), label)
+                .accelerator(format!("CmdOrCtrl+{n}"))
+                .build(app)
+        })
+        .collect::<tauri::Result<Vec<_>>>()?;
+
+    let mut view_builder = SubmenuBuilder::new(app, "View")
         .item(&zoom_in)
         .item(&zoom_out)
         .item(&zoom_reset)
-        .build()?;
+        .separator();
+    for item in &goto_tabs {
+        view_builder = view_builder.item(item);
+    }
+    let view_menu = view_builder.build()?;
 
     Menu::with_items(app, &[&file_menu, &edit_menu, &view_menu])
 }

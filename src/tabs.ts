@@ -73,6 +73,16 @@ export function activateTab(id: string): void {
   void flushNow();
 }
 
+export function activateTabByIndex(index: number): void {
+  const tab = store.state.tabs[index];
+  if (tab) activateTab(tab.id);
+}
+
+export function activateLastTab(): void {
+  const tab = store.state.tabs[store.state.tabs.length - 1];
+  if (tab) activateTab(tab.id);
+}
+
 export async function openDialog(): Promise<void> {
   const sel = await open({ multiple: true });
   if (!sel) return;
