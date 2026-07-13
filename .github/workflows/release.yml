@@ -1,0 +1,67 @@
+name: release
+
+# Build native binaries for macOS (arm64 + x86_64), Windows (x86_64), and
+# Linux (x86_64) on their respective runners, and attach them to the GitHub
+# release for the pushed tag. Triggered by pushing a v* tag.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest # macOS Apple Silicon (arm64)
+            args: '--target aarch64-apple-darwin'
+            rust-target: aarch64-apple-darwin
+          - platform: macos-latest # macOS Intel (x86_64)
+            args: '--target x86_64-apple-darwin'
+            rust-target: x86_64-apple-darwin
+          - platform: ubuntu-22.04 # Linux (x86_64): .deb / .AppImage
+            args: ''
+            rust-target: ''
+          - platform: windows-latest # Windows (x86_64): .msi / NSIS .exe
+            args: ''
+            rust-target: ''
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-target }}
+
+      - name: Install Linux build dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            librsvg2-dev \
+            libayatana-appindicator3-dev \
+            patchelf \
+            build-essential
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: ${{ github.ref_name }}
+          releaseBody: 'See the attached assets for macOS (arm64/x86_64), Windows, and Linux downloads.'
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
