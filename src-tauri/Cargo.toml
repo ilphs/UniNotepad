@@ -1,0 +1,33 @@
+[package]
+name = "uniedit"
+version = "0.1.0"
+description = "Lightweight cross-platform plain-text editor"
+authors = ["UniEdit"]
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+name = "uniedit_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-single-instance = "2"
+tauri-plugin-window-state = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+encoding_rs = "0.8"
+atomicwrites = "0.4"
+
+# Size-optimized release profile (lightweight binary).
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
