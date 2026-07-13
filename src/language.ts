@@ -5,6 +5,9 @@ import { json } from "@codemirror/lang-json";
 import { sql } from "@codemirror/lang-sql";
 import { java } from "@codemirror/lang-java";
 import { python } from "@codemirror/lang-python";
+import { html } from "@codemirror/lang-html";
+import { css } from "@codemirror/lang-css";
+import { javascript } from "@codemirror/lang-javascript";
 import { shell } from "@codemirror/legacy-modes/mode/shell";
 
 /**
@@ -18,7 +21,7 @@ const highlightStyle = HighlightStyle.define([
   { tag: [t.string, t.special(t.string), t.character], color: "var(--cm-string)" },
   { tag: [t.number, t.bool, t.null, t.atom], color: "var(--cm-number)" },
   { tag: [t.function(t.variableName), t.function(t.propertyName)], color: "var(--cm-function)" },
-  { tag: [t.typeName, t.className, t.namespace], color: "var(--cm-type)" },
+  { tag: [t.typeName, t.className, t.namespace, t.tagName], color: "var(--cm-type)" },
   { tag: [t.propertyName, t.attributeName], color: "var(--cm-property)" },
   { tag: [t.operator, t.punctuation, t.separator, t.bracket], color: "var(--cm-operator)" },
   { tag: [t.definition(t.variableName), t.variableName], color: "var(--cm-variable)" },
@@ -45,6 +48,24 @@ export function languageForPath(path: string | null): Extension {
     case "sh":
     case "bash":
       return StreamLanguage.define(shell);
+    case "html":
+    case "htm":
+    case "xhtml":
+      return html();
+    case "css":
+      return css();
+    case "js":
+    case "mjs":
+    case "cjs":
+      return javascript();
+    case "jsx":
+      return javascript({ jsx: true });
+    case "ts":
+    case "mts":
+    case "cts":
+      return javascript({ typescript: true });
+    case "tsx":
+      return javascript({ jsx: true, typescript: true });
     // "txt" and everything else: plain text, no highlighting.
     default:
       return [];

@@ -22,5 +22,8 @@ export default defineConfig({
     target: "es2021",
     minify: "esbuild",
     sourcemap: false,
+    // Loaded from local disk in a WebView — no network cost, so the grammar
+    // parsers pushing the bundle past 500 kB is fine.
+    chunkSizeWarningLimit: 2000,
   },
 });
