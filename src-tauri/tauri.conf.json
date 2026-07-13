@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "UniEdit",
+  "productName": "UniEditPlus",
   "version": "0.1.0",
   "identifier": "com.uniedit.app",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "UniEdit",
+        "title": "UniEditPlus",
         "width": 1000,
         "height": 700,
         "minWidth": 480,

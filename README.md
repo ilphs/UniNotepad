@@ -1,4 +1,4 @@
-# UniEdit
+# UniEditPlus
 
 A lightweight, cross-platform (Windows / macOS / Linux) plain-text editor with
 tabs and **Notepad++-style session persistence**: your open tabs — including
@@ -6,7 +6,8 @@ unsaved edits and brand-new untitled documents — survive an app quit, a crash,
 or a full computer restart, and reappear exactly as you left them the next time
 you open the app. No manual save required.
 
-Syntax highlighting is intentionally out of scope for v1.
+Syntax highlighting is available for common extensions (py, json, sql, java,
+sh/bash, html, css, js/jsx, ts/tsx, …); other files open as plain text.
 
 ## Stack
 

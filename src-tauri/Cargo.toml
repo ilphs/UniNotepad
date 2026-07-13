@@ -2,7 +2,7 @@
 name = "uniedit"
 version = "0.1.0"
 description = "Lightweight cross-platform plain-text editor"
-authors = ["UniEdit"]
+authors = ["UniEditPlus"]
 edition = "2021"
 rust-version = "1.77"
 

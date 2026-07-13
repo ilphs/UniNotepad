@@ -1,6 +1,6 @@
 
 # Claude Code runtime
-.claude/db/context.db
+.claude/db/context.db*
 .claude/.ctx_state
 .claude/.backup-*
 .claude/.ralph_state

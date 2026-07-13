@@ -55,7 +55,7 @@ export async function openPath(path: string): Promise<void> {
     store.state.tabs.push(tab);
     activateTab(id);
   } catch (err) {
-    await message(`Failed to open ${path}:\n${err}`, { title: "UniEdit", kind: "error" });
+    await message(`Failed to open ${path}:\n${err}`, { title: "UniEditPlus", kind: "error" });
   }
 }
 
@@ -106,7 +106,7 @@ export async function saveTab(tab: Tab): Promise<boolean> {
     void flushNow();
     return true;
   } catch (err) {
-    await message(`Failed to save:\n${err}`, { title: "UniEdit", kind: "error" });
+    await message(`Failed to save:\n${err}`, { title: "UniEditPlus", kind: "error" });
     return false;
   }
 }
@@ -191,7 +191,7 @@ export async function reloadFromDisk(id: string): Promise<void> {
     store.emit();
     void flushNow();
   } catch (err) {
-    await message(`Failed to reload:\n${err}`, { title: "UniEdit", kind: "error" });
+    await message(`Failed to reload:\n${err}`, { title: "UniEditPlus", kind: "error" });
   }
 }
 
