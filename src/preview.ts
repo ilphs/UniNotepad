@@ -33,13 +33,27 @@ let loading: Promise<{ marked: Marked; DOMPurify: Purify }> | null = null;
 function ensureMods(): Promise<{ marked: Marked; DOMPurify: Purify }> {
   if (mods) return Promise.resolve(mods);
   if (!loading) {
-    loading = Promise.all([import("marked"), import("dompurify")]).then(
-      ([{ marked }, { default: DOMPurify }]) => {
-        marked.setOptions({ gfm: true, breaks: false });
-        mods = { marked, DOMPurify };
-        return mods;
-      },
-    );
+    loading = Promise.all([
+      import("marked"),
+      import("dompurify"),
+      import("marked-highlight"),
+      import("highlight.js/lib/common"),
+    ]).then(([{ marked }, { default: DOMPurify }, { markedHighlight }, { default: hljs }]) => {
+      marked.setOptions({ gfm: true, breaks: false });
+      // Syntax-highlight fenced code via highlight.js; the `hljs-*` span
+      // classes it emits are themed by the shared --cm-* palette in styles.css.
+      marked.use(
+        markedHighlight({
+          langPrefix: "hljs language-",
+          highlight: (code, lang) =>
+            hljs.highlight(code, {
+              language: hljs.getLanguage(lang) ? lang : "plaintext",
+            }).value,
+        }),
+      );
+      mods = { marked, DOMPurify };
+      return mods;
+    });
   }
   return loading;
 }

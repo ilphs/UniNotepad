@@ -283,9 +283,12 @@ body {
 .md-body {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 12px 20px;
-  line-height: 1.6;
-  font-size: 14px;
+  max-width: 72ch; /* cap line length (~66–75 chars) for readability */
+  margin: 0 auto; /* auto margins center the column in the flex-row pane */
+  padding: 28px 32px 48px;
+  line-height: 1.7;
+  font-size: 15px;
+  overflow-wrap: break-word; /* keep long URLs/words from overflowing */
 }
 .md-body > :first-child { margin-top: 0; }
 .md-body > :last-child { margin-bottom: 0; }
@@ -295,14 +298,21 @@ body {
 .md-body h4,
 .md-body h5,
 .md-body h6 {
-  margin: 1.2em 0 0.6em;
+  margin: 1.6em 0 0.6em;
   line-height: 1.25;
   font-weight: 600;
 }
-.md-body h1 { font-size: 1.8em; border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
-.md-body h2 { font-size: 1.5em; border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
-.md-body h3 { font-size: 1.25em; }
-.md-body p { margin: 0.6em 0; }
+/* Color headings by level (#-depth) using the shared --cm-* palette, softened
+   to pastel/muted tones by mixing each hue toward the theme's mid-gray
+   (--gutter-fg). Distinguishable at a glance, follows light/dark, and where
+   color-mix is unsupported the levels gracefully fall back to --fg. */
+.md-body h1 { font-size: 1.7em; color: color-mix(in srgb, var(--accent) 65%, var(--gutter-fg)); border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
+.md-body h2 { font-size: 1.45em; color: color-mix(in srgb, var(--cm-function) 60%, var(--gutter-fg)); border-bottom: 1px solid var(--border); padding-bottom: 0.25em; }
+.md-body h3 { font-size: 1.25em; color: color-mix(in srgb, var(--cm-type) 60%, var(--gutter-fg)); }
+.md-body h4 { color: color-mix(in srgb, var(--cm-string) 60%, var(--gutter-fg)); }
+.md-body h5 { color: color-mix(in srgb, var(--cm-keyword) 60%, var(--gutter-fg)); }
+.md-body h6 { color: var(--cm-comment); }
+.md-body p { margin: 0.85em 0; }
 .md-body a { color: var(--accent); text-decoration: none; }
 .md-body a:hover { text-decoration: underline; }
 .md-body ul,
@@ -334,6 +344,31 @@ body {
   padding: 0;
   font-size: 0.88em;
 }
+/* highlight.js tokens mapped to the shared syntax palette (--cm-*), so code
+   blocks in the preview follow the active light/dark theme automatically.
+   Unmapped tokens fall back to --fg. */
+.md-body .hljs-comment,
+.md-body .hljs-quote { color: var(--cm-comment); font-style: italic; }
+.md-body .hljs-keyword,
+.md-body .hljs-built_in { color: var(--cm-keyword); }
+.md-body .hljs-string,
+.md-body .hljs-meta .hljs-string { color: var(--cm-string); }
+.md-body .hljs-number,
+.md-body .hljs-literal { color: var(--cm-number); }
+.md-body .hljs-title,
+.md-body .hljs-title.function_ { color: var(--cm-function); }
+.md-body .hljs-type,
+.md-body .hljs-class .hljs-title { color: var(--cm-type); }
+.md-body .hljs-attr,
+.md-body .hljs-property,
+.md-body .hljs-attribute { color: var(--cm-property); }
+.md-body .hljs-variable,
+.md-body .hljs-name,
+.md-body .hljs-tag { color: var(--cm-variable); }
+.md-body .hljs-operator,
+.md-body .hljs-punctuation { color: var(--cm-operator); }
+.md-body .hljs-emphasis { font-style: italic; }
+.md-body .hljs-strong { font-weight: 600; }
 .md-body img { max-width: 100%; }
 .md-body hr { border: none; border-top: 1px solid var(--border); margin: 1.2em 0; }
 .md-body table {
