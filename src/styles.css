@@ -149,12 +149,31 @@ body {
   white-space: nowrap;
   cursor: pointer;
   max-width: 220px;
+  /* macOS WKWebView honours only the -webkit- prefix; without it the label
+     text gets range-selected while dragging a tab. */
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .tab.active {
   background: var(--tab-active-bg);
   border-top: 2px solid var(--accent);
   padding-top: 4px;
+}
+
+/* ---- Drag-to-reorder feedback ---- */
+.tab.dragging {
+  opacity: 0.4;
+}
+
+/* Accent bar on the edge where the dragged tab will land. inset box-shadow
+   avoids reflow (unlike a border) so tabs don't jitter during hover. */
+.tab.drop-before {
+  box-shadow: inset 2px 0 0 0 var(--accent);
+}
+
+.tab.drop-after {
+  box-shadow: inset -2px 0 0 0 var(--accent);
 }
 
 .tab-label {

@@ -283,13 +283,18 @@ export async function closeTab(id: string): Promise<void> {
   }
 }
 
-export function reorderTab(fromId: string, toIndex: number): void {
+/** Move the dragged tab so it sits immediately before `beforeId`. A null
+ *  `beforeId` appends it to the end. Direction-independent: the target is a
+ *  stable tab id, resolved after the moved tab is spliced out. */
+export function reorderTab(fromId: string, beforeId: string | null): void {
+  if (fromId === beforeId) return;
   const tabs = store.state.tabs;
   const from = tabs.findIndex((t) => t.id === fromId);
   if (from === -1) return;
   const [moved] = tabs.splice(from, 1);
-  const clamped = Math.max(0, Math.min(toIndex, tabs.length));
-  tabs.splice(clamped, 0, moved);
+  let insertAt = beforeId === null ? tabs.length : tabs.findIndex((t) => t.id === beforeId);
+  if (insertAt === -1) insertAt = tabs.length;
+  tabs.splice(insertAt, 0, moved);
   store.emit();
   void flushNow();
 }
@@ -344,12 +349,89 @@ export function initTabBar(tabbar: HTMLElement, banner: HTMLElement): void {
   bannerEl = banner;
 }
 
+// ---- Pointer-based drag-to-reorder -----------------------------------------
+// HTML5 draggable is swallowed by Tauri's OS-level drag-drop (needed for
+// file-drop-to-open), so reordering uses raw pointer events instead.
+
+interface TabDrag {
+  tabId: string;
+  startX: number;
+  el: HTMLElement;
+  active: boolean; // moved past the threshold → a real drag, not a click
+}
+
+let tabDrag: TabDrag | null = null;
+const DRAG_THRESHOLD_PX = 5;
+
+/** Where the dragged tab would land given the cursor x: the id of the tab to
+ *  insert before, or null for the end. Skips the dragged tab itself. */
+function dropBeforeId(clientX: number, draggedId: string): string | null {
+  for (const child of Array.from(tabbarEl.children) as HTMLElement[]) {
+    const id = child.dataset.tabId;
+    if (!id || id === draggedId) continue;
+    const rect = child.getBoundingClientRect();
+    if (clientX < rect.left + rect.width / 2) return id;
+  }
+  return null;
+}
+
+function clearDropIndicators(): void {
+  for (const child of Array.from(tabbarEl.children) as HTMLElement[])
+    child.classList.remove("drop-before", "drop-after");
+}
+
+function showDropIndicator(beforeId: string | null): void {
+  clearDropIndicators();
+  const children = Array.from(tabbarEl.children) as HTMLElement[];
+  if (beforeId === null) children[children.length - 1]?.classList.add("drop-after");
+  else children.find((c) => c.dataset.tabId === beforeId)?.classList.add("drop-before");
+}
+
+function onTabPointerMove(e: PointerEvent): void {
+  if (!tabDrag) return;
+  if (!tabDrag.active) {
+    if (Math.abs(e.clientX - tabDrag.startX) < DRAG_THRESHOLD_PX) return;
+    tabDrag.active = true;
+    tabDrag.el.classList.add("dragging");
+  }
+  showDropIndicator(dropBeforeId(e.clientX, tabDrag.tabId));
+}
+
+function endTabDrag(): TabDrag | null {
+  document.removeEventListener("pointermove", onTabPointerMove);
+  document.removeEventListener("pointerup", onTabPointerUp);
+  document.removeEventListener("pointercancel", onTabPointerCancel);
+  const d = tabDrag;
+  tabDrag = null;
+  if (d) {
+    d.el.classList.remove("dragging");
+    clearDropIndicators();
+  }
+  return d;
+}
+
+function onTabPointerUp(e: PointerEvent): void {
+  const d = endTabDrag();
+  if (!d) return;
+  if (!d.active) {
+    activateTab(d.tabId); // never moved → treat as a plain click
+    return;
+  }
+  reorderTab(d.tabId, dropBeforeId(e.clientX, d.tabId));
+  activateTab(d.tabId); // keep the just-dropped tab focused
+}
+
+// OS/gesture interruption: abandon the drag, leave tab order untouched.
+function onTabPointerCancel(): void {
+  endTabDrag();
+}
+
 export function renderTabBar(): void {
   tabbarEl.replaceChildren();
   for (const tab of store.state.tabs) {
     const el = document.createElement("div");
     el.className = "tab" + (tab.id === store.state.activeTabId ? " active" : "");
-    el.draggable = true;
+    el.dataset.tabId = tab.id;
     el.title = tab.path ?? tab.title;
 
     const label = document.createElement("span");
@@ -372,18 +454,16 @@ export function renderTabBar(): void {
         void closeTab(tab.id);
       }
     });
-    el.addEventListener("click", () => activateTab(tab.id));
 
-    el.addEventListener("dragstart", (e) => {
-      e.dataTransfer?.setData("text/tab-id", tab.id);
-    });
-    el.addEventListener("dragover", (e) => e.preventDefault());
-    el.addEventListener("drop", (e) => {
-      e.preventDefault();
-      const fromId = e.dataTransfer?.getData("text/tab-id");
-      if (!fromId || fromId === tab.id) return;
-      const toIndex = store.state.tabs.findIndex((t) => t.id === tab.id);
-      reorderTab(fromId, toIndex);
+    // Left-button press starts a potential drag; activation happens on release
+    // (pointerup) so a click still selects while a drag reorders. The close
+    // button handles its own click, so ignore presses that start on it.
+    el.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 || (e.target as HTMLElement).closest(".tab-close")) return;
+      tabDrag = { tabId: tab.id, startX: e.clientX, el, active: false };
+      document.addEventListener("pointermove", onTabPointerMove);
+      document.addEventListener("pointerup", onTabPointerUp);
+      document.addEventListener("pointercancel", onTabPointerCancel);
     });
 
     tabbarEl.appendChild(el);

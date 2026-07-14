@@ -3,15 +3,18 @@
  * in localStorage. "system" removes the `data-theme` attribute so the CSS
  * `prefers-color-scheme` media query follows the OS live; "light"/"dark" set the
  * attribute to override it. See styles.css for the palettes.
+ *
+ * The default (no stored choice) is "dark". Every explicit choice — including
+ * "system" — is persisted so the default never overrides a deliberate pick.
  */
 export type ThemeChoice = "light" | "dark" | "system";
 
 const STORAGE_KEY = "uninotepad.theme";
 
-/** Persisted choice, defaulting to "system" for any missing/invalid value. */
+/** Persisted choice, defaulting to "dark" for any missing/invalid value. */
 export function themeChoice(): ThemeChoice {
   const v = localStorage.getItem(STORAGE_KEY);
-  return v === "light" || v === "dark" ? v : "system";
+  return v === "light" || v === "dark" || v === "system" ? v : "dark";
 }
 
 function apply(choice: ThemeChoice): void {
@@ -25,9 +28,9 @@ export function applyStoredTheme(): void {
   apply(themeChoice());
 }
 
-/** Persist and apply a new theme choice (invoked from the View → Theme menu). */
+/** Persist and apply a new theme choice (invoked from the View → Theme menu).
+ *  "system" is stored explicitly (not cleared) so it survives the dark default. */
 export function setTheme(choice: ThemeChoice): void {
-  if (choice === "system") localStorage.removeItem(STORAGE_KEY);
-  else localStorage.setItem(STORAGE_KEY, choice);
+  localStorage.setItem(STORAGE_KEY, choice);
   apply(choice);
 }
