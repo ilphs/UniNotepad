@@ -6,6 +6,15 @@ unsaved edits and brand-new untitled documents — survive an app quit, a crash,
 or a full computer restart, and reappear exactly as you left them the next time
 you open the app. No manual save required.
 
+## Screenshot
+
+Split-pane **Markdown preview** with syntax-highlighted code blocks and
+color-coded headings, following the active light/dark theme.
+
+![UniNotepad Markdown preview](docs/markdown-preview.png)
+
+## Syntax highlighting
+
 Syntax highlighting is available for the following extensions; other files open as plain text.
 
 | Language | Extensions |
