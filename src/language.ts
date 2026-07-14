@@ -38,10 +38,22 @@ const highlightStyle = HighlightStyle.define([
 /** Included once in every editor state; harmless when a tab has no language. */
 export const highlighting: Extension = syntaxHighlighting(highlightStyle, { fallback: true });
 
+/** Lowercased file extension of a path, or "" for none/untitled. */
+function extOf(path: string | null): string {
+  if (!path) return "";
+  return path.split(/[\\/]/).pop()!.split(".").pop()!.toLowerCase();
+}
+
+/** True when the path is a Markdown document (drives the preview pane). */
+export function isMarkdownPath(path: string | null): boolean {
+  const ext = extOf(path);
+  return ext === "md" || ext === "markdown";
+}
+
 /** Resolve a file path to its language extension (empty for plain text). */
 export function languageForPath(path: string | null): Extension {
   if (!path) return [];
-  const ext = path.split(/[\\/]/).pop()!.split(".").pop()!.toLowerCase();
+  const ext = extOf(path);
   switch (ext) {
     case "json":
       return json();

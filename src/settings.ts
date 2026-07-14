@@ -6,6 +6,13 @@
 const WRAP_KEY = "uninotepad.wordWrap";
 const TRIM_KEY = "uninotepad.trimTrailingOnSave";
 const FINAL_NL_KEY = "uninotepad.ensureFinalNewline";
+const PREVIEW_KEY = "uninotepad.markdownPreview";
+const RATIO_KEY = "uninotepad.previewRatio";
+
+/** Editor:preview split bounds — keeps either pane from collapsing. */
+const RATIO_MIN = 0.2;
+const RATIO_MAX = 0.8;
+const RATIO_DEFAULT = 0.5;
 
 /** localStorage boolean with an explicit default when unset/invalid. */
 function readBool(key: string, dflt: boolean): boolean {
@@ -44,6 +51,28 @@ export function ensureFinalNewline(): boolean {
 
 export function setEnsureFinalNewline(on: boolean): void {
   writeBool(FINAL_NL_KEY, on);
+}
+
+/** Markdown preview pane defaults ON — opening a Markdown file shows it
+ *  automatically. Key kept as `markdownPreview` to preserve saved settings. */
+export function isPreviewEnabled(): boolean {
+  return readBool(PREVIEW_KEY, true);
+}
+
+export function setPreviewEnabled(on: boolean): void {
+  writeBool(PREVIEW_KEY, on);
+}
+
+/** Editor's share of the split (0.2–0.8); the preview takes the remainder. */
+export function previewRatio(): number {
+  const v = Number(localStorage.getItem(RATIO_KEY));
+  if (!Number.isFinite(v) || v <= 0) return RATIO_DEFAULT;
+  return Math.max(RATIO_MIN, Math.min(RATIO_MAX, v));
+}
+
+export function setPreviewRatio(ratio: number): void {
+  const clamped = Math.max(RATIO_MIN, Math.min(RATIO_MAX, ratio));
+  localStorage.setItem(RATIO_KEY, String(clamped));
 }
 
 /**

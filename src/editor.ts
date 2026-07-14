@@ -30,6 +30,7 @@ import { onDocChanged } from "./session";
 import { refreshStatusBar } from "./statusbar";
 import { highlighting, languageForPath } from "./language";
 import { isWordWrap, setWordWrap } from "./settings";
+import { updatePreview, schedulePreviewRender } from "./preview";
 
 let view: EditorView;
 let hostEl: HTMLElement;
@@ -92,6 +93,7 @@ export function makeState(
         // Ignore programmatic setState (tab switch): those carry no transactions.
         if (u.docChanged && u.transactions.length > 0) {
           onDocChanged(tabId);
+          schedulePreviewRender();
         }
         if (u.selectionSet || u.docChanged || u.transactions.length === 0) {
           refreshStatusBar();
@@ -104,6 +106,7 @@ export function makeState(
 /** Re-apply the language for the active tab's path (used after Save As). */
 export function reconfigureLanguage(path: string | null): void {
   view.dispatch({ effects: language.reconfigure(languageForPath(path)) });
+  updatePreview(); // extension may have changed the file's Markdown status
 }
 
 /** Open CodeMirror's "go to line" panel for the active view. */
@@ -168,6 +171,7 @@ export function showTab(tab: Tab): void {
   requestAnimationFrame(() => {
     view.scrollDOM.scrollTop = tab.scrollTop;
   });
+  updatePreview(); // show/hide + render for the newly active tab
 }
 
 /** Persist the live view (doc, selection, undo history, scroll) back into a tab. */

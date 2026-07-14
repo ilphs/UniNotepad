@@ -20,6 +20,7 @@ import {
 } from "./tabs";
 import { openSaveOptions, openRecentDialog } from "./dialogs";
 import { setTheme } from "./theme";
+import { togglePreview } from "./preview";
 
 /** Map a native-menu item id (from the `menu` event) to a frontend action. */
 export function handleMenu(id: string): void {
@@ -63,6 +64,9 @@ export function handleMenu(id: string): void {
       break;
     case "view.toggleWrap":
       toggleWordWrap();
+      break;
+    case "view.togglePreview":
+      togglePreview();
       break;
     case "view.zoomIn":
       zoomIn();

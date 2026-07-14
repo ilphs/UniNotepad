@@ -1,7 +1,7 @@
 {
   "name": "uninotepad",
   "private": true,
-  "version": "0.2.2",
+  "version": "0.3.0",
   "type": "module",
   "description": "Lightweight cross-platform plain-text editor with Notepad++-style session persistence",
   "scripts": {
@@ -32,7 +32,9 @@
     "@codemirror/view": "^6.28.0",
     "@lezer/highlight": "^1.2.3",
     "@tauri-apps/api": "^2.0.0",
-    "@tauri-apps/plugin-dialog": "^2.0.0"
+    "@tauri-apps/plugin-dialog": "^2.0.0",
+    "dompurify": "^3.4.12",
+    "marked": "^14.1.4"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0.0",

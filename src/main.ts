@@ -12,6 +12,7 @@ import { initStatusBar, refreshStatusBar } from "./statusbar";
 import { restoreSession, initSessionTriggers } from "./session";
 import { handleMenu } from "./menu";
 import { applyStoredTheme } from "./theme";
+import { mountPreview } from "./preview";
 
 // Apply the saved theme before first paint (system mode falls back to CSS).
 applyStoredTheme();
@@ -21,10 +22,15 @@ async function bootstrap(): Promise<void> {
   const banner = document.getElementById("banner")!;
   const editorHost = document.getElementById("editor-host")!;
   const statusbar = document.getElementById("statusbar")!;
+  const split = document.getElementById("split")!;
+  const previewHost = document.getElementById("preview-host")!;
+  const divider = document.getElementById("divider")!;
 
   initTabBar(tabbar, banner);
   initStatusBar(statusbar);
   mountEditor(editorHost);
+  // Before any showTab() below (it calls updatePreview()).
+  mountPreview(split, editorHost, previewHost, divider);
 
   // Re-render chrome whenever app state changes.
   store.subscribe(() => {
