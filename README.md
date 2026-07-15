@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="src-tauri/icons/128x128@2x.png" width="128" alt="UniNotepad 앱 아이콘">
+</p>
+
 # UniNotepad
 
 **껐다 켜도 그대로인 메모장.**
