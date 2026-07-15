@@ -24,6 +24,19 @@ Windows · macOS · Linux에서 쓸 수 있습니다.
 | macOS — 인텔 | `UniNotepad_x.y.z_x64.dmg` |
 | Linux | `.AppImage` · `.deb` · `.rpm` 중 편한 것 |
 
+### macOS에서 "손상되었기 때문에 열 수 없습니다"라고 나올 때
+
+이 앱은 Apple 개발자 인증서 서명·공증(notarization) 없이 배포됩니다. 그래서 내려받은
+앱을 처음 열면 macOS가 "손상된 파일"이라며 열어 주지 않을 수 있습니다. 파일이 실제로
+깨진 것은 아니고, 공증되지 않은 앱을 인터넷에서 받았을 때 나오는 macOS의 기본 안내입니다.
+
+`UniNotepad.app`을 `응용 프로그램` 폴더로 옮긴 뒤, 터미널에서 아래 한 줄을 실행하고
+다시 열면 됩니다. (내려받은 파일에 붙는 격리 꼬리표를 지우는 명령입니다.)
+
+```bash
+xattr -cr /Applications/UniNotepad.app
+```
+
 ## 무엇이 다른가요
 
 **저장을 신경 쓰지 않아도 됩니다.**
