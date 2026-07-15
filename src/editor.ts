@@ -16,7 +16,7 @@ import {
   undo,
   redo,
 } from "@codemirror/commands";
-import { bracketMatching, indentOnInput } from "@codemirror/language";
+import { bracketMatching, indentOnInput, indentUnit } from "@codemirror/language";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import {
   search,
@@ -28,8 +28,13 @@ import {
 import { store, type Tab } from "./state";
 import { onDocChanged } from "./session";
 import { refreshStatusBar } from "./statusbar";
-import { highlighting, languageForPath } from "./language";
-import { isWordWrap, setWordWrap } from "./settings";
+import { highlighting, languageForPath, loadLanguageFor } from "./language";
+import {
+  isWordWrap,
+  setWordWrap,
+  indentUnitString,
+  indentWidth,
+} from "./settings";
 import { updatePreview, schedulePreviewRender } from "./preview";
 
 let view: EditorView;
@@ -52,9 +57,17 @@ const language = new Compartment();
 /** Per-state compartment holding the line-wrap extension, toggled app-wide. */
 const wrap = new Compartment();
 
+/** Per-state compartment holding indent unit + tab size, driven by settings. */
+const indent = new Compartment();
+
 /** Current wrap extension, driven by the persisted preference. */
 function wrapExtension(): Extension {
   return isWordWrap() ? EditorView.lineWrapping : [];
+}
+
+/** Current indent extension: the per-level string plus the Tab display width. */
+function indentExtension(): Extension {
+  return [indentUnit.of(indentUnitString()), EditorState.tabSize.of(indentWidth())];
 }
 
 export function makeState(
@@ -79,6 +92,7 @@ export function makeState(
       closeBrackets(),
       bracketMatching(),
       indentOnInput(),
+      indent.of(indentExtension()),
       language.of(languageForPath(path ?? null)),
       highlighting,
       keymap.of([
@@ -107,6 +121,25 @@ export function makeState(
 export function reconfigureLanguage(path: string | null): void {
   view.dispatch({ effects: language.reconfigure(languageForPath(path)) });
   updatePreview(); // extension may have changed the file's Markdown status
+  void applyLazyLanguage(path);
+}
+
+/**
+ * For extensions the static fast-path doesn't cover, lazily resolve a language
+ * via @codemirror/language-data and reconfigure the live view once it loads.
+ * No-op when the fast-path already handled the file (avoids a re-highlight
+ * flash for common languages). Guarded against the tab switching mid-load.
+ */
+async function applyLazyLanguage(path: string | null): Promise<void> {
+  if (!path) return;
+  const staticExt = languageForPath(path);
+  // Fast-path already resolved a language → nothing to lazy-load.
+  if (!Array.isArray(staticExt) || staticExt.length > 0) return;
+  const ext = await loadLanguageFor(path);
+  if (!ext) return;
+  // The user may have switched tabs during the async import.
+  if (store.activeTab?.path !== path) return;
+  view.dispatch({ effects: language.reconfigure(ext) });
 }
 
 /** Open CodeMirror's "go to line" panel for the active view. */
@@ -172,6 +205,7 @@ export function showTab(tab: Tab): void {
     view.scrollDOM.scrollTop = tab.scrollTop;
   });
   updatePreview(); // show/hide + render for the newly active tab
+  void applyLazyLanguage(tab.path); // broaden highlighting for long-tail extensions
 }
 
 /** Persist the live view (doc, selection, undo history, scroll) back into a tab. */

@@ -8,6 +8,13 @@ const TRIM_KEY = "uninotepad.trimTrailingOnSave";
 const FINAL_NL_KEY = "uninotepad.ensureFinalNewline";
 const PREVIEW_KEY = "uninotepad.markdownPreview";
 const RATIO_KEY = "uninotepad.previewRatio";
+const INDENT_TABS_KEY = "uninotepad.indentUseTabs";
+const INDENT_WIDTH_KEY = "uninotepad.indentWidth";
+
+/** Indent width bounds (columns). */
+const INDENT_WIDTH_MIN = 1;
+const INDENT_WIDTH_MAX = 8;
+const INDENT_WIDTH_DEFAULT = 4;
 
 /** Editor:preview split bounds — keeps either pane from collapsing. */
 const RATIO_MIN = 0.2;
@@ -73,6 +80,32 @@ export function previewRatio(): number {
 export function setPreviewRatio(ratio: number): void {
   const clamped = Math.max(RATIO_MIN, Math.min(RATIO_MAX, ratio));
   localStorage.setItem(RATIO_KEY, String(clamped));
+}
+
+/** Indent with real tab characters instead of spaces (default OFF → spaces). */
+export function indentUseTabs(): boolean {
+  return readBool(INDENT_TABS_KEY, false);
+}
+
+export function setIndentUseTabs(on: boolean): void {
+  writeBool(INDENT_TABS_KEY, on);
+}
+
+/** Indent width in columns (1–8, default 4). Also drives the Tab display size. */
+export function indentWidth(): number {
+  const v = Number(localStorage.getItem(INDENT_WIDTH_KEY));
+  if (!Number.isInteger(v)) return INDENT_WIDTH_DEFAULT;
+  return Math.max(INDENT_WIDTH_MIN, Math.min(INDENT_WIDTH_MAX, v));
+}
+
+export function setIndentWidth(width: number): void {
+  const clamped = Math.max(INDENT_WIDTH_MIN, Math.min(INDENT_WIDTH_MAX, Math.round(width)));
+  localStorage.setItem(INDENT_WIDTH_KEY, String(clamped));
+}
+
+/** The string inserted per indent level: a tab, or `indentWidth` spaces. */
+export function indentUnitString(): string {
+  return indentUseTabs() ? "\t" : " ".repeat(indentWidth());
 }
 
 /**

@@ -1,5 +1,11 @@
 import type { Extension } from "@codemirror/state";
-import { HighlightStyle, syntaxHighlighting, StreamLanguage } from "@codemirror/language";
+import {
+  HighlightStyle,
+  syntaxHighlighting,
+  StreamLanguage,
+  LanguageDescription,
+} from "@codemirror/language";
+import { languages } from "@codemirror/language-data";
 import { tags as t } from "@lezer/highlight";
 import { json } from "@codemirror/lang-json";
 import { sql } from "@codemirror/lang-sql";
@@ -103,8 +109,36 @@ export function languageForPath(path: string | null): Extension {
       return rust();
     case "go":
       return StreamLanguage.define(go);
-    // "txt" and everything else: plain text, no highlighting.
+    // "txt" and everything else: fall through to the lazy language-data path
+    // (loadLanguageFor) for broad, Notepad++-level extension coverage.
     default:
       return [];
+  }
+}
+
+/** Loaded LanguageSupport cached by language name, so re-activating a tab
+ *  reuses the same extension instance instead of re-importing. */
+const langCache = new Map<string, Extension>();
+
+/**
+ * Resolve a language via `@codemirror/language-data` for extensions the static
+ * fast-path (languageForPath) doesn't cover. Matches on the full basename, so
+ * extensionless files like `Dockerfile`/`Makefile`/`CMakeLists.txt` work too.
+ * Returns null when nothing matches. The import is dynamic (lazy) — each matched
+ * language ships as its own chunk, loaded only when such a file is opened.
+ */
+export async function loadLanguageFor(path: string | null): Promise<Extension | null> {
+  if (!path) return null;
+  const base = path.split(/[\\/]/).pop() ?? "";
+  const desc = LanguageDescription.matchFilename(languages, base);
+  if (!desc) return null;
+  const cached = langCache.get(desc.name);
+  if (cached) return cached;
+  try {
+    const support = await desc.load();
+    langCache.set(desc.name, support);
+    return support;
+  } catch {
+    return null; // a language pack failed to load; leave the doc as plain text
   }
 }
