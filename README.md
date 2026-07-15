@@ -6,39 +6,44 @@ unsaved edits and brand-new untitled documents — survive an app quit, a crash,
 or a full computer restart, and reappear exactly as you left them the next time
 you open the app. No manual save required.
 
-## Screenshot
-
-Split-pane **Markdown preview** with syntax-highlighted code blocks and
-color-coded headings, following the active light/dark theme.
-
-![UniNotepad Markdown preview](docs/markdown-preview.png)
-
 ## Syntax highlighting
 
-Syntax highlighting is available for the following extensions; other files open as plain text.
+**143 languages / 224 extensions**, picked from the file name — no mode menu, no configuration.
 
-| Language | Extensions |
-|---|---|
-| JSON | `.json` |
-| SQL | `.sql` |
-| Java | `.java` |
-| Python | `.py` |
-| Shell | `.sh`, `.bash` |
-| HTML | `.html`, `.htm`, `.xhtml` |
-| CSS | `.css` |
-| JavaScript | `.js`, `.mjs`, `.cjs`, `.jsx` |
-| TypeScript | `.ts`, `.mts`, `.cts`, `.tsx` |
-| Markdown | `.md`, `.markdown` |
-| XML | `.xml` |
-| YAML | `.yml`, `.yaml` |
-| C / C++ | `.c`, `.h`, `.cpp`, `.cc`, `.cxx`, `.hpp` |
-| Rust | `.rs` |
-| Go | `.go` |
+Everyday languages (JSON, JS/TS, Python, C/C++, Rust, Go, HTML/CSS, Markdown,
+YAML, XML, SQL, Java, shell) are bundled and highlight the instant the file opens.
+Everything else is matched against
+[`@codemirror/language-data`](https://github.com/codemirror/language-data) and its
+language pack is fetched on first use, as its own chunk — so the long tail costs
+nothing at startup.
+
+The tail covers web (LESS/SCSS/Vue/Pug/Handlebars), systems (Swift/Objective-C/D/
+Fortran/Cobol/assembly), JVM and .NET (Kotlin/Scala/Groovy/Clojure/C#/F#/VB.NET),
+scripting (Ruby/Perl/PHP/Lua/PowerShell/Tcl/R/Julia), functional (Haskell/Elm/
+Erlang/OCaml/Lisp/Scheme), data and config (TOML/INI/ProtoBuf/LaTeX/diff),
+databases (Cypher/XQuery/PL-SQL and the SQL dialects), and hardware description
+(Verilog/SystemVerilog/VHDL).
+
+Files with no extension are recognized by name: `Dockerfile`, `CMakeLists.txt`,
+`Jenkinsfile`, `Gemfile`, `Rakefile`, `BUILD`, `PKGBUILD`, `nginx*.conf`.
+
+Anything unmatched opens as plain text.
+
+### What it looks like
+
+Highlighting and the Markdown preview both follow the active light/dark theme.
+
+| | |
+|:--|:--|
+| **Markdown** — split preview, live as you type | **Mermaid** — a `.mmd` file renders as one diagram |
+| ![Markdown with split preview](docs/syntax-markdown.png) | ![Mermaid diagram preview](docs/syntax-mermaid.png) |
+| **Bash** — comments, keywords, expansions | **HTML** — nested CSS and JavaScript |
+| ![Bash syntax highlighting](docs/syntax-bash.png) | ![HTML syntax highlighting](docs/syntax-html.png) |
 
 ## Stack
 
 - **[Tauri 2](https://tauri.app)** — Rust backend + the OS-native WebView (tiny binary, no bundled browser)
-- **[CodeMirror 6](https://codemirror.dev)** — editor component (state/view/commands/search only, no language packages)
+- **[CodeMirror 6](https://codemirror.dev)** — editor component; common language packs bundled, the rest lazy-loaded per language
 - **Vanilla TypeScript + Vite** — no frontend framework runtime
 
 ## Prerequisites
