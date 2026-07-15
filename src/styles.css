@@ -370,8 +370,126 @@ body {
 .md-body .hljs-emphasis { font-style: italic; }
 .md-body .hljs-strong { font-weight: 600; }
 /* Mermaid: rendered diagram centered; SVG scales to the pane width. */
-.md-body .mermaid-diagram { display: flex; justify-content: center; margin: 1em 0; }
-.md-body .mermaid-diagram svg { max-width: 100%; height: auto; }
+/* Diagram = relative anchor (for the hover toolbar) around a scrollable
+   viewport. The svg safe-centers via auto margins: they collapse to 0 when a
+   zoomed chart overflows, so scrolling/panning can reach every edge. */
+.md-body .mermaid-diagram { position: relative; margin: 1em 0; }
+.md-body .mermaid-scroll { display: flex; overflow: auto; }
+.md-body .mermaid-scroll svg {
+  flex: none;
+  margin: auto;
+  max-width: 100%;
+  height: auto;
+  background: var(--mermaid-bg, transparent);
+  border-radius: 6px;
+}
+#preview-host.mmd-bg-on .mermaid-scroll svg { padding: 10px; }
+/* Zoomed (≠100%): cap the viewport so tall charts scroll inside it, and lift
+   the width caps (incl. mermaid's inline max-width) so the px width set by
+   applyMermaidView() can overflow into scrollbars. (No cap on standalone
+   diagram tabs — there the viewport is already the whole pane.) */
+#preview-host.mmd-zoomed .mermaid-scroll { cursor: grab; }
+#preview-host.mmd-zoomed:not(.mmd-standalone) .mermaid-scroll { max-height: 70vh; }
+#preview-host.mmd-zoomed .mermaid-scroll svg { max-width: none !important; }
+
+/* Standalone .mmd/.mermaid tab: the diagram IS the document — drop the
+   reading-column cap and padding so the chart viewport fills the pane in both
+   directions; the chart then scrolls/pans inside it (`.md-body` keeps its own
+   scrolling only for the mermaid-error fallback). */
+#preview-host.mmd-standalone .md-body {
+  max-width: none;
+  height: 100%; /* pin to the pane so scrolling happens inside the viewport */
+  padding: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+#preview-host.mmd-standalone .mermaid-diagram {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+#preview-host.mmd-standalone .mermaid-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Hover-revealed per-diagram controls: transparent / colored background. */
+.mermaid-toolbar {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 2;
+}
+.md-body .mermaid-diagram:hover .mermaid-toolbar,
+.md-body .mermaid-diagram.mmd-popover-open .mermaid-toolbar {
+  opacity: 1;
+  pointer-events: auto;
+}
+.mermaid-toolbar button {
+  font-size: 11px;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--fg);
+  cursor: pointer;
+}
+.mermaid-toolbar button:hover { border-color: var(--accent); }
+.mermaid-toolbar button.active { border-color: var(--accent); color: var(--accent); }
+
+.mermaid-bg-popover {
+  position: absolute;
+  top: 32px;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  z-index: 3;
+}
+/* `display:flex` above outranks the UA `[hidden]{display:none}` — restore it. */
+.mermaid-bg-popover[hidden] { display: none; }
+.mermaid-bg-popover label { display: flex; align-items: center; gap: 6px; }
+.mermaid-bg-popover input[type="color"] {
+  width: 30px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+}
+.mermaid-bg-popover input[type="range"] { width: 90px; }
+.mmd-alpha-value { min-width: 4ch; text-align: right; }
+
+/* Transient badge showing the chart zoom level after Cmd/Ctrl+= / - / 0. */
+.mermaid-zoom-badge {
+  position: fixed;
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--fg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  z-index: 50;
+}
+.mermaid-zoom-badge.show { opacity: 0.95; }
 .md-body .mermaid-error {
   color: var(--cm-invalid);
   background: var(--gutter-bg);

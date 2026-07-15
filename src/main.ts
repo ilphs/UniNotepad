@@ -12,7 +12,7 @@ import { initStatusBar, refreshStatusBar } from "./statusbar";
 import { restoreSession, initSessionTriggers } from "./session";
 import { handleMenu } from "./menu";
 import { applyStoredTheme } from "./theme";
-import { mountPreview } from "./preview";
+import { mountPreview, previewMermaidHovered, mermaidZoomIn } from "./preview";
 import { getVersion } from "@tauri-apps/api/app";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
@@ -65,11 +65,13 @@ async function bootstrap(): Promise<void> {
 
   // Zoom-in also on Cmd/Ctrl and "+" (Shift+=). The native menu accelerator
   // only covers Cmd/Ctrl+= (one accelerator per menu item), so cover the Shift
-  // variant here and stop the WebView's built-in page zoom.
+  // variant here and stop the WebView's built-in page zoom. Same contextual
+  // routing as the menu: over a Mermaid diagram it zooms the chart.
   window.addEventListener("keydown", (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "+") {
       e.preventDefault();
-      zoomIn();
+      if (previewMermaidHovered()) mermaidZoomIn();
+      else zoomIn();
     }
   });
 

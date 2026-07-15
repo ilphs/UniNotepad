@@ -23,7 +23,13 @@ import {
 } from "./tabs";
 import { openSaveOptions, openRecentDialog } from "./dialogs";
 import { setTheme } from "./theme";
-import { togglePreview } from "./preview";
+import {
+  togglePreview,
+  previewMermaidHovered,
+  mermaidZoomIn,
+  mermaidZoomOut,
+  mermaidZoomReset,
+} from "./preview";
 
 /** Map a native-menu item id (from the `menu` event) to a frontend action. */
 export function handleMenu(id: string): void {
@@ -79,14 +85,19 @@ export function handleMenu(id: string): void {
     case "view.togglePreview":
       togglePreview();
       break;
+    // Zoom keys are contextual: with the pointer over the preview pane while
+    // it shows a Mermaid diagram they scale the chart; else the editor font.
     case "view.zoomIn":
-      zoomIn();
+      if (previewMermaidHovered()) mermaidZoomIn();
+      else zoomIn();
       break;
     case "view.zoomOut":
-      zoomOut();
+      if (previewMermaidHovered()) mermaidZoomOut();
+      else zoomOut();
       break;
     case "view.zoomReset":
-      zoomReset();
+      if (previewMermaidHovered()) mermaidZoomReset();
+      else zoomReset();
       break;
     case "view.themeLight":
       setTheme("light");

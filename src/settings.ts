@@ -82,6 +82,47 @@ export function setPreviewRatio(ratio: number): void {
   localStorage.setItem(RATIO_KEY, String(clamped));
 }
 
+// ---- Mermaid diagram background ---------------------------------------------
+
+const MERMAID_BG_KEY = "uninotepad.mermaidBg";
+
+/** Background painted behind rendered Mermaid diagrams in the preview pane.
+ *  `color` is `#rrggbb`; `alpha` is opacity in percent (100 = opaque). */
+export interface MermaidBg {
+  mode: "transparent" | "color";
+  color: string;
+  alpha: number;
+}
+
+const MERMAID_BG_DEFAULT: MermaidBg = { mode: "transparent", color: "#ffffff", alpha: 100 };
+
+/** Stored as one JSON blob; any invalid/missing field falls back per-field so
+ *  a corrupt value never breaks rendering. */
+export function mermaidBg(): MermaidBg {
+  try {
+    const raw = localStorage.getItem(MERMAID_BG_KEY);
+    if (!raw) return { ...MERMAID_BG_DEFAULT };
+    const v = JSON.parse(raw) as Partial<MermaidBg>;
+    return {
+      mode: v.mode === "color" ? "color" : "transparent",
+      color:
+        typeof v.color === "string" && /^#[0-9a-fA-F]{6}$/.test(v.color)
+          ? v.color
+          : MERMAID_BG_DEFAULT.color,
+      alpha:
+        typeof v.alpha === "number" && Number.isFinite(v.alpha)
+          ? Math.max(0, Math.min(100, Math.round(v.alpha)))
+          : MERMAID_BG_DEFAULT.alpha,
+    };
+  } catch {
+    return { ...MERMAID_BG_DEFAULT };
+  }
+}
+
+export function setMermaidBg(bg: MermaidBg): void {
+  localStorage.setItem(MERMAID_BG_KEY, JSON.stringify(bg));
+}
+
 /** Indent with real tab characters instead of spaces (default OFF → spaces). */
 export function indentUseTabs(): boolean {
   return readBool(INDENT_TABS_KEY, false);
