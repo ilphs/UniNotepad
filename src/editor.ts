@@ -24,6 +24,8 @@ import {
   highlightSelectionMatches,
   openSearchPanel,
   gotoLine,
+  findNext,
+  findPrevious,
 } from "@codemirror/search";
 import { store, type Tab } from "./state";
 import { onDocChanged } from "./session";
@@ -99,6 +101,12 @@ export function makeState(
         ...closeBracketsKeymap,
         ...defaultKeymap,
         ...historyKeymap,
+        // Go to Line on Ctrl+G everywhere (Control+G on macOS, as in VS Code);
+        // macOS keeps Cmd+G as Find Next. On Windows/Linux this normalizes to
+        // the same key as searchKeymap's Mod-g (findNext), so it has to stay
+        // ahead of it: same-key bindings merge into one run array, and the
+        // first command returning true wins.
+        { key: "Mod-g", mac: "Ctrl-g", run: gotoLine },
         ...searchKeymap,
         indentWithTab,
       ]),
@@ -228,4 +236,28 @@ export function doRedo(): void {
 
 export function openFind(): void {
   openSearchPanel(view);
+}
+
+/**
+ * Open the search panel with the replace field focused. The panel mounts
+ * synchronously during openSearchPanel's dispatch and focuses the search
+ * field, so moving focus afterwards wins. The replace row is only rendered
+ * for a writable document; focus stays on the search field otherwise.
+ */
+export function openReplace(): void {
+  openSearchPanel(view);
+  // Scoped to input: the "replace" button carries the same name attribute.
+  const field = view.dom.querySelector<HTMLInputElement>('input[name="replace"]');
+  if (!field) return;
+  field.focus();
+  field.select();
+}
+
+/** Move to the next/previous match. Opens the search panel when no query is set yet. */
+export function findNextMatch(): void {
+  findNext(view);
+}
+
+export function findPrevMatch(): void {
+  findPrevious(view);
 }

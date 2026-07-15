@@ -2,6 +2,9 @@ import {
   doUndo,
   doRedo,
   openFind,
+  openReplace,
+  findNextMatch,
+  findPrevMatch,
   zoomIn,
   zoomOut,
   zoomReset,
@@ -56,8 +59,16 @@ export function handleMenu(id: string): void {
       doRedo();
       break;
     case "edit.find":
-    case "edit.replace":
       openFind();
+      break;
+    case "edit.replace":
+      openReplace();
+      break;
+    case "edit.findNext":
+      findNextMatch();
+      break;
+    case "edit.findPrev":
+      findPrevMatch();
       break;
     case "view.gotoLine":
       openGotoLine();

@@ -55,6 +55,21 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let find = MenuItemBuilder::with_id("edit.find", "Find…")
         .accelerator("CmdOrCtrl+F")
         .build(app)?;
+
+    // macOS: Cmd+G/Cmd+Shift+G, matching the platform convention and what
+    // CodeMirror's searchKeymap already binds. Elsewhere Ctrl+G is Go to Line,
+    // so F3 is the only convention-safe choice for Find Next.
+    #[cfg(target_os = "macos")]
+    let (next_accel, prev_accel) = ("Cmd+G", "Cmd+Shift+G");
+    #[cfg(not(target_os = "macos"))]
+    let (next_accel, prev_accel) = ("F3", "Shift+F3");
+
+    let find_next = MenuItemBuilder::with_id("edit.findNext", "Find Next")
+        .accelerator(next_accel)
+        .build(app)?;
+    let find_prev = MenuItemBuilder::with_id("edit.findPrev", "Find Previous")
+        .accelerator(prev_accel)
+        .build(app)?;
     let replace = MenuItemBuilder::with_id("edit.replace", "Replace…")
         .accelerator("CmdOrCtrl+H")
         .build(app)?;
@@ -69,6 +84,8 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .item(&PredefinedMenuItem::select_all(app, Some("Select All"))?)
         .separator()
         .item(&find)
+        .item(&find_next)
+        .item(&find_prev)
         .item(&replace)
         .build()?;
 
@@ -86,8 +103,11 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .accelerator("CmdOrCtrl+0")
         .build(app)?;
 
+    // Ctrl+G on every platform (Control+G on macOS, as in VS Code): Cmd+G is
+    // reserved for Find Next there. One string works everywhere because Tauri
+    // maps "Ctrl" to Control on macOS, not Command.
     let goto_line = MenuItemBuilder::with_id("view.gotoLine", "Go to Line…")
-        .accelerator("CmdOrCtrl+G")
+        .accelerator("Ctrl+G")
         .build(app)?;
     let toggle_wrap = MenuItemBuilder::with_id("view.toggleWrap", "Toggle Word Wrap")
         .accelerator("Alt+Z")
