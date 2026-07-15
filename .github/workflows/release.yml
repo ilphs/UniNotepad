@@ -61,7 +61,17 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: ${{ github.ref_name }}
-          releaseBody: 'See the attached assets for macOS (arm64/x86_64), Windows, and Linux downloads.'
+          releaseBody: |
+            See the attached assets for macOS (arm64/x86_64), Windows, and Linux downloads.
+
+            > **macOS 안내** — 이 앱은 Apple 공증(notarization) 없이 배포되어, 내려받은 앱을
+            > 처음 열면 "손상되었기 때문에 열 수 없습니다"라고 나올 수 있습니다. 파일이 실제로
+            > 깨진 것이 아니라 공증되지 않은 앱에 대한 macOS 보안 기본 동작입니다.
+            > 앱을 `응용 프로그램` 폴더로 옮긴 뒤 터미널에서 아래 한 줄을 실행하고 다시 여세요.
+            >
+            > ```
+            > xattr -cr /Applications/UniNotepad.app
+            > ```
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
