@@ -13,9 +13,17 @@ import { restoreSession, initSessionTriggers } from "./session";
 import { handleMenu } from "./menu";
 import { applyStoredTheme } from "./theme";
 import { mountPreview } from "./preview";
+import { getVersion } from "@tauri-apps/api/app";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 // Apply the saved theme before first paint (system mode falls back to CSS).
 applyStoredTheme();
+
+// Show the app version in the window title (sourced from tauri.conf.json).
+// Best-effort: a failure here must not block editor startup.
+getVersion()
+  .then((v) => getCurrentWindow().setTitle(`UniNotepad v${v}`))
+  .catch(() => {});
 
 async function bootstrap(): Promise<void> {
   const tabbar = document.getElementById("tabbar")!;
