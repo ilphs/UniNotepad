@@ -92,10 +92,9 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let toggle_wrap = MenuItemBuilder::with_id("view.toggleWrap", "Toggle Word Wrap")
         .accelerator("Alt+Z")
         .build(app)?;
-    let toggle_preview =
-        MenuItemBuilder::with_id("view.togglePreview", "Toggle Markdown Preview")
-            .accelerator("CmdOrCtrl+Shift+M")
-            .build(app)?;
+    let toggle_preview = MenuItemBuilder::with_id("view.togglePreview", "Toggle Preview")
+        .accelerator("CmdOrCtrl+Shift+M")
+        .build(app)?;
 
     let goto_tabs = (1..=9)
         .map(|n| {
