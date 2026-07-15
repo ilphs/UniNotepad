@@ -369,6 +369,17 @@ body {
 .md-body .hljs-punctuation { color: var(--cm-operator); }
 .md-body .hljs-emphasis { font-style: italic; }
 .md-body .hljs-strong { font-weight: 600; }
+/* Mermaid: rendered diagram centered; SVG scales to the pane width. */
+.md-body .mermaid-diagram { display: flex; justify-content: center; margin: 1em 0; }
+.md-body .mermaid-diagram svg { max-width: 100%; height: auto; }
+.md-body .mermaid-error {
+  color: var(--cm-invalid);
+  background: var(--gutter-bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 12px;
+  white-space: pre-wrap;
+}
 .md-body img { max-width: 100%; }
 .md-body hr { border: none; border-top: 1px solid var(--border); margin: 1.2em 0; }
 .md-body table {

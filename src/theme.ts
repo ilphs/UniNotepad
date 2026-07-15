@@ -33,4 +33,7 @@ export function applyStoredTheme(): void {
 export function setTheme(choice: ThemeChoice): void {
   localStorage.setItem(STORAGE_KEY, choice);
   apply(choice);
+  // Let theme-dependent views (e.g. the Markdown preview's mermaid diagrams)
+  // re-render for the new palette.
+  window.dispatchEvent(new Event("uninotepad:themechange"));
 }

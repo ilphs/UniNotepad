@@ -56,6 +56,13 @@ export function isMarkdownPath(path: string | null): boolean {
   return ext === "md" || ext === "markdown";
 }
 
+/** True when the path is a standalone Mermaid diagram file — the whole file is
+ *  rendered as one diagram in the preview pane (no Markdown wrapping). */
+export function isMermaidPath(path: string | null): boolean {
+  const ext = extOf(path);
+  return ext === "mmd" || ext === "mermaid";
+}
+
 /** Resolve a file path to its language extension (empty for plain text). */
 export function languageForPath(path: string | null): Extension {
   if (!path) return [];
