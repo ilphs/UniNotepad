@@ -85,6 +85,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             frontend_ready,
             commands::file::open_file,
+            commands::file::open_file_as,
             commands::file::save_file,
             commands::file::stat_file,
             commands::session::load_session,

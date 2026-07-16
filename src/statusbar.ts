@@ -22,6 +22,8 @@ function encLabel(enc: string): string {
       return "UTF-8-BOM";
     case "latin1":
       return "Latin-1";
+    case "euckr":
+      return "EUC-KR";
     default:
       return "UTF-8";
   }
@@ -131,6 +133,7 @@ const ENC_OPTIONS: PickerOption[] = [
   { id: "utf8", label: "UTF-8" },
   { id: "utf8bom", label: "UTF-8 with BOM" },
   { id: "latin1", label: "Latin-1 (Windows-1252)" },
+  { id: "euckr", label: "EUC-KR (한국어)" },
 ];
 
 // Derived from the label table, so the picker can't drift out of sync with it.

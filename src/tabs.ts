@@ -159,11 +159,43 @@ export function saveActiveAs(): void {
 
 // ---- Encoding / EOL (status-bar pickers) -----------------------------------
 
-/** Change the active tab's encoding. Re-saves file-backed tabs in the new
- *  encoding immediately; untitled tabs just remember it for the next save. */
+/** Change the active tab's encoding.
+ *
+ *  Two distinct meanings, chosen by tab state:
+ *  - **Clean, file-backed tab → reinterpret.** Re-read the bytes from disk and
+ *    re-decode with the picked encoding, replacing the buffer. This is the "fix
+ *    a mis-detected file" path (e.g. a garbled Korean EUC-KR file that opened as
+ *    Latin-1). We must NOT re-encode the current buffer here: those bytes are
+ *    mojibake, and writing them back as EUC-KR would corrupt the file.
+ *  - **Dirty or untitled tab → convert.** The disk copy is stale or absent, so
+ *    just change the save-target encoding (re-save file-backed, else remember it)
+ *    to preserve the unsaved edits. */
 export async function setActiveEncoding(enc: EncodingId): Promise<void> {
   const t = store.activeTab;
   if (!t || t.encoding === enc) return;
+
+  if (t.path && !t.dirty) {
+    // Reinterpret from disk. Mirrors reloadFromDisk's state swap, but forces
+    // the chosen encoding instead of re-detecting.
+    try {
+      const opened = await ipc.openFileAs(t.path, enc);
+      t.encoding = opened.encoding;
+      t.diskMtimeMs = opened.mtimeMs;
+      t.dirty = false;
+      t.state = makeState(opened.content, t.id, undefined, t.path, t.fileType);
+      if (store.state.activeTabId === t.id) showTab(t);
+      store.emit();
+      void flushNow();
+    } catch (err) {
+      await message(`Failed to reopen with ${enc}:\n${err}`, {
+        title: "UniNotepad",
+        kind: "error",
+      });
+    }
+    return;
+  }
+
+  // Convert: change the save-target encoding, keeping unsaved edits.
   t.encoding = enc;
   if (t.path) await saveTab(t);
   else store.emit();

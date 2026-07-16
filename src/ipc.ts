@@ -48,6 +48,8 @@ export interface LoadedSession {
 
 export const ipc = {
   openFile: (path: string) => invoke<OpenedFile>("open_file", { path }),
+  openFileAs: (path: string, encoding: EncodingId) =>
+    invoke<OpenedFile>("open_file_as", { path, encoding }),
   saveFile: (path: string, content: string, encoding: EncodingId, eol: EolId) =>
     invoke<SavedFile>("save_file", { path, content, encoding, eol }),
   statFile: (path: string) => invoke<FileStat>("stat_file", { path }),

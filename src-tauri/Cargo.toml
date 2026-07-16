@@ -22,6 +22,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 uuid = { version = "1", features = ["v4", "serde"] }
 encoding_rs = "0.8"
+chardetng = "0.1"
 atomicwrites = "0.4"
 
 # Size-optimized release profile (lightweight binary).
