@@ -7,6 +7,8 @@
 // /download/mac-arm that always resolve to the newest build.
 //
 // Runs on Vercel's Node runtime (global fetch available). No build step, no deps.
+// CommonJS on purpose: site/ has no package.json, so Vercel treats .js as CJS —
+// an `export default` here would fail to parse and 500 every request.
 // Set a GITHUB_TOKEN env var to raise the API rate limit (optional; the
 // unauthenticated 60/hr per IP is usually enough given the CDN cache below).
 
@@ -24,7 +26,7 @@ const MATCHERS = {
   "linux-rpm": (n) => n.endsWith(".rpm"),
 };
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   const os = String(req.query.os || "");
   const match = MATCHERS[os];
   if (!match) {
