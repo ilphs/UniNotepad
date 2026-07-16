@@ -7,6 +7,7 @@
 <p align="center"><b>껐다 켜도 그대로인 메모장.</b></p>
 
 <p align="center">
+  <a href="https://uninotepad-xi.vercel.app/"><img src="https://img.shields.io/badge/홈페이지-uninotepad--xi.vercel.app-7c5cff?style=flat-square" alt="홈페이지"></a>
   <a href="https://github.com/ilphs/UniNotepad/releases/latest"><img src="https://img.shields.io/github/v/release/ilphs/UniNotepad?style=flat-square" alt="최신 릴리스"></a>
   <img src="https://img.shields.io/badge/platform-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-4c8bf5?style=flat-square" alt="지원 OS">
   <a href="https://github.com/ilphs/UniNotepad/releases"><img src="https://img.shields.io/github/downloads/ilphs/UniNotepad/total?style=flat-square" alt="다운로드 수"></a>
@@ -63,8 +64,9 @@ UniNotepad에서는 그런 일이 생기지 않습니다. 열어둔 탭은 **저
 
 ## 📥 설치
 
-[다운로드 페이지](https://github.com/ilphs/UniNotepad/releases/latest)에서
-쓰시는 운영체제에 맞는 파일을 내려받으세요.
+**👉 [홈페이지에서 내려받기](https://uninotepad-xi.vercel.app/#download)** — 접속한 운영체제를 자동으로 알아보고 알맞은 파일을 추천합니다.
+
+또는 [GitHub 릴리스](https://github.com/ilphs/UniNotepad/releases/latest)에서 직접 골라 받을 수도 있습니다.
 
 | 운영체제 | 받을 파일 |
 |:--|:--|
