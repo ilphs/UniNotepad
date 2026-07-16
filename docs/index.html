@@ -3,312 +3,39 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>UniNotepad — 화면 갤러리</title>
-    <meta name="description" content="UniNotepad의 구문 강조와 미리보기 화면 모음" />
+    <title>UniNotepad</title>
     <link rel="icon" href="favicon.png" />
+    <!-- 소개·화면·다운로드 페이지가 Vercel로 이전했습니다. 이 갤러리 URL은
+         새 홈페이지로 리다이렉트합니다. -->
+    <link rel="canonical" href="https://uninotepad-xi.vercel.app/" />
+    <meta http-equiv="refresh" content="0; url=https://uninotepad-xi.vercel.app/" />
+    <script>
+      location.replace("https://uninotepad-xi.vercel.app/");
+    </script>
     <style>
-      :root {
-        --bg: #ffffff;
-        --fg: #1c1c22;
-        --muted: #5c5c6b;
-        --card: #f4f4f7;
-        --border: #dcdce4;
-        --accent: #7c5cff;
-        --shadow: 0 6px 24px rgb(0 0 0 / 12%);
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --bg: #14141a;
-          --fg: #e6e6ef;
-          --muted: #9a9aae;
-          --card: #1e1e28;
-          --border: #2e2e3c;
-          --accent: #9d86ff;
-          --shadow: 0 6px 24px rgb(0 0 0 / 50%);
-        }
-      }
-
-      * { box-sizing: border-box; }
-
       body {
         margin: 0;
-        padding: 3rem 1.5rem 5rem;
-        font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI",
-          "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-        background: var(--bg);
-        color: var(--fg);
-      }
-
-      header {
-        max-width: 60rem;
-        margin: 0 auto 2.5rem;
-        text-align: center;
-      }
-      header img { width: 72px; height: 72px; }
-      h1 { margin: 0.75rem 0 0.25rem; font-size: 1.75rem; }
-      header p { margin: 0; color: var(--muted); }
-      header a { color: var(--accent); }
-
-      .grid {
-        /* The max-width holds auto-fit to 2 columns on wide screens; a 3-wide
-           row shrinks each shot past the point where its text is legible. */
-        max-width: 52rem;
-        margin: 0 auto;
+        min-height: 100vh;
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 1.25rem;
-      }
-
-      .shot {
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        background: var(--card);
-        overflow: hidden;
-        cursor: zoom-in;
-        padding: 0;
-        text-align: left;
-        color: inherit;
-        font: inherit;
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
-      }
-      .shot:hover,
-      .shot:focus-visible {
-        transform: translateY(-3px);
-        box-shadow: var(--shadow);
-        outline: none;
-        border-color: var(--accent);
-      }
-      .shot img { width: 100%; display: block; }
-      .shot figcaption { padding: 0.75rem 1rem 1rem; }
-      .shot b { display: block; }
-      .shot span { color: var(--muted); font-size: 0.9rem; }
-
-      /* ---- Lightbox ---- */
-      dialog.lightbox {
-        border: 0;
-        padding: 0;
-        background: transparent;
-        max-width: 100vw;
-        max-height: 100vh;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-      }
-      dialog.lightbox::backdrop { background: rgb(0 0 0 / 82%); }
-
-      .stage {
-        width: 100%;
-        height: 100%;
-        display: grid;
-        /* minmax(0,1fr): 1fr defaults to minmax(auto,1fr), whose auto min-size
-           refuses to shrink and pushes the nav bar off-screen. */
-        grid-template-rows: minmax(0, 1fr) auto;
         place-items: center;
-        padding: 1rem;
-        gap: 0.75rem;
-      }
-      .stage img {
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: contain;
-        border-radius: 8px;
-        box-shadow: 0 10px 40px rgb(0 0 0 / 55%);
-      }
-      .bar {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        color: #f2f2f7;
-      }
-      .bar .label { min-width: 16rem; text-align: center; }
-      .bar .label b { display: block; }
-      .bar .label span { display: block; color: #b9b9c9; font-size: 0.9rem; }
-      .bar .label #counter { color: #8a8a9c; font-variant-numeric: tabular-nums; }
-
-      .nav {
-        border: 1px solid rgb(255 255 255 / 25%);
-        background: rgb(255 255 255 / 8%);
-        color: #fff;
-        border-radius: 999px;
-        width: 44px;
-        height: 44px;
-        font-size: 1.2rem;
-        cursor: pointer;
-        line-height: 1;
-      }
-      .nav:hover { background: rgb(255 255 255 / 20%); }
-      .nav:disabled { opacity: 0.3; cursor: default; }
-
-      .close {
-        position: fixed;
-        top: 1rem;
-        right: 1rem;
-        width: 40px;
-        height: 40px;
-        border-radius: 999px;
-        border: 1px solid rgb(255 255 255 / 25%);
-        background: rgb(255 255 255 / 8%);
-        color: #fff;
-        font-size: 1.1rem;
-        cursor: pointer;
-      }
-      .close:hover { background: rgb(255 255 255 / 20%); }
-
-      footer {
-        max-width: 60rem;
-        margin: 3rem auto 0;
+        font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI",
+          "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+        background: #14141a;
+        color: #e6e6ef;
         text-align: center;
-        color: var(--muted);
-        font-size: 0.9rem;
+        padding: 2rem;
       }
-      footer a { color: var(--accent); }
+      a { color: #9d86ff; }
     </style>
   </head>
   <body>
-    <header>
-      <img src="app-icon.png" alt="UniNotepad 앱 아이콘" />
-      <h1>UniNotepad 화면</h1>
+    <div>
+      <p>UniNotepad 소개·다운로드 페이지가 이전했습니다.</p>
       <p>
-        스크린샷을 클릭하면 크게 볼 수 있습니다 ·
-        <a href="https://github.com/ilphs/UniNotepad">저장소로 돌아가기</a>
+        자동으로 이동하지 않으면
+        <a href="https://uninotepad-xi.vercel.app/">uninotepad-xi.vercel.app</a>
+        을 눌러 주세요.
       </p>
-    </header>
-
-    <main class="grid" id="grid"></main>
-
-    <dialog class="lightbox" id="lightbox">
-      <button class="close" id="close" aria-label="닫기">✕</button>
-      <div class="stage">
-        <img id="stageImg" alt="" />
-        <div class="bar">
-          <button class="nav" id="prev" aria-label="이전">◀</button>
-          <div class="label">
-            <b id="capTitle"></b>
-            <span id="capDesc"></span>
-            <span id="counter"></span>
-          </div>
-          <button class="nav" id="next" aria-label="다음">▶</button>
-        </div>
-      </div>
-    </dialog>
-
-    <footer>
-      <p>UniNotepad — 껐다 켜도 그대로인 메모장</p>
-    </footer>
-
-    <script>
-      const SHOTS = [
-        {
-          id: "filetype",
-          file: "filetype-picker.png",
-          title: "파일 타입 선택",
-          desc: "저장하지 않은 새 글도 원하는 타입으로 보여줍니다",
-        },
-        {
-          id: "markdown",
-          file: "syntax-markdown.png",
-          title: "Markdown",
-          desc: "쓰는 대로 오른쪽에 문서가 완성됩니다",
-        },
-        {
-          id: "mermaid",
-          file: "syntax-mermaid.png",
-          title: "Mermaid",
-          desc: "순서도를 글로 적으면 그림이 됩니다",
-        },
-        {
-          id: "typescript",
-          file: "syntax-typescript.png",
-          title: "TypeScript",
-          desc: "타입과 제네릭까지 구분해서 보여줍니다",
-        },
-        {
-          id: "python",
-          file: "syntax-python.png",
-          title: "Python",
-          desc: "docstring과 데코레이터가 한눈에 들어옵니다",
-        },
-        {
-          id: "bash",
-          file: "syntax-bash.png",
-          title: "Bash",
-          desc: "명령어 스크립트",
-        },
-      ];
-
-      const grid = document.getElementById("grid");
-      const dlg = document.getElementById("lightbox");
-      const stageImg = document.getElementById("stageImg");
-      const capTitle = document.getElementById("capTitle");
-      const capDesc = document.getElementById("capDesc");
-      const counter = document.getElementById("counter");
-      const prevBtn = document.getElementById("prev");
-      const nextBtn = document.getElementById("next");
-
-      let index = 0;
-
-      SHOTS.forEach((s, i) => {
-        const fig = document.createElement("figure");
-        fig.className = "shot";
-        fig.setAttribute("role", "button");
-        fig.tabIndex = 0;
-        fig.innerHTML =
-          '<img src="' + s.file + '" alt="' + s.title + ' 화면" loading="lazy">' +
-          "<figcaption><b>" + s.title + "</b><span>" + s.desc + "</span></figcaption>";
-        fig.addEventListener("click", () => open(i));
-        fig.addEventListener("keydown", (e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            open(i);
-          }
-        });
-        grid.appendChild(fig);
-      });
-
-      function render() {
-        const s = SHOTS[index];
-        stageImg.src = s.file;
-        stageImg.alt = s.title + " 화면";
-        capTitle.textContent = s.title;
-        capDesc.textContent = s.desc;
-        counter.textContent = index + 1 + " / " + SHOTS.length;
-        history.replaceState(null, "", "#" + s.id);
-      }
-
-      function open(i) {
-        index = i;
-        render();
-        if (!dlg.open) dlg.showModal();
-      }
-
-      function step(delta) {
-        index = (index + delta + SHOTS.length) % SHOTS.length;
-        render();
-      }
-
-      prevBtn.addEventListener("click", () => step(-1));
-      nextBtn.addEventListener("click", () => step(1));
-      document.getElementById("close").addEventListener("click", () => dlg.close());
-
-      // Click on the backdrop (outside the image) closes.
-      dlg.addEventListener("click", (e) => {
-        if (e.target === dlg) dlg.close();
-      });
-
-      document.addEventListener("keydown", (e) => {
-        if (!dlg.open) return;
-        if (e.key === "ArrowLeft") step(-1);
-        else if (e.key === "ArrowRight") step(1);
-      });
-
-      dlg.addEventListener("close", () => {
-        history.replaceState(null, "", location.pathname);
-      });
-
-      // Deep link: /#mermaid opens that shot directly.
-      const hash = location.hash.replace("#", "");
-      const start = SHOTS.findIndex((s) => s.id === hash);
-      if (start >= 0) open(start);
-    </script>
+    </div>
   </body>
 </html>

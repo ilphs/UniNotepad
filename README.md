@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <a href="https://ilphs.github.io/UniNotepad/#markdown"><img src="docs/syntax-markdown.png" width="720" alt="UniNotepad의 Markdown 분할 미리보기 화면"></a>
+  <a href="https://uninotepad-xi.vercel.app/"><img src="docs/syntax-markdown.png" width="720" alt="UniNotepad의 Markdown 분할 미리보기 화면"></a>
 </p>
 
 메모장에 뭔가 적어두고 저장하는 걸 깜빡한 채 창을 닫아본 적 있으신가요?
@@ -46,21 +46,21 @@ UniNotepad에서는 그런 일이 생기지 않습니다. 열어둔 탭은 **저
 
 밝은 테마와 어두운 테마를 모두 지원하며, 색상은 지금 쓰는 테마를 따라갑니다.
 
-**이미지를 클릭하면 [갤러리](https://ilphs.github.io/UniNotepad/)가 열려 한 장씩 크게 넘겨볼 수 있습니다.**
+**더 많은 화면과 원클릭 다운로드는 [홈페이지](https://uninotepad-xi.vercel.app/)에서 볼 수 있습니다.**
 
 | |
 |:--|
 | **파일 타입 선택** — 상태 표시줄에서 고르면 됩니다. 저장하지 않은 새 글도 Markdown이나 Mermaid로 지정하면 바로 색이 입혀지고 미리보기가 열립니다 |
-| [![상태 표시줄의 파일 타입 선택 메뉴](docs/filetype-picker.png)](https://ilphs.github.io/UniNotepad/#filetype) |
+| [![상태 표시줄의 파일 타입 선택 메뉴](docs/filetype-picker.png)](https://uninotepad-xi.vercel.app/) |
 
 > 상단의 큰 화면이 **Markdown** 분할 미리보기입니다.
 
 | | |
 |:--|:--|
 | **Mermaid** — 순서도를 글로 적으면 그림이 됩니다 | **TypeScript** — 타입과 제네릭까지 |
-| [![Mermaid 다이어그램 미리보기](docs/syntax-mermaid.png)](https://ilphs.github.io/UniNotepad/#mermaid) | [![TypeScript 구문 강조](docs/syntax-typescript.png)](https://ilphs.github.io/UniNotepad/#typescript) |
+| [![Mermaid 다이어그램 미리보기](docs/syntax-mermaid.png)](https://uninotepad-xi.vercel.app/) | [![TypeScript 구문 강조](docs/syntax-typescript.png)](https://uninotepad-xi.vercel.app/) |
 | **Python** — docstring과 데코레이터 | **Bash** — 명령어 스크립트 |
-| [![Python 구문 강조](docs/syntax-python.png)](https://ilphs.github.io/UniNotepad/#python) | [![Bash 구문 강조](docs/syntax-bash.png)](https://ilphs.github.io/UniNotepad/#bash) |
+| [![Python 구문 강조](docs/syntax-python.png)](https://uninotepad-xi.vercel.app/) | [![Bash 구문 강조](docs/syntax-bash.png)](https://uninotepad-xi.vercel.app/) |
 
 ## 📥 설치
 
