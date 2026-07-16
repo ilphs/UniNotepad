@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "name": "uninotepad-site",
+  "engines": {
+    "node": "20.x"
+  }
+}
