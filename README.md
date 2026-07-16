@@ -24,11 +24,7 @@ UniNotepad에서는 그런 일이 생기지 않습니다. 열어둔 탭은 **저
 그대로 남아 있다가, 다음에 앱을 열면 떠날 때 모습 그대로 돌아옵니다.
 앱을 종료하든, 갑자기 꺼지든, 컴퓨터를 재시작하든 똑같습니다. 저장 버튼을 누를 필요가 없습니다.
 
-- 💾 **저장이 필요 없습니다** — 타이핑을 멈추면 알아서 기록, 크래시·재부팅에도 복원
-- 🎨 **143개 언어 구문 강조** + Markdown·Mermaid 실시간 미리보기
-- 🪶 **3MB 안팎** — 브라우저를 끼워 넣지 않아 가볍고, Windows·macOS·Linux에서 동작
-
-**바로가기** — [무엇이 다른가요](#-무엇이-다른가요) · [화면](#-화면) · [설치](#-설치) · [자주 묻는 질문](#-자주-묻는-질문) · [개발자용](#-개발자용)
+**바로가기** — [무엇이 다른가요](#-무엇이-다른가요) · [화면](#-화면) · [설치](#-설치) · [자주 묻는 질문](#-자주-묻는-질문)
 
 ## ✨ 무엇이 다른가요
 
@@ -38,6 +34,7 @@ UniNotepad에서는 그런 일이 생기지 않습니다. 열어둔 탭은 **저
 | 🗂️ **탭 · 세션 복원** | 껐다 켜도, 갑자기 꺼져도 열어둔 탭이 **미저장 메모까지** 그대로 |
 | 🎨 **구문 강조** | 143개 언어를 파일 이름만 보고 자동 판별 |
 | 📄 **문서 미리보기** | Markdown·Mermaid 실시간 렌더 · 스크롤 동기화 · HTML 내보내기 · 인쇄(PDF) |
+| 🌗 **라이트·다크 테마** | 시스템 설정을 따르거나 직접 선택 — 미리보기 색도 함께 바뀝니다 |
 | ✂️ **줄 편집 도구** | 정렬 · 중복/빈 줄 제거 · 공백 정리 · 대소문자 · 줄 이동 (`Edit ▸ Line Operations`) |
 | 🇰🇷 **예전 한글 파일** | UTF-8은 물론 예전 메모장의 "ANSI"(EUC-KR/CP949)도 판별해서 엽니다 |
 | 🪶 **가벼움** | 브라우저를 끼워 넣지 않고 OS 기능을 써서 설치 파일 **3MB 안팎** |
@@ -55,14 +52,14 @@ UniNotepad에서는 그런 일이 생기지 않습니다. 열어둔 탭은 **저
 | **파일 타입 선택** — 상태 표시줄에서 고르면 됩니다. 저장하지 않은 새 글도 Markdown이나 Mermaid로 지정하면 바로 색이 입혀지고 미리보기가 열립니다 |
 | [![상태 표시줄의 파일 타입 선택 메뉴](docs/filetype-picker.png)](https://ilphs.github.io/UniNotepad/#filetype) |
 
+> 상단의 큰 화면이 **Markdown** 분할 미리보기입니다.
+
 | | |
 |:--|:--|
-| **Markdown** — 쓰는 대로 오른쪽에 문서가 완성됩니다 | **Mermaid** — 순서도를 글로 적으면 그림이 됩니다 |
-| [![분할 미리보기가 있는 Markdown](docs/syntax-markdown.png)](https://ilphs.github.io/UniNotepad/#markdown) | [![Mermaid 다이어그램 미리보기](docs/syntax-mermaid.png)](https://ilphs.github.io/UniNotepad/#mermaid) |
-| **TypeScript** — 타입과 제네릭까지 | **Python** — docstring과 데코레이터 |
-| [![TypeScript 구문 강조](docs/syntax-typescript.png)](https://ilphs.github.io/UniNotepad/#typescript) | [![Python 구문 강조](docs/syntax-python.png)](https://ilphs.github.io/UniNotepad/#python) |
-| **Bash** — 명령어 스크립트 | |
-| [![Bash 구문 강조](docs/syntax-bash.png)](https://ilphs.github.io/UniNotepad/#bash) | |
+| **Mermaid** — 순서도를 글로 적으면 그림이 됩니다 | **TypeScript** — 타입과 제네릭까지 |
+| [![Mermaid 다이어그램 미리보기](docs/syntax-mermaid.png)](https://ilphs.github.io/UniNotepad/#mermaid) | [![TypeScript 구문 강조](docs/syntax-typescript.png)](https://ilphs.github.io/UniNotepad/#typescript) |
+| **Python** — docstring과 데코레이터 | **Bash** — 명령어 스크립트 |
+| [![Python 구문 강조](docs/syntax-python.png)](https://ilphs.github.io/UniNotepad/#python) | [![Bash 구문 강조](docs/syntax-bash.png)](https://ilphs.github.io/UniNotepad/#bash) |
 
 ## 📥 설치
 
@@ -153,78 +150,3 @@ xattr -cr /Applications/UniNotepad.app
 편이 안전합니다.
 
 </details>
-
----
-
-## 🛠 개발자용
-
-### 기술 스택
-
-- **[Tauri 2](https://tauri.app)** — Rust 백엔드 + OS 네이티브 WebView (작은 바이너리, 브라우저 미포함)
-- **[CodeMirror 6](https://codemirror.dev)** — 에디터 컴포넌트. 주요 언어 팩은 번들에 포함, 나머지는 언어 단위로 lazy-load
-- **Vanilla TypeScript + Vite** — 프론트엔드 프레임워크 런타임 없음
-
-### 구문 강조 범위
-
-**143개 언어 / 224개 확장자**를 파일명으로 판별합니다.
-
-자주 쓰는 언어(JSON, JS/TS, Python, C/C++, Rust, Go, HTML/CSS, Markdown, YAML, XML,
-SQL, Java, shell)는 번들에 포함돼 즉시 강조됩니다. 나머지는
-[`@codemirror/language-data`](https://github.com/codemirror/language-data)에 매칭한 뒤
-해당 언어 팩을 처음 쓸 때 별도 청크로 가져오므로, 롱테일 언어를 지원해도 시작 비용은 0입니다.
-
-<details>
-<summary>지원하는 롱테일 언어 전체 보기</summary>
-
-<br>
-
-롱테일에는 웹(LESS/SCSS/Vue/Pug/Handlebars), 시스템(Swift/Objective-C/D/Fortran/Cobol/
-어셈블리), JVM·.NET(Kotlin/Scala/Groovy/Clojure/C#/F#/VB.NET), 스크립트(Ruby/Perl/PHP/
-Lua/PowerShell/Tcl/R/Julia), 함수형(Haskell/Elm/Erlang/OCaml/Lisp/Scheme), 데이터·설정
-(TOML/INI/ProtoBuf/LaTeX/diff), 데이터베이스(Cypher/XQuery/PL-SQL 및 SQL 방언),
-하드웨어 기술 언어(Verilog/SystemVerilog/VHDL)가 포함됩니다.
-
-확장자가 없는 파일은 이름으로 인식합니다: `Dockerfile`, `CMakeLists.txt`, `Jenkinsfile`,
-`Gemfile`, `Rakefile`, `BUILD`, `PKGBUILD`, `nginx*.conf`. 매칭되지 않으면 플레인 텍스트로 열립니다.
-
-</details>
-
-### 사전 요구사항
-
-- [Node.js](https://nodejs.org) 18 이상
-- [Rust](https://www.rust-lang.org/tools/install) (stable)
-- Linux 한정: `webkit2gtk-4.1`, `libgtk-3` 개발 패키지
-
-### 개발 / 빌드 / 테스트
-
-```bash
-npm install
-npm run tauri dev      # 핫 리로드로 앱 실행
-
-npm run tauri build    # src-tauri/target/release/bundle/ 아래에 플랫폼별 설치 파일 생성
-
-# Rust: 인코딩 왕복 변환 + 세션 스토어 내구성 (원자적 쓰기, 손상 파일 격리, GC)
-cd src-tauri && cargo test
-
-# 프론트엔드 타입체크 + 프로덕션 번들
-npm run build
-```
-
-### 세션 지속성 동작 방식
-
-- 세션 데이터는 OS별 앱 데이터 디렉터리(`app_data_dir()`)에 저장됩니다.
-  `session.json` 매니페스트 + `backups/` 아래에 dirty/untitled 탭마다 백업 파일 하나씩.
-- dirty 버퍼는 편집 후 1.5초 디바운스, 탭 전환, 창 blur, 구조 변경, 30초 주기 안전장치,
-  창 닫기 시점에 flush됩니다.
-- 모든 쓰기는 원자적입니다(임시 파일 → fsync → rename). 그래서 `kill -9`나 정전에도
-  파일이 깨지지 않으며, 최악의 경우 마지막 디바운스 구간만 유실됩니다.
-- 시작 시 매니페스트를 읽어 각 탭을 디스크와 대조합니다. clean 파일은 다시 읽고,
-  dirty 파일은 백업을 복원하며(사용자의 편집이 우선), 디스크에서 파일이 변경되거나
-  삭제됐으면 작업을 막지 않는 배너로 알립니다.
-
-### 수동 인수 테스트 (세션 복원)
-
-1. `npm run tauri dev`로 실행해 파일 몇 개를 열고, 하나를 편집하고, 내용이 있는 untitled 탭을 1~2개 만듭니다.
-2. 프로세스를 강제 종료합니다 (`kill -9 <pid>` 또는 활성 상태 보기 / 작업 관리자).
-3. 다시 실행 — 모든 탭이 순서대로 돌아오고, 활성 탭·커서 위치·dirty 표시·untitled 내용이
-   그대로 유지됩니다.
