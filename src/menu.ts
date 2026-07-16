@@ -20,11 +20,23 @@ import {
   reopenClosed,
   activateTabByIndex,
   activateLastTab,
+  setActiveEol,
 } from "./tabs";
 import { openSaveOptions, openRecentDialog } from "./dialogs";
 import { setTheme } from "./theme";
-import { togglePreview } from "./preview";
+import { togglePreview, exportPreviewHtml, printPreview } from "./preview";
 import { handleZoomShortcut } from "./mermaid-view";
+import {
+  sortLinesAsc,
+  sortLinesDesc,
+  removeDuplicateLines,
+  removeEmptyLines,
+  trimTrailingWhitespace,
+  toUpperCase,
+  toLowerCase,
+  moveLineUp,
+  moveLineDown,
+} from "./lineops";
 
 /** Map a native-menu item id (from the `menu` event) to a frontend action. */
 export function handleMenu(id: string): void {
@@ -47,6 +59,12 @@ export function handleMenu(id: string): void {
     case "file.saveOptions":
       openSaveOptions();
       break;
+    case "file.exportHtml":
+      void exportPreviewHtml();
+      break;
+    case "file.print":
+      printPreview();
+      break;
     case "file.reopenClosed":
       void reopenClosed();
       break;
@@ -65,6 +83,33 @@ export function handleMenu(id: string): void {
     case "edit.replace":
       openReplace();
       break;
+    case "edit.sortAsc":
+      sortLinesAsc();
+      break;
+    case "edit.sortDesc":
+      sortLinesDesc();
+      break;
+    case "edit.removeDuplicate":
+      removeDuplicateLines();
+      break;
+    case "edit.removeEmpty":
+      removeEmptyLines();
+      break;
+    case "edit.trimTrailing":
+      trimTrailingWhitespace();
+      break;
+    case "edit.toUpper":
+      toUpperCase();
+      break;
+    case "edit.toLower":
+      toLowerCase();
+      break;
+    case "edit.moveLineUp":
+      moveLineUp();
+      break;
+    case "edit.moveLineDown":
+      moveLineDown();
+      break;
     case "edit.findNext":
       findNextMatch();
       break;
@@ -79,6 +124,12 @@ export function handleMenu(id: string): void {
       break;
     case "view.togglePreview":
       togglePreview();
+      break;
+    case "view.eolLf":
+      void setActiveEol("lf");
+      break;
+    case "view.eolCrlf":
+      void setActiveEol("crlf");
       break;
     // Zoom forks here — pointing at a diagram scales the chart, otherwise the
     // editor font. The fork has to live on the *menu* path, not on keydown:

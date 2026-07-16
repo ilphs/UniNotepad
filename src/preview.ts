@@ -9,8 +9,10 @@
  * the status bar. `marked`/`DOMPurify` and `mermaid` load lazily on
  * first use so app start and non-preview use pay nothing (see plan: 무게 검토).
  */
+import { save, message } from "@tauri-apps/plugin-dialog";
 import { store } from "./state";
-import { currentDoc } from "./editor";
+import { currentDoc, getView } from "./editor";
+import { ipc } from "./ipc";
 import { effectiveFileType } from "./language";
 import { refreshStatusBar } from "./statusbar";
 import { themeChoice } from "./theme";
@@ -232,6 +234,94 @@ export function togglePreview(): void {
   refreshStatusBar();
 }
 
+// ---- Editor → preview scroll sync ------------------------------------------
+
+/** Map the editor's scroll fraction onto the preview pane. No-op when the pane
+ *  is hidden or unscrollable. Diagram-only (Mermaid) documents have nothing to
+ *  track, so this naturally only matters for Markdown. */
+function syncPreviewScroll(): void {
+  if (previewHost.hidden) return;
+  const ed = getView().scrollDOM;
+  const edRange = ed.scrollHeight - ed.clientHeight;
+  if (edRange <= 0) return;
+  const frac = ed.scrollTop / edRange;
+  const pvRange = previewHost.scrollHeight - previewHost.clientHeight;
+  previewHost.scrollTop = frac * pvRange;
+}
+
+// ---- Export / print --------------------------------------------------------
+
+/** The rendered preview HTML for the active tab, or null if nothing is shown. */
+function renderedHtml(): string | null {
+  if (previewHost.hidden) return null;
+  return previewHost.querySelector<HTMLElement>(".md-body")?.innerHTML ?? null;
+}
+
+/** Export the rendered preview as a standalone, self-contained HTML file.
+ *  Written through the same Rust save path as documents (UTF-8/LF). */
+export async function exportPreviewHtml(): Promise<void> {
+  const body = renderedHtml();
+  if (body === null) {
+    await message("Open the preview (Markdown/Mermaid) before exporting.", {
+      title: "UniNotepad",
+      kind: "info",
+    });
+    return;
+  }
+  const tab = store.activeTab;
+  const title = tab ? tab.title : "export";
+  const defaultName = title.replace(/\.[^.]+$/, "") + ".html";
+  const path = await save({
+    defaultPath: defaultName,
+    filters: [{ name: "HTML", extensions: ["html"] }],
+  });
+  if (!path) return;
+  const doc = htmlDocument(title, body);
+  try {
+    await ipc.saveFile(path, doc, "utf8", "lf");
+  } catch (err) {
+    await message(`Failed to export:\n${err}`, { title: "UniNotepad", kind: "error" });
+  }
+}
+
+/** Wrap rendered body HTML in a minimal, self-contained HTML5 document. */
+function htmlDocument(title: string, body: string): string {
+  const esc = title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>${esc}</title>
+<style>
+  body { max-width: 48rem; margin: 2rem auto; padding: 0 1rem;
+    font: 16px/1.6 -apple-system, "Segoe UI", Roboto, sans-serif; color: #1a1a1a; }
+  pre { background: #f5f5f5; padding: 1rem; overflow-x: auto; border-radius: 6px; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  blockquote { border-left: 4px solid #ddd; margin: 0; padding-left: 1rem; color: #555; }
+  table { border-collapse: collapse; } th, td { border: 1px solid #ccc; padding: 4px 8px; }
+  img, svg { max-width: 100%; }
+</style>
+</head>
+<body>
+${body}
+</body>
+</html>
+`;
+}
+
+/** Open the OS print dialog. A print stylesheet (styles.css @media print) hides
+ *  everything except the preview body, so "Save as PDF" yields the document. */
+export function printPreview(): void {
+  if (previewHost.hidden) {
+    void message("Open the preview (Markdown/Mermaid) before printing.", {
+      title: "UniNotepad",
+      kind: "info",
+    });
+    return;
+  }
+  window.print();
+}
+
 // ---- Split ratio / divider drag --------------------------------------------
 
 function applyRatio(): void {
@@ -290,6 +380,11 @@ export function mountPreview(
   // Diagram backdrop/zoom/pan. Delegated to the host, so it survives the
   // re-renders that rebuild every chart node.
   mountMermaidView(preview);
+
+  // Editor → preview scroll sync (one-way, proportional). Bound once to the
+  // single shared editor scroller; no-op while the pane is hidden. One-way only
+  // to avoid the feedback loop a bidirectional sync would create.
+  getView().scrollDOM.addEventListener("scroll", syncPreviewScroll, { passive: true });
 
   // Re-render when the theme changes so mermaid diagrams (baked-in SVG colors)
   // follow light/dark. Explicit menu choices fire "uninotepad:themechange";

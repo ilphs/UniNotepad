@@ -22,6 +22,11 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .accelerator("CmdOrCtrl+Shift+S")
         .build(app)?;
     let save_options = MenuItemBuilder::with_id("file.saveOptions", "Save Options…").build(app)?;
+    let export_html =
+        MenuItemBuilder::with_id("file.exportHtml", "Export Preview as HTML…").build(app)?;
+    let print_preview = MenuItemBuilder::with_id("file.print", "Print Preview…")
+        .accelerator("CmdOrCtrl+P")
+        .build(app)?;
     let reopen_closed = MenuItemBuilder::with_id("file.reopenClosed", "Reopen Closed Tab")
         .accelerator("CmdOrCtrl+Shift+T")
         .build(app)?;
@@ -37,6 +42,9 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .item(&save)
         .item(&save_as)
         .item(&save_options)
+        .separator()
+        .item(&export_html)
+        .item(&print_preview)
         .separator()
         .item(&reopen_closed)
         .item(&close_tab)
@@ -74,6 +82,42 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .accelerator("CmdOrCtrl+H")
         .build(app)?;
 
+    // Line Operations — a Notepad++-style submenu. All act on the selected lines,
+    // or the whole document when there is no selection.
+    let sort_asc =
+        MenuItemBuilder::with_id("edit.sortAsc", "Sort Lines Ascending").build(app)?;
+    let sort_desc =
+        MenuItemBuilder::with_id("edit.sortDesc", "Sort Lines Descending").build(app)?;
+    let dedupe =
+        MenuItemBuilder::with_id("edit.removeDuplicate", "Remove Duplicate Lines").build(app)?;
+    let remove_empty =
+        MenuItemBuilder::with_id("edit.removeEmpty", "Remove Empty Lines").build(app)?;
+    let trim_trailing =
+        MenuItemBuilder::with_id("edit.trimTrailing", "Trim Trailing Whitespace").build(app)?;
+    let to_upper = MenuItemBuilder::with_id("edit.toUpper", "UPPERCASE").build(app)?;
+    let to_lower = MenuItemBuilder::with_id("edit.toLower", "lowercase").build(app)?;
+    // No menu accelerator: CodeMirror's defaultKeymap already binds Alt+Arrow to
+    // move-line (and Shift+Alt+Arrow to copy-line), and on macOS the WebView's
+    // preventDefault beats a native menu accelerator — a duplicate here would
+    // collide with copy-line. The menu item stays for discoverability.
+    let move_up = MenuItemBuilder::with_id("edit.moveLineUp", "Move Line Up (Alt+↑)").build(app)?;
+    let move_down =
+        MenuItemBuilder::with_id("edit.moveLineDown", "Move Line Down (Alt+↓)").build(app)?;
+    let line_ops = SubmenuBuilder::new(app, "Line Operations")
+        .item(&sort_asc)
+        .item(&sort_desc)
+        .separator()
+        .item(&dedupe)
+        .item(&remove_empty)
+        .item(&trim_trailing)
+        .separator()
+        .item(&to_upper)
+        .item(&to_lower)
+        .separator()
+        .item(&move_up)
+        .item(&move_down)
+        .build()?;
+
     let edit_menu = SubmenuBuilder::new(app, "Edit")
         .item(&undo)
         .item(&redo)
@@ -87,6 +131,8 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .item(&find_next)
         .item(&find_prev)
         .item(&replace)
+        .separator()
+        .item(&line_ops)
         .build()?;
 
     // View — zoom
@@ -115,6 +161,15 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let toggle_preview = MenuItemBuilder::with_id("view.togglePreview", "Toggle Preview")
         .accelerator("CmdOrCtrl+Shift+M")
         .build(app)?;
+
+    // Convert Line Endings — a discoverable menu entry for what the status-bar
+    // EOL picker already does; converts the active tab's line endings.
+    let eol_lf = MenuItemBuilder::with_id("view.eolLf", "LF (Unix)").build(app)?;
+    let eol_crlf = MenuItemBuilder::with_id("view.eolCrlf", "CRLF (Windows)").build(app)?;
+    let eol_menu = SubmenuBuilder::new(app, "Convert Line Endings")
+        .item(&eol_lf)
+        .item(&eol_crlf)
+        .build()?;
 
     let goto_tabs = (1..=9)
         .map(|n| {
@@ -147,6 +202,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .item(&goto_line)
         .item(&toggle_wrap)
         .item(&toggle_preview)
+        .item(&eol_menu)
         .separator();
     for item in &goto_tabs {
         view_builder = view_builder.item(item);

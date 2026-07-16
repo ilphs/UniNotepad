@@ -765,3 +765,83 @@ body {
   background: var(--accent);
   color: #fff;
 }
+
+/* Print: only the rendered preview goes on paper (Print Preview / Save as PDF).
+   Everything else — tabs, editor, divider, status bar — is hidden, and the
+   preview expands to the full page with no internal scroll clipping. */
+@media print {
+  #tabbar,
+  #banner,
+  #divider,
+  #editor-host,
+  #statusbar {
+    display: none !important;
+  }
+  #app,
+  #split {
+    display: block !important;
+    height: auto !important;
+  }
+  #preview-host {
+    display: block !important;
+    flex: none !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  /* Interactive diagram controls are screen-only — never on paper. */
+  .mmd-toolbar,
+  .mmd-badge,
+  .mmd-popover {
+    display: none !important;
+  }
+
+  /* Neutralize on-screen zoom/pan so diagrams print at their natural size,
+     scaled down to fit the page width rather than clipped by the pan viewport. */
+  #preview-host.mmd-solo,
+  #preview-host.mmd-solo .md-body {
+    display: block !important;
+    overflow: visible !important;
+  }
+  .mermaid-frame,
+  .mermaid-diagram {
+    transform: none !important;
+    overflow: visible !important;
+  }
+  .mermaid-diagram svg {
+    width: auto !important;
+    height: auto !important;
+    max-width: 100% !important;
+  }
+
+  /* Keep atomic blocks from splitting across a page boundary, and don't strand
+     a heading at the bottom of a page away from the text it introduces. */
+  pre,
+  blockquote,
+  table,
+  img,
+  svg,
+  .mermaid-frame {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Print backgrounds/colors as authored (code blocks, etc.) instead of the
+     print engine dropping them for ink economy. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
