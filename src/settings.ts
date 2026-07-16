@@ -10,6 +10,8 @@ const PREVIEW_KEY = "uninotepad.markdownPreview";
 const RATIO_KEY = "uninotepad.previewRatio";
 const INDENT_TABS_KEY = "uninotepad.indentUseTabs";
 const INDENT_WIDTH_KEY = "uninotepad.indentWidth";
+const MERMAID_BG_KEY = "uninotepad.mermaidBg";
+const MERMAID_BG_ON_KEY = "uninotepad.mermaidBgEnabled";
 
 /** Indent width bounds (columns). */
 const INDENT_WIDTH_MIN = 1;
@@ -80,6 +82,59 @@ export function previewRatio(): number {
 export function setPreviewRatio(ratio: number): void {
   const clamped = Math.max(RATIO_MIN, Math.min(RATIO_MAX, ratio));
   localStorage.setItem(RATIO_KEY, String(clamped));
+}
+
+/** Backdrop painted behind every rendered Mermaid diagram: 8-bit RGB channels
+ *  plus a 0–1 opacity. Consumed by mermaid-view.ts as an `--mmd-bg` rgba(). */
+export interface MermaidBg {
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+}
+
+/** White at full opacity: the useful starting point, since the backdrop mainly
+ *  exists to rescue a light diagram viewed under the dark theme. */
+const MERMAID_BG_DEFAULT: MermaidBg = { r: 255, g: 255, b: 255, a: 1 };
+
+function clampChannel(n: number): number {
+  return Math.max(0, Math.min(255, Math.round(n)));
+}
+
+function clampAlpha(n: number): number {
+  return Math.max(0, Math.min(1, n));
+}
+
+/** Whether the backdrop is painted at all. Kept separate from `a === 0` on
+ *  purpose: folding "transparent" into the alpha would destroy the opacity the
+ *  user picked every time they toggled the backdrop off and back on.
+ *  Defaults OFF — that is the app's long-standing see-through behavior. */
+export function mermaidBgEnabled(): boolean {
+  return readBool(MERMAID_BG_ON_KEY, false);
+}
+
+export function setMermaidBgEnabled(on: boolean): void {
+  writeBool(MERMAID_BG_ON_KEY, on);
+}
+
+/** The stored backdrop color, or the default if anything about the stored
+ *  "r,g,b,a" is off. Falls back as a whole tuple rather than per channel: a
+ *  half-parsed record would paint a color the user never chose. Note the
+ *  `!raw` guard and the empty-part check exist because `Number(null)` and
+ *  `Number("")` are both 0, which would silently read as a valid channel. */
+export function mermaidBg(): MermaidBg {
+  const raw = localStorage.getItem(MERMAID_BG_KEY);
+  if (!raw) return { ...MERMAID_BG_DEFAULT };
+  const parts = raw.split(",");
+  if (parts.length !== 4) return { ...MERMAID_BG_DEFAULT };
+  const n = parts.map((p) => (p.trim() === "" ? NaN : Number(p)));
+  if (n.some((v) => !Number.isFinite(v))) return { ...MERMAID_BG_DEFAULT };
+  return { r: clampChannel(n[0]), g: clampChannel(n[1]), b: clampChannel(n[2]), a: clampAlpha(n[3]) };
+}
+
+export function setMermaidBg(bg: MermaidBg): void {
+  const v = [clampChannel(bg.r), clampChannel(bg.g), clampChannel(bg.b), clampAlpha(bg.a)];
+  localStorage.setItem(MERMAID_BG_KEY, v.join(","));
 }
 
 /** Indent with real tab characters instead of spaces (default OFF → spaces). */

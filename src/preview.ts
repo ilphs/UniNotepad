@@ -15,6 +15,12 @@ import { effectiveFileType } from "./language";
 import { refreshStatusBar } from "./statusbar";
 import { themeChoice } from "./theme";
 import {
+  mountMermaidView,
+  frameDiagram,
+  setSoloMode,
+  closeMermaidPopover,
+} from "./mermaid-view";
+import {
   isPreviewEnabled,
   setPreviewEnabled,
   previewRatio,
@@ -122,6 +128,16 @@ async function renderNow(): Promise<void> {
   // Captured once: every branch below must agree on one type, even across awaits.
   const ft = effectiveFileType(store.activeTab);
 
+  // Both of these must run before either branch and, critically, before any
+  // await. Parked in ensureMods(), a Markdown run would resume *after* a later
+  // Mermaid run had already finished and would then clear its solo class,
+  // trapping that diagram in the 72ch column; the renderSeq guard below does
+  // stop the stale run, but only once it has resumed — too late. Closing the
+  // popover here covers the anchor this render is about to destroy (a native
+  // menu click never fires the webview's outside-mousedown handler).
+  setSoloMode(ft === "mermaid");
+  closeMermaidPopover();
+
   // Mermaid: the whole document is one diagram, so skip Markdown parsing (and
   // its marked/DOMPurify load) and render it directly.
   if (ft === "mermaid") {
@@ -172,7 +188,9 @@ async function renderMermaid(mdBody: HTMLElement, myRun: number): Promise<void> 
       const container = document.createElement("div");
       container.className = "mermaid-diagram";
       container.innerHTML = svg;
-      target.replaceWith(container);
+      // Wrapped in a frame that carries the toolbar and the chart's natural
+      // size; see mermaid-view.ts for why neither can live on the chart node.
+      target.replaceWith(frameDiagram(container));
     } catch (e) {
       // mermaid can leave a temp measuring node behind on parse failure.
       document.getElementById("d" + id)?.remove();
@@ -269,6 +287,9 @@ export function mountPreview(
   divider.addEventListener("pointermove", onDividerMove);
   divider.addEventListener("pointerup", onDividerUp);
   divider.addEventListener("pointercancel", onDividerUp);
+  // Diagram backdrop/zoom/pan. Delegated to the host, so it survives the
+  // re-renders that rebuild every chart node.
+  mountMermaidView(preview);
 
   // Re-render when the theme changes so mermaid diagrams (baked-in SVG colors)
   // follow light/dark. Explicit menu choices fire "uninotepad:themechange";

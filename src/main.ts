@@ -13,6 +13,7 @@ import { restoreSession, initSessionTriggers } from "./session";
 import { handleMenu } from "./menu";
 import { applyStoredTheme } from "./theme";
 import { mountPreview } from "./preview";
+import { handleZoomShortcut } from "./mermaid-view";
 import { getVersion } from "@tauri-apps/api/app";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
@@ -65,11 +66,14 @@ async function bootstrap(): Promise<void> {
 
   // Zoom-in also on Cmd/Ctrl and "+" (Shift+=). The native menu accelerator
   // only covers Cmd/Ctrl+= (one accelerator per menu item), so cover the Shift
-  // variant here and stop the WebView's built-in page zoom.
+  // variant here and stop the WebView's built-in page zoom. Must run the same
+  // chart-vs-editor fork as the menu path (menu.ts), or the two keys for one
+  // intent split: over a diagram, Cmd+= would scale the chart while Cmd+Shift+=
+  // silently grew the editor font instead.
   window.addEventListener("keydown", (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === "+") {
       e.preventDefault();
-      zoomIn();
+      if (!handleZoomShortcut(1)) zoomIn();
     }
   });
 

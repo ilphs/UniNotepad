@@ -369,9 +369,184 @@ body {
 .md-body .hljs-punctuation { color: var(--cm-operator); }
 .md-body .hljs-emphasis { font-style: italic; }
 .md-body .hljs-strong { font-weight: 600; }
-/* Mermaid: rendered diagram centered; SVG scales to the pane width. */
-.md-body .mermaid-diagram { display: flex; justify-content: center; margin: 1em 0; }
-.md-body .mermaid-diagram svg { max-width: 100%; height: auto; }
+/* Mermaid: rendered diagram centered; SVG scales to the pane width.
+   `.mermaid-frame` wraps the diagram and owns the 1em flow margin the diagram
+   used to carry, so this stays pixel-identical to the pre-frame layout. It
+   exists to anchor the toolbar outside the scroll container zoom turns
+   `.mermaid-diagram` into — see mermaid-view.ts. All zoom/backdrop state comes
+   from `#preview-host` because the render pipeline rebuilds these nodes on
+   every keystroke. */
+.md-body .mermaid-frame { position: relative; margin: 1em 0; }
+.md-body .mermaid-diagram { display: flex; justify-content: center; margin: 0; }
+.md-body .mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+  background: var(--mmd-bg, transparent);
+}
+
+/* ---- Mermaid: zoomed (scale !== 1) ---- */
+#preview-host.mmd-zoomed .mermaid-diagram {
+  max-height: 70vh;
+  overflow: auto;
+  cursor: grab;
+  /* `safe center` keeps the chart centered until it overflows, then behaves as
+     flex-start. Plain `center` would split the overflow across both sides, and
+     since scrollLeft can't go negative, the left half of a wide chart would be
+     permanently unreachable. First line is the fallback for engines without
+     `safe`; both must stay. */
+  justify-content: flex-start;
+  justify-content: safe center;
+}
+#preview-host.mmd-zoomed .mermaid-diagram.mmd-panning { cursor: grabbing; }
+/* `.mmd-sized` gates this rule: mermaid-view.ts adds it only to charts whose
+   natural size it resolved. Without the gate, a chart missing --mmd-nw makes the
+   calc() invalid-at-computed-value-time → width falls back to `auto` and zoom is
+   silently ignored; and the "safe-looking" `var(--mmd-nw, 0)` fallback is worse
+   still — width computes to exactly 0 and the chart disappears. */
+#preview-host.mmd-zoomed .mermaid-diagram.mmd-sized svg {
+  /* mermaid writes `style="max-width:Npx"` as an inline declaration, and only an
+     important author declaration outranks inline. (Its sibling `width="100%"` is
+     a presentation attribute — specificity 0 — so a normal rule already beats
+     that one; the !important here is purely for the inline max-width.) */
+  max-width: none !important;
+  width: calc(var(--mmd-nw) * 1px * var(--mmd-zoom, 1));
+  height: calc(var(--mmd-nh) * 1px * var(--mmd-zoom, 1));
+  flex: 0 0 auto;
+}
+
+/* ---- Mermaid: solo (the document is one diagram) ---- */
+/* MUST stay after the .mmd-zoomed block: both selectors are (1,2,0), so source
+   order is the only tiebreak, and if solo came first the zoom rule's
+   `max-height:70vh` would win and shrink the full-bleed panel back into a 70vh
+   box. That looks fine at 100%, where the zoom rules don't apply at all. */
+#preview-host.mmd-solo { overflow: hidden; }
+#preview-host.mmd-solo .md-body {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  display: flex;
+}
+#preview-host.mmd-solo .mermaid-frame { flex: 1 1 auto; min-width: 0; margin: 0; }
+#preview-host.mmd-solo .mermaid-diagram {
+  height: 100%;
+  max-height: none;
+  overflow: auto;
+  cursor: grab;
+  justify-content: flex-start;
+  justify-content: safe center;
+  /* align-items must be explicit: the flex default `stretch` would stretch the
+     `height:auto` svg to fill this `height:100%` box, at which point
+     preserveAspectRatio letterboxes the drawing — and with the overflow gone, a
+     tall chart loses its scrollbar entirely. */
+  align-items: flex-start;
+  align-items: safe center;
+}
+/* A standalone .mmd re-renders on every keystroke, so a half-typed diagram sits
+   in this error state most of the time — it can't be left flush against the
+   edge of the padding-less solo panel, nor stretched full-height by the
+   `.md-body` flex default. (It stays outside `.mermaid-frame`: no toolbar or
+   zoom applies to an error.) */
+#preview-host.mmd-solo .mermaid-error {
+  margin: 12px;
+  align-self: flex-start;
+}
+
+/* ---- Mermaid chrome: toolbar / badge / backdrop popover ---- */
+/* Toolbar is a sibling of the scroller, not a child — inside `.mermaid-diagram`
+   it would scroll away with the content once zoom made that node a scroll
+   container, and closest(".mermaid-diagram") would start a pan on every click. */
+.mmd-toolbar {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.12s ease-in-out;
+}
+.mermaid-frame:hover .mmd-toolbar,
+.mmd-toolbar:focus-within {
+  opacity: 1;
+}
+.mmd-bg-btn {
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: pointer;
+  color: var(--chrome-fg);
+  background: var(--chrome-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.mmd-bg-btn:hover {
+  background: color-mix(in srgb, var(--accent) 22%, var(--chrome-bg));
+}
+/* The pair is a two-way choice, so the live mode has to be visible; without it
+   both buttons read as commands and nothing says which one is in effect. */
+.mmd-bg-btn.mmd-active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 34%, var(--chrome-bg));
+}
+
+/* Zoom badge. Lives on document.body (mermaid-view.ts explains why it can't be
+   a #preview-host child) and never takes pointer events — it floats over the
+   chart, so a click must always reach the diagram underneath. */
+.mmd-badge {
+  position: fixed;
+  z-index: 210;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--chrome-bg);
+  color: var(--chrome-fg);
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease-in-out;
+}
+.mmd-badge.visible { opacity: 1; }
+
+/* Backdrop popover. Shell values mirror .status-menu deliberately. */
+.mmd-popover {
+  position: fixed;
+  z-index: 200;
+  padding: 8px;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  font-size: 12px;
+}
+.mmd-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+  white-space: nowrap;
+}
+.mmd-row-label { width: 4.5em; }
+.mmd-row-value {
+  width: 2.8em;
+  text-align: right;
+  font-variant-numeric: tabular-nums; /* keep the row from twitching on drag */
+}
+.mmd-row input[type="range"] { width: 130px; }
+/* Checkerboard under the color layer, so a low opacity reads as see-through
+   rather than as a flat grey the user might mistake for the color itself. */
+.mmd-swatch {
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 6px;
+  background-image: linear-gradient(var(--mmd-swatch, transparent), var(--mmd-swatch, transparent)),
+    conic-gradient(#bbb 0 25%, #fff 0 50%, #bbb 0 75%, #fff 0);
+  background-size: auto, 10px 10px;
+}
 .md-body .mermaid-error {
   color: var(--cm-invalid);
   background: var(--gutter-bg);

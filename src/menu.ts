@@ -24,6 +24,7 @@ import {
 import { openSaveOptions, openRecentDialog } from "./dialogs";
 import { setTheme } from "./theme";
 import { togglePreview } from "./preview";
+import { handleZoomShortcut } from "./mermaid-view";
 
 /** Map a native-menu item id (from the `menu` event) to a frontend action. */
 export function handleMenu(id: string): void {
@@ -79,14 +80,22 @@ export function handleMenu(id: string): void {
     case "view.togglePreview":
       togglePreview();
       break;
+    // Zoom forks here — pointing at a diagram scales the chart, otherwise the
+    // editor font. The fork has to live on the *menu* path, not on keydown:
+    // Cmd/Ctrl+= / - / 0 are native accelerators (src-tauri/src/menu.rs), and on
+    // Windows tao's msg_hook runs TranslateAcceleratorW first and only calls
+    // DispatchMessageW `if (!handled)`, so the WebView never sees those keys at
+    // all — a keydown-based fork would be dead code there. macOS is the mirror
+    // image: WKWebView sees the key first and would starve the menu if it
+    // preventDefault'd. The menu event is the one path all three OSes share.
     case "view.zoomIn":
-      zoomIn();
+      if (!handleZoomShortcut(1)) zoomIn();
       break;
     case "view.zoomOut":
-      zoomOut();
+      if (!handleZoomShortcut(-1)) zoomOut();
       break;
     case "view.zoomReset":
-      zoomReset();
+      if (!handleZoomShortcut(0)) zoomReset();
       break;
     case "view.themeLight":
       setTheme("light");
