@@ -460,6 +460,10 @@ body {
   position: fixed;
   z-index: 200;
   min-width: 160px;
+  /* The file-type list is long; scroll rather than outgrow the window.
+     openPicker() tightens this further when the space above is smaller. */
+  max-height: 60vh;
+  overflow-y: auto;
   padding: 4px;
   background: var(--bg);
   color: var(--fg);

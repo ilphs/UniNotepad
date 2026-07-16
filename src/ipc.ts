@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
-import type { EncodingId, EolId } from "./state";
+import type { EncodingId, EolId, FileTypeId } from "./state";
 
 export interface OpenedFile {
   content: string;
@@ -27,6 +27,8 @@ export interface TabEntry {
   hasBackup: boolean;
   encoding: EncodingId | null;
   eol: EolId | null;
+  /** Rust round-trips this untyped, so treat it as untrusted on read. */
+  fileType: FileTypeId | null;
   diskMtimeMs: number | null;
   cursor: number | null;
   scrollTop: number | null;

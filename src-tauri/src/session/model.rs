@@ -41,6 +41,11 @@ pub struct TabEntry {
     pub encoding: Option<String>,
     #[serde(default)]
     pub eol: Option<String>,
+    /// Explicit file-type pick; absent/null means "detect from the extension".
+    /// Modelled so it survives the read/re-serialize round-trip; the frontend
+    /// validates the value, so it stays an opaque string here.
+    #[serde(rename = "fileType", default)]
+    pub file_type: Option<String>,
     #[serde(rename = "diskMtimeMs", default)]
     pub disk_mtime_ms: Option<u64>,
     #[serde(default)]

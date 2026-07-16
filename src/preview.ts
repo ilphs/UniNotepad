@@ -4,13 +4,14 @@
  * `.md-body` div, with ```mermaid fenced blocks rendered as diagrams. A
  * standalone `.mmd`/`.mermaid` file is rendered whole as a single diagram.
  *
- * The pane shows when the toggle is ON (default) AND the active tab is a
- * Markdown or Mermaid file. `marked`/`DOMPurify` and `mermaid` load lazily on
+ * The pane shows when the toggle is ON (default) AND the active tab's effective
+ * type is Markdown or Mermaid — from its extension, or from an explicit pick in
+ * the status bar. `marked`/`DOMPurify` and `mermaid` load lazily on
  * first use so app start and non-preview use pay nothing (see plan: 무게 검토).
  */
 import { store } from "./state";
 import { currentDoc } from "./editor";
-import { isMarkdownPath, isMermaidPath } from "./language";
+import { effectiveFileType } from "./language";
 import { refreshStatusBar } from "./statusbar";
 import { themeChoice } from "./theme";
 import {
@@ -91,10 +92,11 @@ function effectiveDark(): boolean {
 // ---- Visibility / render ---------------------------------------------------
 
 /** Preview shows when enabled and the active tab is previewable: a Markdown
- *  document or a standalone Mermaid diagram file. */
+ *  document or a standalone Mermaid diagram — by extension, or by an explicit
+ *  pick in the status-bar type picker. */
 function shouldShow(): boolean {
-  const path = store.activeTab?.path ?? null;
-  return isPreviewEnabled() && (isMarkdownPath(path) || isMermaidPath(path));
+  const ft = effectiveFileType(store.activeTab);
+  return isPreviewEnabled() && (ft === "markdown" || ft === "mermaid");
 }
 
 /** The `.md-body` child that holds rendered Markdown (created on first use). */
@@ -117,11 +119,12 @@ let renderSeq = 0;
 async function renderNow(): Promise<void> {
   if (previewHost.hidden) return;
   const myRun = ++renderSeq;
-  const path = store.activeTab?.path ?? null;
+  // Captured once: every branch below must agree on one type, even across awaits.
+  const ft = effectiveFileType(store.activeTab);
 
-  // Standalone .mmd/.mermaid file: the whole document is one diagram, so skip
-  // Markdown parsing (and its marked/DOMPurify load) and render it directly.
-  if (isMermaidPath(path)) {
+  // Mermaid: the whole document is one diagram, so skip Markdown parsing (and
+  // its marked/DOMPurify load) and render it directly.
+  if (ft === "mermaid") {
     const mdBody = ensureMdBody();
     const pre = document.createElement("pre");
     const code = document.createElement("code");
@@ -137,7 +140,7 @@ async function renderNow(): Promise<void> {
   // Re-check after the async load: the tab may have switched, hidden, or a
   // newer render superseded this one.
   if (renderSeq !== myRun || previewHost.hidden) return;
-  if (!isMarkdownPath(path)) return;
+  if (ft !== "markdown") return;
   const doc = currentDoc();
   const mdBody = ensureMdBody();
   mdBody.innerHTML = DOMPurify.sanitize(marked.parse(doc) as string);

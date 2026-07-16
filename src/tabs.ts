@@ -1,10 +1,10 @@
 import { open, save, message } from "@tauri-apps/plugin-dialog";
-import { store, newId, type Tab, type EncodingId, type EolId } from "./state";
+import { store, newId, type Tab, type EncodingId, type EolId, type FileTypeId } from "./state";
 import { ipc } from "./ipc";
 import { makeState, showTab, syncTabFromView, reconfigureLanguage } from "./editor";
 import { flushNow, dropPending, markBackupDirty, basename } from "./session";
 import { recordRecent } from "./recent";
-import { applySaveOptions } from "./settings";
+import { applySaveOptions, setPreviewEnabled } from "./settings";
 
 function platformEol(): EolId {
   return navigator.userAgent.includes("Windows") ? "crlf" : "lf";
@@ -34,6 +34,7 @@ export function newUntitled(): void {
     dirty: false,
     encoding: "utf8",
     eol: platformEol(),
+    fileType: null,
     diskMtimeMs: null,
     missingOnDisk: false,
     state: makeState("", id),
@@ -44,11 +45,18 @@ export function newUntitled(): void {
   activateTab(id);
 }
 
-export async function openPath(path: string): Promise<void> {
+/** Open a file in a tab. `fileType` carries a type pick forward (Reopen Closed
+ *  Tab); null leaves the tab on extension detection. */
+export async function openPath(path: string, fileType: FileTypeId | null = null): Promise<void> {
   const existing = store.state.tabs.find((t) => t.path === path);
   if (existing) {
     recordRecent(path);
+    // Only a caller-supplied pick overrides what the open tab already has.
+    const override = fileType !== null && existing.fileType !== fileType;
+    if (override) existing.fileType = fileType;
     activateTab(existing.id);
+    // After activateTab: the pick has to reach the view it just swapped in.
+    if (override) reconfigureLanguage(existing);
     return;
   }
   try {
@@ -62,9 +70,10 @@ export async function openPath(path: string): Promise<void> {
       dirty: false,
       encoding: opened.encoding,
       eol: opened.eol,
+      fileType,
       diskMtimeMs: opened.mtimeMs,
       missingOnDisk: false,
-      state: makeState(opened.content, id, undefined, path),
+      state: makeState(opened.content, id, undefined, path, fileType),
       scrollTop: 0,
       notice: null,
     };
@@ -113,7 +122,7 @@ async function saveTabAs(tab: Tab): Promise<boolean> {
   tab.title = basename(path);
   tab.missingOnDisk = false;
   // Re-highlight for the new extension (only the active tab is in the view).
-  if (store.state.activeTabId === tab.id) reconfigureLanguage(tab.path);
+  if (store.state.activeTabId === tab.id) reconfigureLanguage(tab);
   return saveTab(tab);
 }
 
@@ -169,6 +178,21 @@ export async function setActiveEol(eol: EolId): Promise<void> {
   else store.emit();
 }
 
+/** Change the active tab's file type. Unlike encoding/EOL this changes no bytes,
+ *  so there is nothing to re-save — only the language and the preview. */
+export function setActiveFileType(ft: FileTypeId): void {
+  const t = store.activeTab;
+  if (!t || t.fileType === ft) return;
+  t.fileType = ft;
+  // An explicit pick beats a stale global toggle; otherwise picking Markdown
+  // while the preview is switched off makes the picker look broken.
+  if (ft === "markdown" || ft === "mermaid") setPreviewEnabled(true);
+  reconfigureLanguage(t); // re-highlights and calls updatePreview()
+  store.emit();
+  // Untitled tabs never schedule a flush on their own, so persist the pick now.
+  void flushNow();
+}
+
 // ---- Reopen closed tab -----------------------------------------------------
 
 interface ClosedTab {
@@ -178,6 +202,7 @@ interface ClosedTab {
   cursor: number;
   encoding: EncodingId;
   eol: EolId;
+  fileType: FileTypeId | null;
   scrollTop: number;
   dirty: boolean;
 }
@@ -196,6 +221,7 @@ function pushClosed(tab: Tab): void {
     cursor: tab.state.selection.main.head,
     encoding: tab.encoding,
     eol: tab.eol,
+    fileType: tab.fileType,
     scrollTop: tab.scrollTop,
     dirty: tab.dirty,
   });
@@ -207,9 +233,10 @@ export async function reopenClosed(): Promise<void> {
   const snap = closedStack.pop();
   if (!snap) return;
 
-  // Clean, file-backed tab: just re-open from disk (single source of truth).
+  // Clean, file-backed tab: just re-open from disk (single source of truth),
+  // carrying the type pick so this shortcut doesn't quietly drop it.
   if (snap.path && !snap.dirty) {
-    await openPath(snap.path);
+    await openPath(snap.path, snap.fileType);
     return;
   }
   // Already open (e.g. dirty snapshot but file re-opened meanwhile): focus it.
@@ -230,9 +257,10 @@ export async function reopenClosed(): Promise<void> {
     dirty: snap.dirty,
     encoding: snap.encoding,
     eol: snap.eol,
+    fileType: snap.fileType,
     diskMtimeMs: null,
     missingOnDisk: false,
-    state: makeState(snap.doc, id, snap.cursor, snap.path),
+    state: makeState(snap.doc, id, snap.cursor, snap.path, snap.fileType),
     scrollTop: snap.scrollTop,
     notice: null,
   };
@@ -312,7 +340,9 @@ export async function reloadFromDisk(id: string): Promise<void> {
     tab.dirty = false;
     tab.notice = null;
     tab.missingOnDisk = false;
-    tab.state = makeState(opened.content, tab.id, undefined, tab.path);
+    // Pass the type pick through: without it the tab keeps fileType while the
+    // language compartment reverts to the extension's — picker/editor desync.
+    tab.state = makeState(opened.content, tab.id, undefined, tab.path, tab.fileType);
     dropPending(tab.id);
     await ipc.deleteBackup(tab.id).catch(() => {});
     if (store.state.activeTabId === tab.id) showTab(tab);

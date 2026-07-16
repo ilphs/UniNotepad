@@ -1,5 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { store, type Tab, type EncodingId, type EolId } from "./state";
+import { store, FILE_TYPE_IDS, type Tab, type EncodingId, type EolId, type FileTypeId } from "./state";
 import { ipc, type SessionManifest, type TabEntry } from "./ipc";
 import { makeState, syncTabFromView } from "./editor";
 
@@ -58,6 +58,7 @@ function buildManifest(): SessionManifest {
     hasBackup: needsBackup(t),
     encoding: t.encoding,
     eol: t.eol,
+    fileType: t.fileType,
     diskMtimeMs: t.diskMtimeMs,
     cursor: t.state.selection.main.head,
     scrollTop: t.scrollTop,
@@ -100,9 +101,19 @@ export async function flushNow(): Promise<void> {
 
 // ---- Restore ---------------------------------------------------------------
 
+/** Accept only known ids: the field is absent in older manifests and Rust
+ *  round-trips it as a free-form string, so a hand-edited session.json could
+ *  otherwise hand CodeMirror a type it throws on. */
+function fileTypeFromEntry(v: FileTypeId | null): FileTypeId | null {
+  return v != null && FILE_TYPE_IDS.includes(v) ? v : null;
+}
+
 function tabFromEntry(entry: TabEntry, doc: string): Tab {
   const encoding: EncodingId = entry.encoding ?? "utf8";
   const eol: EolId = entry.eol ?? "lf";
+  // Resolved before makeState: the language is baked into the state it builds,
+  // so assigning fileType afterwards would leave the two out of sync.
+  const fileType = fileTypeFromEntry(entry.fileType);
   return {
     id: entry.id,
     path: entry.path,
@@ -110,9 +121,10 @@ function tabFromEntry(entry: TabEntry, doc: string): Tab {
     dirty: entry.dirty,
     encoding,
     eol,
+    fileType,
     diskMtimeMs: entry.diskMtimeMs,
     missingOnDisk: false,
-    state: makeState(doc, entry.id, entry.cursor ?? undefined, entry.path),
+    state: makeState(doc, entry.id, entry.cursor ?? undefined, entry.path, fileType),
     scrollTop: entry.scrollTop ?? 0,
     notice: null,
   };

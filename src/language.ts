@@ -21,6 +21,8 @@ import { cpp } from "@codemirror/lang-cpp";
 import { rust } from "@codemirror/lang-rust";
 import { shell } from "@codemirror/legacy-modes/mode/shell";
 import { go } from "@codemirror/legacy-modes/mode/go";
+import { mermaidMode } from "./mermaid-lang";
+import type { Tab, FileTypeId } from "./state";
 
 /**
  * Theme-aware highlight style. Colors are CSS variables (defined in styles.css
@@ -50,77 +52,111 @@ function extOf(path: string | null): string {
   return path.split(/[\\/]/).pop()!.split(".").pop()!.toLowerCase();
 }
 
-/** True when the path is a Markdown document (drives the preview pane). */
-export function isMarkdownPath(path: string | null): boolean {
-  const ext = extOf(path);
-  return ext === "md" || ext === "markdown";
+/**
+ * Extension → file type. The single mapping table: both the picker's detection
+ * and the static highlighting fast-path read it, so a language can't drift into
+ * being offered in one place and unknown in the other. Anything absent is
+ * "normal", which leaves it to the lazy language-data path (loadLanguageFor).
+ */
+const EXT_TO_TYPE: Record<string, FileTypeId> = {
+  json: "json",
+  sql: "sql",
+  java: "java",
+  py: "python",
+  sh: "shell",
+  bash: "shell",
+  html: "html",
+  htm: "html",
+  xhtml: "html",
+  css: "css",
+  js: "javascript",
+  mjs: "javascript",
+  cjs: "javascript",
+  jsx: "javascript",
+  ts: "typescript",
+  mts: "typescript",
+  cts: "typescript",
+  tsx: "typescript",
+  md: "markdown",
+  markdown: "markdown",
+  mmd: "mermaid",
+  mermaid: "mermaid",
+  xml: "xml",
+  yml: "yaml",
+  yaml: "yaml",
+  c: "cpp",
+  h: "cpp",
+  cpp: "cpp",
+  cc: "cpp",
+  cxx: "cpp",
+  hpp: "cpp",
+  rs: "rust",
+  go: "go",
+};
+
+/** The type a path implies on its own, before any explicit pick. */
+export function detectFileType(path: string | null): FileTypeId {
+  return EXT_TO_TYPE[extOf(path)] ?? "normal";
 }
 
-/** True when the path is a standalone Mermaid diagram file — the whole file is
- *  rendered as one diagram in the preview pane (no Markdown wrapping). */
-export function isMermaidPath(path: string | null): boolean {
-  const ext = extOf(path);
-  return ext === "mmd" || ext === "mermaid";
+/** The type in force for a tab: the user's explicit pick, else the extension. */
+export function effectiveFileType(tab: Tab | null): FileTypeId {
+  if (!tab) return "normal";
+  return tab.fileType ?? detectFileType(tab.path);
 }
 
-/** Resolve a file path to its language extension (empty for plain text). */
-export function languageForPath(path: string | null): Extension {
-  if (!path) return [];
-  const ext = extOf(path);
-  switch (ext) {
+/** Resolve a type to its language extension. `path` only refines a type it
+ *  can't change (JSX/TSX dialects), so an explicit pick still wins.
+ *
+ *  "normal" is plain text — picking it is how the user turns highlighting and
+ *  the preview off. Detection also lands here for unmapped extensions, but that
+ *  leaves `fileType` null, which is what lets `applyLazyLanguage` still reach
+ *  the lazy language-data path for them. */
+export function languageForFileType(ft: FileTypeId, path: string | null): Extension {
+  switch (ft) {
+    case "markdown":
+      return markdown();
+    case "mermaid":
+      return StreamLanguage.define(mermaidMode);
     case "json":
       return json();
     case "sql":
       return sql();
     case "java":
       return java();
-    case "py":
+    case "python":
       return python();
-    case "sh":
-    case "bash":
+    case "shell":
       return StreamLanguage.define(shell);
     case "html":
-    case "htm":
-    case "xhtml":
       return html();
     case "css":
       return css();
-    case "js":
-    case "mjs":
-    case "cjs":
-      return javascript();
-    case "jsx":
-      return javascript({ jsx: true });
-    case "ts":
-    case "mts":
-    case "cts":
-      return javascript({ typescript: true });
-    case "tsx":
-      return javascript({ jsx: true, typescript: true });
-    case "md":
-    case "markdown":
-      return markdown();
+    case "javascript":
+      return javascript({ jsx: extOf(path) === "jsx" });
+    case "typescript":
+      return javascript({ typescript: true, jsx: extOf(path) === "tsx" });
     case "xml":
       return xml();
-    case "yml":
     case "yaml":
       return yaml();
-    case "c":
-    case "h":
     case "cpp":
-    case "cc":
-    case "cxx":
-    case "hpp":
       return cpp();
-    case "rs":
+    case "rust":
       return rust();
     case "go":
       return StreamLanguage.define(go);
-    // "txt" and everything else: fall through to the lazy language-data path
-    // (loadLanguageFor) for broad, Notepad++-level extension coverage.
     default:
       return [];
   }
+}
+
+/** Resolve a file path to its language extension (empty for plain text). "txt"
+ *  and every other unmapped extension land on [], leaving them to the lazy
+ *  language-data path (loadLanguageFor) for Notepad++-level coverage. */
+export function languageForPath(path: string | null): Extension {
+  if (!path) return [];
+  return languageForFileType(detectFileType(path), path);
 }
 
 /** Loaded LanguageSupport cached by language name, so re-activating a tab

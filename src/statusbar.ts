@@ -1,6 +1,7 @@
-import { store, type EncodingId, type EolId } from "./state";
+import { store, type EncodingId, type EolId, type FileTypeId } from "./state";
 import { getView, getZoomPercent } from "./editor";
-import { setActiveEncoding, setActiveEol } from "./tabs";
+import { setActiveEncoding, setActiveEol, setActiveFileType } from "./tabs";
+import { effectiveFileType } from "./language";
 
 let el: HTMLElement;
 
@@ -24,6 +25,36 @@ function encLabel(enc: string): string {
     default:
       return "UTF-8";
   }
+}
+
+/**
+ * Label for every file type, in picker order: Normal/Markdown/Mermaid (the
+ * preview-bearing types) first, then alphabetical. A full Record, so a new
+ * FileTypeId without a label here is a compile error rather than a type that
+ * silently mislabels or goes missing from the picker.
+ */
+const FILE_TYPE_LABELS: Record<FileTypeId, string> = {
+  normal: "Normal",
+  markdown: "Markdown",
+  mermaid: "Mermaid",
+  cpp: "C/C++",
+  css: "CSS",
+  go: "Go",
+  html: "HTML",
+  java: "Java",
+  javascript: "JavaScript",
+  json: "JSON",
+  python: "Python",
+  rust: "Rust",
+  shell: "Shell",
+  sql: "SQL",
+  typescript: "TypeScript",
+  xml: "XML",
+  yaml: "YAML",
+};
+
+function fileTypeLabel(ft: FileTypeId): string {
+  return FILE_TYPE_LABELS[ft];
 }
 
 function countWords(text: string): number {
@@ -67,13 +98,19 @@ export function refreshStatusBar(): void {
   right.className = "status-right";
   const zoom = document.createElement("span");
   zoom.textContent = `${getZoomPercent()}%`;
+  // Labelled by the effective type, so a .md file reads "Markdown" before any
+  // explicit pick is made.
+  const ft = effectiveFileType(tab);
+  const typeBtn = pickerItem(fileTypeLabel(ft), (a) =>
+    openPicker(a, FILETYPE_OPTIONS, ft, (id) => setActiveFileType(id as FileTypeId)),
+  );
   const eolBtn = pickerItem(eolLabel(tab.eol), (a) =>
     openPicker(a, EOL_OPTIONS, tab.eol, (id) => void setActiveEol(id as EolId)),
   );
   const encBtn = pickerItem(encLabel(tab.encoding), (a) =>
     openPicker(a, ENC_OPTIONS, tab.encoding, (id) => void setActiveEncoding(id as EncodingId)),
   );
-  right.append(zoom, eolBtn, encBtn);
+  right.append(zoom, typeBtn, eolBtn, encBtn);
 
   el.replaceChildren(left, right);
 }
@@ -95,6 +132,12 @@ const ENC_OPTIONS: PickerOption[] = [
   { id: "utf8bom", label: "UTF-8 with BOM" },
   { id: "latin1", label: "Latin-1 (Windows-1252)" },
 ];
+
+// Derived from the label table, so the picker can't drift out of sync with it.
+const FILETYPE_OPTIONS: PickerOption[] = Object.entries(FILE_TYPE_LABELS).map(([id, label]) => ({
+  id,
+  label,
+}));
 
 function pickerItem(label: string, onOpen: (anchor: HTMLElement) => void): HTMLElement {
   const span = document.createElement("span");
@@ -130,11 +173,17 @@ function openPicker(
   }
   document.body.appendChild(menu);
 
-  // Position above the anchor (status bar sits at the window bottom).
+  // Position above the anchor (status bar sits at the window bottom). The
+  // file-type list can be taller than the space above it, so cap it to that
+  // space (it scrolls) instead of letting it run off the top of the viewport.
   const a = anchor.getBoundingClientRect();
+  const avail = a.top - 8;
+  if (menu.getBoundingClientRect().height > avail) {
+    menu.style.maxHeight = `${Math.max(80, avail)}px`;
+  }
   const m = menu.getBoundingClientRect();
   menu.style.left = `${Math.max(4, a.right - m.width)}px`;
-  menu.style.top = `${a.top - m.height - 4}px`;
+  menu.style.top = `${Math.max(4, a.top - m.height - 4)}px`;
 
   const onDocDown = (e: MouseEvent) => {
     if (!menu.contains(e.target as Node)) close();

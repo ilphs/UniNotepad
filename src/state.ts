@@ -2,6 +2,29 @@ import type { EditorState } from "@codemirror/state";
 
 export type EncodingId = "utf8" | "utf8bom" | "latin1";
 export type EolId = "lf" | "crlf";
+/** Every file type id. The type is derived from this list, so it doubles as the
+ *  session-restore whitelist without the two being able to drift apart. */
+export const FILE_TYPE_IDS = [
+  "normal",
+  "markdown",
+  "mermaid",
+  "json",
+  "sql",
+  "java",
+  "python",
+  "shell",
+  "html",
+  "css",
+  "javascript",
+  "typescript",
+  "xml",
+  "yaml",
+  "cpp",
+  "rust",
+  "go",
+] as const;
+
+export type FileTypeId = (typeof FILE_TYPE_IDS)[number];
 
 /** Live, in-memory model of an open tab. */
 export interface Tab {
@@ -11,6 +34,8 @@ export interface Tab {
   dirty: boolean;
   encoding: EncodingId;
   eol: EolId;
+  /** Explicit pick from the status-bar picker; null => detect from the path. */
+  fileType: FileTypeId | null;
   diskMtimeMs: number | null;
   missingOnDisk: boolean;
   /** CodeMirror state: holds doc, selection, and undo history. */

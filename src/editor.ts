@@ -27,10 +27,17 @@ import {
   findNext,
   findPrevious,
 } from "@codemirror/search";
-import { store, type Tab } from "./state";
+import { store, type Tab, type FileTypeId } from "./state";
 import { onDocChanged } from "./session";
 import { refreshStatusBar } from "./statusbar";
-import { highlighting, languageForPath, loadLanguageFor } from "./language";
+import {
+  highlighting,
+  languageForPath,
+  languageForFileType,
+  detectFileType,
+  effectiveFileType,
+  loadLanguageFor,
+} from "./language";
 import {
   isWordWrap,
   setWordWrap,
@@ -77,8 +84,11 @@ export function makeState(
   tabId: string,
   cursor?: number,
   path?: string | null,
+  fileType?: FileTypeId | null,
 ): EditorState {
   const head = cursor == null ? 0 : Math.max(0, Math.min(cursor, doc.length));
+  const p = path ?? null;
+  const ft = fileType ?? detectFileType(p);
   return EditorState.create({
     doc,
     selection: { anchor: head },
@@ -95,7 +105,7 @@ export function makeState(
       bracketMatching(),
       indentOnInput(),
       indent.of(indentExtension()),
-      language.of(languageForPath(path ?? null)),
+      language.of(languageForFileType(ft, p)),
       highlighting,
       keymap.of([
         ...closeBracketsKeymap,
@@ -125,11 +135,14 @@ export function makeState(
   });
 }
 
-/** Re-apply the language for the active tab's path (used after Save As). */
-export function reconfigureLanguage(path: string | null): void {
-  view.dispatch({ effects: language.reconfigure(languageForPath(path)) });
-  updatePreview(); // extension may have changed the file's Markdown status
-  void applyLazyLanguage(path);
+/** Re-apply the active tab's language (used after Save As changes the extension,
+ *  and after the type picker changes the tab's type). Takes the tab, not a path:
+ *  a path alone would discard an explicit pick. */
+export function reconfigureLanguage(tab: Tab): void {
+  const ext = languageForFileType(effectiveFileType(tab), tab.path);
+  view.dispatch({ effects: language.reconfigure(ext) });
+  updatePreview(); // the effective type may have changed the tab's preview status
+  void applyLazyLanguage(tab);
 }
 
 /**
@@ -138,15 +151,22 @@ export function reconfigureLanguage(path: string | null): void {
  * No-op when the fast-path already handled the file (avoids a re-highlight
  * flash for common languages). Guarded against the tab switching mid-load.
  */
-async function applyLazyLanguage(path: string | null): Promise<void> {
+async function applyLazyLanguage(tab: Tab): Promise<void> {
+  // An explicit pick outranks whatever language-data matches on the filename;
+  // without this, switching tabs would silently undo it (e.g. CMakeLists.txt
+  // set to Markdown). The test is fileType, not the effective type: an explicit
+  // Normal resolves to no language, which would let language-data back in.
+  if (tab.fileType !== null) return;
+  const path = tab.path;
   if (!path) return;
   const staticExt = languageForPath(path);
   // Fast-path already resolved a language → nothing to lazy-load.
   if (!Array.isArray(staticExt) || staticExt.length > 0) return;
   const ext = await loadLanguageFor(path);
   if (!ext) return;
-  // The user may have switched tabs during the async import.
-  if (store.activeTab?.path !== path) return;
+  // The tab may have been switched away from, or given an explicit type, during
+  // the async import.
+  if (store.state.activeTabId !== tab.id || tab.fileType !== null) return;
   view.dispatch({ effects: language.reconfigure(ext) });
 }
 
@@ -213,7 +233,7 @@ export function showTab(tab: Tab): void {
     view.scrollDOM.scrollTop = tab.scrollTop;
   });
   updatePreview(); // show/hide + render for the newly active tab
-  void applyLazyLanguage(tab.path); // broaden highlighting for long-tail extensions
+  void applyLazyLanguage(tab); // broaden highlighting for long-tail extensions
 }
 
 /** Persist the live view (doc, selection, undo history, scroll) back into a tab. */
