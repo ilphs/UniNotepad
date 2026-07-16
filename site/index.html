@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>UniNotepad — 껐다 켜도 그대로인 메모장</title>
+    <meta
+      name="description"
+      content="저장하지 않아도 열어둔 탭이 그대로 복원되는 경량 크로스플랫폼 메모장. Windows · macOS · Linux, 설치 파일 3MB 안팎."
+    />
+    <link rel="icon" href="/assets/favicon.png" />
+
+    <!-- Open Graph / 링크 미리보기 -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="UniNotepad — 껐다 켜도 그대로인 메모장" />
+    <meta
+      property="og:description"
+      content="저장하지 않아도 열어둔 탭이 그대로 복원되는 경량 메모장. Windows · macOS · Linux."
+    />
+    <meta property="og:image" content="/assets/syntax-markdown.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <style>
+      :root {
+        --bg: #ffffff;
+        --fg: #1c1c22;
+        --muted: #5c5c6b;
+        --card: #f4f4f7;
+        --border: #dcdce4;
+        --accent: #7c5cff;
+        --accent-fg: #ffffff;
+        --shadow: 0 6px 24px rgb(0 0 0 / 12%);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14141a;
+          --fg: #e6e6ef;
+          --muted: #9a9aae;
+          --card: #1e1e28;
+          --border: #2e2e3c;
+          --accent: #9d86ff;
+          --accent-fg: #14141a;
+          --shadow: 0 6px 24px rgb(0 0 0 / 50%);
+        }
+      }
+
+      * { box-sizing: border-box; }
+
+      html { scroll-behavior: smooth; }
+
+      body {
+        margin: 0;
+        padding: 0 1.5rem 5rem;
+        font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI",
+          "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+      }
+
+      a { color: var(--accent); }
+
+      section { max-width: 60rem; margin: 0 auto; }
+      h2 {
+        max-width: 60rem;
+        margin: 4rem auto 1.5rem;
+        font-size: 1.5rem;
+        text-align: center;
+      }
+
+      /* ---- Hero ---------------------------------------------------------- */
+      .hero {
+        max-width: 52rem;
+        margin: 0 auto;
+        padding: 4rem 0 1rem;
+        text-align: center;
+      }
+      .hero img.icon { width: 96px; height: 96px; }
+      .hero h1 { margin: 1rem 0 0.25rem; font-size: 2.25rem; letter-spacing: -0.02em; }
+      .hero .tagline { margin: 0; font-size: 1.25rem; color: var(--fg); font-weight: 600; }
+      .hero .lead { margin: 1.25rem auto 0; max-width: 40rem; color: var(--muted); }
+
+      .cta { margin: 2rem 0 0.75rem; display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+      .btn {
+        display: inline-flex; align-items: center; gap: 0.5rem;
+        padding: 0.8rem 1.5rem; border-radius: 10px;
+        font-size: 1rem; font-weight: 600; text-decoration: none;
+        border: 1px solid var(--border); background: var(--card); color: var(--fg);
+        transition: transform 0.06s ease, box-shadow 0.15s ease;
+      }
+      .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+      .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+      .hero .sub { margin: 0.5rem 0 0; font-size: 0.9rem; color: var(--muted); min-height: 1.2em; }
+
+      .hero .shot { margin: 2.5rem auto 0; max-width: 56rem; }
+      .hero .shot img { width: 100%; border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow); }
+
+      /* ---- Download cards ------------------------------------------------ */
+      .downloads {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1rem;
+      }
+      .dl-card {
+        border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;
+        background: var(--card);
+      }
+      .dl-card.recommended { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+      .dl-card h3 { margin: 0 0 0.75rem; font-size: 1.1rem; display: flex; align-items: center; gap: 0.4rem; }
+      .dl-card .tag {
+        font-size: 0.7rem; font-weight: 700; color: var(--accent-fg); background: var(--accent);
+        padding: 0.1rem 0.45rem; border-radius: 999px; margin-left: auto;
+      }
+      .dl-card ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+      .dl-card a.dl {
+        display: block; padding: 0.55rem 0.8rem; border-radius: 8px;
+        border: 1px solid var(--border); text-decoration: none; color: var(--fg);
+        font-size: 0.95rem; font-weight: 500;
+      }
+      .dl-card a.dl:hover { border-color: var(--accent); color: var(--accent); }
+      .dl-note { max-width: 60rem; margin: 1rem auto 0; font-size: 0.85rem; color: var(--muted); text-align: center; }
+      .dl-note code { background: var(--card); padding: 0.1rem 0.35rem; border-radius: 4px; }
+
+      /* ---- Feature grid -------------------------------------------------- */
+      .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+      .feature { border: 1px solid var(--border); border-radius: 12px; padding: 1.1rem 1.25rem; background: var(--card); }
+      .feature .t { font-weight: 700; margin: 0 0 0.35rem; }
+      .feature .d { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+      /* ---- Screenshots --------------------------------------------------- */
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem; }
+      figure { margin: 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--card); }
+      figure img { display: block; width: 100%; }
+      figcaption { padding: 0.75rem 1rem; font-size: 0.9rem; color: var(--muted); }
+      figcaption b { color: var(--fg); }
+
+      /* ---- FAQ ----------------------------------------------------------- */
+      .faq { max-width: 48rem; }
+      details { border: 1px solid var(--border); border-radius: 10px; padding: 0.5rem 1rem; margin: 0.6rem 0; background: var(--card); }
+      details summary { cursor: pointer; font-weight: 600; padding: 0.4rem 0; }
+      details p { color: var(--muted); }
+
+      footer { max-width: 60rem; margin: 4rem auto 0; padding-top: 2rem; border-top: 1px solid var(--border); text-align: center; color: var(--muted); font-size: 0.9rem; }
+    </style>
+  </head>
+  <body>
+    <!-- ==================== Hero ==================== -->
+    <header class="hero">
+      <img class="icon" src="/assets/app-icon.png" alt="UniNotepad 앱 아이콘" />
+      <h1>UniNotepad</h1>
+      <p class="tagline">껐다 켜도 그대로인 메모장.</p>
+      <p class="lead">
+        저장하는 걸 깜빡한 채 창을 닫아도, 컴퓨터가 갑자기 꺼져도 괜찮습니다.
+        열어둔 탭은 <b>저장하지 않은 내용까지</b> 그대로 남아 있다가 다음에 앱을 열면
+        떠날 때 모습 그대로 돌아옵니다. Windows · macOS · Linux, 설치 파일 3MB 안팎.
+      </p>
+
+      <div class="cta">
+        <a class="btn primary" id="heroDownload" href="#download">내려받기</a>
+        <a class="btn" href="https://github.com/ilphs/UniNotepad" target="_blank" rel="noopener">GitHub에서 보기</a>
+      </div>
+      <p class="sub" id="heroSub"><span data-version>최신 버전</span> · 무료 · 오픈소스</p>
+
+      <div class="shot">
+        <img src="/assets/syntax-markdown.png" alt="UniNotepad의 Markdown 분할 미리보기 화면" />
+      </div>
+    </header>
+
+    <!-- ==================== Download ==================== -->
+    <h2 id="download">📥 내려받기</h2>
+    <section>
+      <div class="downloads">
+        <div class="dl-card" data-os="mac">
+          <h3>🍎 macOS</h3>
+          <ul>
+            <li><a class="dl" href="/download/mac-arm">Apple Silicon (M1 이후) · .dmg</a></li>
+            <li><a class="dl" href="/download/mac-intel">Intel · .dmg</a></li>
+          </ul>
+        </div>
+        <div class="dl-card" data-os="windows">
+          <h3>🪟 Windows</h3>
+          <ul>
+            <li><a class="dl" href="/download/windows">설치 관리자 · .msi</a></li>
+            <li><a class="dl" href="/download/windows-exe">NSIS 설치 · .exe</a></li>
+          </ul>
+        </div>
+        <div class="dl-card" data-os="linux">
+          <h3>🐧 Linux</h3>
+          <ul>
+            <li><a class="dl" href="/download/linux-deb">Debian · .deb</a></li>
+            <li><a class="dl" href="/download/linux-rpm">Fedora/RHEL · .rpm</a></li>
+            <li><a class="dl" href="/download/linux-appimage">이식형 · .AppImage</a></li>
+          </ul>
+        </div>
+      </div>
+      <p class="dl-note">
+        모든 파일은 <a href="https://github.com/ilphs/UniNotepad/releases/latest" target="_blank" rel="noopener">최신 릴리스</a>로 자동 연결됩니다.
+        macOS에서 "손상되었기 때문에 열 수 없습니다"가 나오면, 앱을 응용 프로그램 폴더로 옮긴 뒤
+        <code>xattr -cr /Applications/UniNotepad.app</code>을 실행하고 다시 여세요.
+      </p>
+    </section>
+
+    <!-- ==================== Features ==================== -->
+    <h2>✨ 무엇이 다른가요</h2>
+    <section>
+      <div class="features">
+        <div class="feature"><p class="t">💾 저장 걱정 없음</p><p class="d">타이핑을 멈추면 알아서 기록 — 닫을 때 "저장하시겠습니까?"를 묻지 않습니다.</p></div>
+        <div class="feature"><p class="t">🗂️ 탭 · 세션 복원</p><p class="d">껐다 켜도, 갑자기 꺼져도 열어둔 탭이 미저장 메모까지 그대로.</p></div>
+        <div class="feature"><p class="t">🎨 구문 강조</p><p class="d">143개 언어를 파일 이름만 보고 자동 판별합니다.</p></div>
+        <div class="feature"><p class="t">📄 문서 미리보기</p><p class="d">Markdown·Mermaid 실시간 렌더 · 스크롤 동기화 · HTML 내보내기 · 인쇄(PDF).</p></div>
+        <div class="feature"><p class="t">🌗 라이트·다크 테마</p><p class="d">시스템 설정을 따르거나 직접 선택 — 미리보기 색도 함께 바뀝니다.</p></div>
+        <div class="feature"><p class="t">✂️ 줄 편집 도구</p><p class="d">정렬 · 중복/빈 줄 제거 · 공백 정리 · 대소문자 · 줄 이동.</p></div>
+        <div class="feature"><p class="t">🇰🇷 예전 한글 파일</p><p class="d">UTF-8은 물론 예전 메모장의 "ANSI"(EUC-KR/CP949)도 판별해서 엽니다.</p></div>
+        <div class="feature"><p class="t">🪶 가벼움</p><p class="d">브라우저를 끼워 넣지 않고 OS 기능을 써서 설치 파일 3MB 안팎.</p></div>
+      </div>
+    </section>
+
+    <!-- ==================== Screenshots ==================== -->
+    <h2>🖼 화면</h2>
+    <section>
+      <div class="grid">
+        <figure>
+          <img src="/assets/filetype-picker.png" alt="상태 표시줄의 파일 타입 선택 메뉴" />
+          <figcaption><b>파일 타입 선택</b> — 저장하지 않은 새 글도 Markdown·Mermaid로 지정하면 바로 미리보기가 열립니다</figcaption>
+        </figure>
+        <figure>
+          <img src="/assets/syntax-mermaid.png" alt="Mermaid 다이어그램 미리보기" />
+          <figcaption><b>Mermaid</b> — 순서도를 글로 적으면 그림이 됩니다</figcaption>
+        </figure>
+        <figure>
+          <img src="/assets/syntax-typescript.png" alt="TypeScript 구문 강조" />
+          <figcaption><b>TypeScript</b> — 타입과 제네릭까지</figcaption>
+        </figure>
+        <figure>
+          <img src="/assets/syntax-python.png" alt="Python 구문 강조" />
+          <figcaption><b>Python</b> — docstring과 데코레이터</figcaption>
+        </figure>
+        <figure>
+          <img src="/assets/syntax-bash.png" alt="Bash 구문 강조" />
+          <figcaption><b>Bash</b> — 명령어 스크립트</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- ==================== FAQ ==================== -->
+    <h2>❓ 자주 묻는 질문</h2>
+    <section class="faq">
+      <details>
+        <summary>저장을 안 했는데 정말 안 없어지나요?</summary>
+        <p>네. 타이핑을 멈추면 1.5초 뒤에, 그리고 탭을 옮기거나 창을 닫을 때마다 조용히 기록해 둡니다. 컴퓨터가 강제로 꺼져도 마지막 1~2초 분량 외에는 남아 있습니다.</p>
+      </details>
+      <details>
+        <summary>그럼 저장 버튼은 왜 있나요?</summary>
+        <p>앱이 알아서 보관하는 건 이 앱 안에서만 쓰는 임시 보관본입니다. 내용을 실제 파일로 남겨 다른 프로그램에서도 열려면 저장을 해야 합니다.</p>
+      </details>
+      <details>
+        <summary>한글이 깨지지 않나요?</summary>
+        <p>UTF-8 파일은 (BOM이 있든 없든) 그대로 잘 열립니다. 예전 윈도우 메모장에서 "ANSI"로 저장한 한글 파일(EUC-KR/CP949)도 알아서 판별해 제대로 엽니다. 혹시 잘못 인식되면 상태 표시줄에서 EUC-KR을 직접 골라 다시 읽어올 수 있습니다. 다만 일본어(Shift-JIS)·중국어(GBK) 등 그 밖의 옛 인코딩은 아직 지원하지 않습니다.</p>
+      </details>
+      <details>
+        <summary>작업하던 파일을 다른 프로그램에서 고치면요?</summary>
+        <p>다음에 앱을 켤 때 알아채고 "파일이 바뀌었다"고 알려줍니다. 이때도 사용자가 쓰던 내용이 우선이라 멋대로 덮어쓰지 않습니다.</p>
+      </details>
+    </section>
+
+    <footer>
+      <p>
+        <a href="https://github.com/ilphs/UniNotepad" target="_blank" rel="noopener">GitHub</a> ·
+        <a href="https://github.com/ilphs/UniNotepad/releases" target="_blank" rel="noopener">모든 릴리스</a> ·
+        Tauri 2 + CodeMirror 6로 제작
+      </p>
+    </footer>
+
+    <script>
+      // 방문 OS를 추정해 (1) 해당 다운로드 카드를 강조하고 (2) 히어로 버튼을 그 OS로 연결.
+      // macOS의 Apple Silicon/Intel 구분은 브라우저로 불가능하므로 Apple Silicon을 기본 추천.
+      (function () {
+        function detectOS() {
+          var ua = navigator.userAgent || "";
+          var p = navigator.platform || "";
+          if (/Mac/i.test(p) || /Mac OS X/i.test(ua)) return "mac";
+          if (/Win/i.test(p) || /Windows/i.test(ua)) return "windows";
+          if (/Linux|X11/i.test(p) || /Linux/i.test(ua)) return "linux";
+          return null;
+        }
+        var HERO = {
+          mac: { href: "/download/mac-arm", label: "macOS용 내려받기 (Apple Silicon)" },
+          windows: { href: "/download/windows", label: "Windows용 내려받기 (.msi)" },
+          linux: { href: "/download/linux-appimage", label: "Linux용 내려받기 (.AppImage)" },
+        };
+        var os = detectOS();
+        var hero = document.getElementById("heroDownload");
+        if (os && HERO[os]) {
+          hero.setAttribute("href", HERO[os].href);
+          hero.textContent = HERO[os].label;
+          var card = document.querySelector('.dl-card[data-os="' + os + '"]');
+          if (card) {
+            card.classList.add("recommended");
+            var tag = document.createElement("span");
+            tag.className = "tag";
+            tag.textContent = "추천";
+            card.querySelector("h3").appendChild(tag);
+          }
+        }
+
+        // 최신 버전 표시 (실패해도 조용히 넘어감 — "최신 버전" 문구 유지).
+        fetch("https://api.github.com/repos/ilphs/UniNotepad/releases/latest")
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) {
+            if (d && d.tag_name) {
+              var els = document.querySelectorAll("[data-version]");
+              for (var i = 0; i < els.length; i++) els[i].textContent = d.tag_name;
+            }
+          })
+          .catch(function () {});
+      })();
+    </script>
+  </body>
+</html>
