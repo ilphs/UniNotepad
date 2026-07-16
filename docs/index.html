@@ -50,8 +50,8 @@
       header a { color: var(--accent); }
 
       .grid {
-        /* 4 shots read best as 2x2; the max-width keeps auto-fit from
-           forming a 3+1 row on wide screens. */
+        /* The max-width holds auto-fit to 2 columns on wide screens; a 3-wide
+           row shrinks each shot past the point where its text is legible. */
         max-width: 52rem;
         margin: 0 auto;
         display: grid;
@@ -199,6 +199,12 @@
     <script>
       const SHOTS = [
         {
+          id: "filetype",
+          file: "filetype-picker.png",
+          title: "파일 타입 선택",
+          desc: "저장하지 않은 새 글도 원하는 타입으로 보여줍니다",
+        },
+        {
           id: "markdown",
           file: "syntax-markdown.png",
           title: "Markdown",
@@ -211,16 +217,22 @@
           desc: "순서도를 글로 적으면 그림이 됩니다",
         },
         {
+          id: "typescript",
+          file: "syntax-typescript.png",
+          title: "TypeScript",
+          desc: "타입과 제네릭까지 구분해서 보여줍니다",
+        },
+        {
+          id: "python",
+          file: "syntax-python.png",
+          title: "Python",
+          desc: "docstring과 데코레이터가 한눈에 들어옵니다",
+        },
+        {
           id: "bash",
           file: "syntax-bash.png",
           title: "Bash",
           desc: "명령어 스크립트",
-        },
-        {
-          id: "html",
-          file: "syntax-html.png",
-          title: "HTML",
-          desc: "중첩된 CSS와 JavaScript까지",
         },
       ];
 
