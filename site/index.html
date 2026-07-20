@@ -133,6 +133,15 @@
       figcaption { padding: 0.75rem 1rem; font-size: 0.9rem; color: var(--muted); }
       figcaption b { color: var(--fg); }
 
+      /* ---- Lightbox ------------------------------------------------------ */
+      .grid figure img, .hero .shot img { cursor: zoom-in; }
+      .lightbox { border: none; outline: none; padding: 0; background: transparent; max-width: min(96vw, 1400px); max-height: 92vh; }
+      .lightbox::backdrop { background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px); }
+      .lightbox figure { margin: 0; border: none; border-radius: 0; background: transparent; overflow: visible; }
+      .lightbox img { display: block; margin: 0 auto; max-width: 100%; max-height: 85vh; border-radius: 10px; box-shadow: var(--shadow); cursor: zoom-out; }
+      .lightbox figcaption { text-align: center; color: #eee; padding: 0.6rem 0 0; font-size: 0.9rem; }
+      .lightbox figcaption b { color: #fff; }
+
       /* ---- FAQ ----------------------------------------------------------- */
       .faq { max-width: 48rem; }
       details { border: 1px solid var(--border); border-radius: 10px; padding: 0.5rem 1rem; margin: 0.6rem 0; background: var(--card); }
@@ -270,6 +279,14 @@
       </p>
     </footer>
 
+    <!-- ==================== Lightbox ==================== -->
+    <dialog class="lightbox" id="lightbox">
+      <figure>
+        <img id="lightboxImg" src="" alt="" />
+        <figcaption id="lightboxCaption"></figcaption>
+      </figure>
+    </dialog>
+
     <script>
       // 방문 OS를 추정해 (1) 해당 다운로드 카드를 강조하고 (2) 히어로 버튼을 그 OS로 연결.
       // macOS의 Apple Silicon/Intel 구분은 브라우저로 불가능하므로 Apple Silicon을 기본 추천.
@@ -312,6 +329,26 @@
             }
           })
           .catch(function () {});
+      })();
+
+      // 스크린샷 클릭 → 라이트박스로 크게 보기. Esc 닫기·포커스는 <dialog>가 기본 제공.
+      (function () {
+        var lightbox = document.getElementById("lightbox");
+        var lbImg = document.getElementById("lightboxImg");
+        var lbCap = document.getElementById("lightboxCaption");
+        var shots = document.querySelectorAll(".grid figure img, .hero .shot img");
+        for (var i = 0; i < shots.length; i++) {
+          shots[i].addEventListener("click", function () {
+            lbImg.src = this.src;
+            lbImg.alt = this.alt;
+            var fig = this.closest("figure");
+            var cap = fig && fig.querySelector("figcaption");
+            if (cap) lbCap.innerHTML = cap.innerHTML;
+            else lbCap.textContent = this.alt;
+            lightbox.showModal();
+          });
+        }
+        lightbox.addEventListener("click", function () { lightbox.close(); });
       })();
     </script>
   </body>
