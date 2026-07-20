@@ -1,6 +1,6 @@
 import type { EditorState } from "@codemirror/state";
 
-export type EncodingId = "utf8" | "utf8bom" | "latin1" | "euckr";
+export type EncodingId = "utf8" | "utf8bom" | "latin1" | "euckr" | "sjis" | "gbk" | "big5";
 export type EolId = "lf" | "crlf";
 /** Every file type id. The type is derived from this list, so it doubles as the
  *  session-restore whitelist without the two being able to drift apart. */

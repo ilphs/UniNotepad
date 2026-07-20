@@ -1,10 +1,11 @@
 //! Encoding + line-ending detection and (de)serialization.
 //!
 //! Scope: UTF-8 and UTF-8-with-BOM are detected and preserved. For files that
-//! are not valid UTF-8 we run a charset guess (chardetng): Korean EUC-KR/CP949
-//! is recognized and decoded correctly, and anything else falls back to Latin-1
-//! (windows-1252) so the file still opens without data loss on round-trip within
-//! that code page. Other legacy charsets (Shift-JIS, GBK, …) remain out of scope.
+//! are not valid UTF-8 we run a charset guess (chardetng): Korean EUC-KR/CP949,
+//! Japanese Shift-JIS, and Chinese GBK/Big5 are recognized and decoded
+//! correctly, and anything else falls back to Latin-1 (windows-1252) so the file
+//! still opens without data loss on round-trip within that code page. A few
+//! legacy Japanese charsets (EUC-JP, ISO-2022-JP) remain out of scope.
 
 use serde::{Deserialize, Serialize};
 
@@ -20,6 +21,12 @@ pub enum Encoding {
     Latin1,
     #[serde(rename = "euckr")]
     EucKr,
+    #[serde(rename = "sjis")]
+    Sjis,
+    #[serde(rename = "gbk")]
+    Gbk,
+    #[serde(rename = "big5")]
+    Big5,
 }
 
 impl Encoding {
@@ -29,6 +36,9 @@ impl Encoding {
             Encoding::Utf8Bom => "utf8bom",
             Encoding::Latin1 => "latin1",
             Encoding::EucKr => "euckr",
+            Encoding::Sjis => "sjis",
+            Encoding::Gbk => "gbk",
+            Encoding::Big5 => "big5",
         }
     }
 
@@ -37,6 +47,9 @@ impl Encoding {
             "utf8bom" => Encoding::Utf8Bom,
             "latin1" => Encoding::Latin1,
             "euckr" => Encoding::EucKr,
+            "sjis" => Encoding::Sjis,
+            "gbk" => Encoding::Gbk,
+            "big5" => Encoding::Big5,
             _ => Encoding::Utf8,
         }
     }
@@ -94,15 +107,27 @@ pub fn decode(bytes: &[u8]) -> Decoded {
     let (text, encoding) = match std::str::from_utf8(body) {
         Ok(s) => (s.to_string(), encoding),
         Err(_) => {
-            // Not valid UTF-8 — guess the charset. We only special-case Korean
-            // EUC-KR (the documented gap); every other guess decodes through the
+            // Not valid UTF-8 — guess the charset. We special-case the CJK code
+            // pages chardetng can commit to (Korean EUC-KR, Japanese Shift-JIS,
+            // Chinese GBK/Big5); every other guess decodes through the
             // windows-1252 (Latin-1 superset) fallback, preserving prior behavior.
+            // (EUC-JP / ISO-2022-JP are the remaining Japanese gap — they fall
+            // through to Latin-1 rather than round-tripping.)
             let mut detector = chardetng::EncodingDetector::new();
             detector.feed(body, true);
             let guess = detector.guess(None, true);
             if guess == encoding_rs::EUC_KR {
                 let (cow, _, _) = encoding_rs::EUC_KR.decode(body);
                 (cow.into_owned(), Encoding::EucKr)
+            } else if guess == encoding_rs::SHIFT_JIS {
+                let (cow, _, _) = encoding_rs::SHIFT_JIS.decode(body);
+                (cow.into_owned(), Encoding::Sjis)
+            } else if guess == encoding_rs::GBK {
+                let (cow, _, _) = encoding_rs::GBK.decode(body);
+                (cow.into_owned(), Encoding::Gbk)
+            } else if guess == encoding_rs::BIG5 {
+                let (cow, _, _) = encoding_rs::BIG5.decode(body);
+                (cow.into_owned(), Encoding::Big5)
             } else {
                 let (cow, _, _) = encoding_rs::WINDOWS_1252.decode(body);
                 (cow.into_owned(), Encoding::Latin1)
@@ -133,6 +158,9 @@ pub fn decode_as(bytes: &[u8], encoding: Encoding) -> Decoded {
         }
         Encoding::Latin1 => encoding_rs::WINDOWS_1252.decode(bytes).0.into_owned(),
         Encoding::EucKr => encoding_rs::EUC_KR.decode(bytes).0.into_owned(),
+        Encoding::Sjis => encoding_rs::SHIFT_JIS.decode(bytes).0.into_owned(),
+        Encoding::Gbk => encoding_rs::GBK.decode(bytes).0.into_owned(),
+        Encoding::Big5 => encoding_rs::BIG5.decode(bytes).0.into_owned(),
     };
 
     let eol = detect_eol(&text);
@@ -183,6 +211,20 @@ pub fn encode(content: &str, encoding: Encoding, eol: Eol) -> Vec<u8> {
             // encoding_rs maps unmappable chars to HTML numeric refs (WHATWG);
             // slightly lossy for exotic glyphs, but EUC-KR source round-trips.
             let (cow, _, _) = encoding_rs::EUC_KR.encode(&with_eol);
+            cow.into_owned()
+        }
+        Encoding::Sjis => {
+            // Same WHATWG unmappable→HTML-numeric-ref caveat as EUC-KR above;
+            // Shift-JIS source round-trips.
+            let (cow, _, _) = encoding_rs::SHIFT_JIS.encode(&with_eol);
+            cow.into_owned()
+        }
+        Encoding::Gbk => {
+            let (cow, _, _) = encoding_rs::GBK.encode(&with_eol);
+            cow.into_owned()
+        }
+        Encoding::Big5 => {
+            let (cow, _, _) = encoding_rs::BIG5.encode(&with_eol);
             cow.into_owned()
         }
     }
@@ -246,5 +288,83 @@ mod tests {
         assert_eq!(d.encoding, Encoding::EucKr);
         assert_eq!(d.content, "가나");
         assert_eq!(encode(&d.content, d.encoding, d.eol), bytes.to_vec());
+    }
+
+    #[test]
+    fn shift_jis_japanese_is_detected_and_roundtrips() {
+        // Kana-heavy sentence so chardetng commits to Shift-JIS rather than a
+        // Chinese code page (shared Han ideographs alone are ambiguous).
+        let (bytes, _, _) =
+            encoding_rs::SHIFT_JIS.encode("これはシフトジスの日本語のテスト文章です。\n");
+        let d = decode(&bytes);
+        assert_eq!(d.encoding, Encoding::Sjis);
+        assert_eq!(d.content, "これはシフトジスの日本語のテスト文章です。\n");
+        assert_eq!(encode(&d.content, d.encoding, d.eol), bytes.to_vec());
+    }
+
+    #[test]
+    fn gbk_simplified_chinese_is_detected_and_roundtrips() {
+        // Simplified-only characters (简体、这样) that Big5 cannot represent, so
+        // the guess lands on GBK.
+        let (bytes, _, _) =
+            encoding_rs::GBK.encode("这是一段用来测试简体中文编码的示例文字内容。\n");
+        let d = decode(&bytes);
+        assert_eq!(d.encoding, Encoding::Gbk);
+        assert_eq!(d.content, "这是一段用来测试简体中文编码的示例文字内容。\n");
+        assert_eq!(encode(&d.content, d.encoding, d.eol), bytes.to_vec());
+    }
+
+    #[test]
+    fn big5_traditional_chinese_is_detected_and_roundtrips() {
+        // Traditional-only forms (這樣、繁體、編碼) to steer the guess to Big5.
+        let (bytes, _, _) =
+            encoding_rs::BIG5.encode("這是一段用來測試繁體中文編碼的範例文字內容。\n");
+        let d = decode(&bytes);
+        assert_eq!(d.encoding, Encoding::Big5);
+        assert_eq!(d.content, "這是一段用來測試繁體中文編碼的範例文字內容。\n");
+        assert_eq!(encode(&d.content, d.encoding, d.eol), bytes.to_vec());
+    }
+
+    #[test]
+    fn decode_as_forces_sjis_over_detection() {
+        // A short Shift-JIS buffer chardetng might not commit to; forcing it decodes cleanly.
+        let (bytes, _, _) = encoding_rs::SHIFT_JIS.encode("テスト");
+        let d = decode_as(&bytes, Encoding::Sjis);
+        assert_eq!(d.encoding, Encoding::Sjis);
+        assert_eq!(d.content, "テスト");
+        assert_eq!(encode(&d.content, d.encoding, d.eol), bytes.to_vec());
+    }
+
+    #[test]
+    fn decode_as_forces_gbk_over_detection() {
+        let (bytes, _, _) = encoding_rs::GBK.encode("测试");
+        let d = decode_as(&bytes, Encoding::Gbk);
+        assert_eq!(d.encoding, Encoding::Gbk);
+        assert_eq!(d.content, "测试");
+        assert_eq!(encode(&d.content, d.encoding, d.eol), bytes.to_vec());
+    }
+
+    #[test]
+    fn decode_as_forces_big5_over_detection() {
+        let (bytes, _, _) = encoding_rs::BIG5.encode("測試");
+        let d = decode_as(&bytes, Encoding::Big5);
+        assert_eq!(d.encoding, Encoding::Big5);
+        assert_eq!(d.content, "測試");
+        assert_eq!(encode(&d.content, d.encoding, d.eol), bytes.to_vec());
+    }
+
+    #[test]
+    fn from_str_roundtrips_all_encodings() {
+        for enc in [
+            Encoding::Utf8,
+            Encoding::Utf8Bom,
+            Encoding::Latin1,
+            Encoding::EucKr,
+            Encoding::Sjis,
+            Encoding::Gbk,
+            Encoding::Big5,
+        ] {
+            assert_eq!(Encoding::from_str(enc.as_str()), enc);
+        }
     }
 }
