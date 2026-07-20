@@ -13,11 +13,18 @@ const INDENT_TABS_KEY = "uninotepad.indentUseTabs";
 const INDENT_WIDTH_KEY = "uninotepad.indentWidth";
 const MERMAID_BG_KEY = "uninotepad.mermaidBg";
 const MERMAID_BG_ON_KEY = "uninotepad.mermaidBgEnabled";
+const FONT_SIZE_KEY = "uninotepad.editorFontSize";
 
 /** Indent width bounds (columns). */
 const INDENT_WIDTH_MIN = 1;
 const INDENT_WIDTH_MAX = 8;
 const INDENT_WIDTH_DEFAULT = 4;
+
+/** Editor font-size bounds (px). Mirrors editor.ts MIN/MAX/BASE_FONT so the
+ *  persisted zoom level stays in the same range the zoom commands clamp to. */
+const FONT_SIZE_MIN = 8;
+const FONT_SIZE_MAX = 40;
+const FONT_SIZE_DEFAULT = 14;
 
 /** Editor:preview split bounds — keeps either pane from collapsing. */
 const RATIO_MIN = 0.2;
@@ -166,6 +173,19 @@ export function indentWidth(): number {
 export function setIndentWidth(width: number): void {
   const clamped = Math.max(INDENT_WIDTH_MIN, Math.min(INDENT_WIDTH_MAX, Math.round(width)));
   localStorage.setItem(INDENT_WIDTH_KEY, String(clamped));
+}
+
+/** Editor font size in px (8–40, default 14). Persists the zoom level so it
+ *  survives restarts. Same integer-validate-then-clamp shape as indentWidth. */
+export function editorFontSize(): number {
+  const v = Number(localStorage.getItem(FONT_SIZE_KEY));
+  if (!Number.isInteger(v)) return FONT_SIZE_DEFAULT;
+  return Math.max(FONT_SIZE_MIN, Math.min(FONT_SIZE_MAX, v));
+}
+
+export function setEditorFontSize(px: number): void {
+  const clamped = Math.max(FONT_SIZE_MIN, Math.min(FONT_SIZE_MAX, Math.round(px)));
+  localStorage.setItem(FONT_SIZE_KEY, String(clamped));
 }
 
 /** The string inserted per indent level: a tab, or `indentWidth` spaces. */

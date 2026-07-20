@@ -57,6 +57,8 @@ import {
   setShowWhitespace,
   indentUnitString,
   indentWidth,
+  editorFontSize,
+  setEditorFontSize,
 } from "./settings";
 import { updatePreview, schedulePreviewRender } from "./preview";
 
@@ -66,7 +68,8 @@ let hostEl: HTMLElement;
 const MIN_FONT = 8;
 const MAX_FONT = 40;
 const BASE_FONT = 14;
-let fontSize = BASE_FONT;
+// Restore the last zoom level (px) from settings; defaults to BASE_FONT.
+let fontSize = editorFontSize();
 
 /**
  * Build a fresh EditorState for one tab. The updateListener closes over this
@@ -260,18 +263,21 @@ function applyZoom(): void {
 
 export function zoomIn(): void {
   fontSize = Math.min(MAX_FONT, fontSize + 1);
+  setEditorFontSize(fontSize);
   applyZoom();
   refreshStatusBar();
 }
 
 export function zoomOut(): void {
   fontSize = Math.max(MIN_FONT, fontSize - 1);
+  setEditorFontSize(fontSize);
   applyZoom();
   refreshStatusBar();
 }
 
 export function zoomReset(): void {
   fontSize = BASE_FONT;
+  setEditorFontSize(fontSize);
   applyZoom();
   refreshStatusBar();
 }
@@ -326,10 +332,16 @@ export function openFind(): void {
 export function openReplace(): void {
   openSearchPanel(view);
   // Scoped to input: the "replace" button carries the same name attribute.
-  const field = view.dom.querySelector<HTMLInputElement>('input[name="replace"]');
-  if (!field) return;
-  field.focus();
-  field.select();
+  const focusReplace = (): boolean => {
+    const field = view.dom.querySelector<HTMLInputElement>('input[name="replace"]');
+    if (!field) return false;
+    field.focus();
+    field.select();
+    return document.activeElement === field;
+  };
+  // The replace row usually mounts synchronously with the panel; if focus didn't
+  // land (panel not yet in the DOM), retry exactly once on the next frame.
+  if (!focusReplace()) requestAnimationFrame(() => void focusReplace());
 }
 
 /** Move to the next/previous match. Opens the search panel when no query is set yet. */
