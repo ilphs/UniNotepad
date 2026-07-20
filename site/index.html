@@ -213,13 +213,13 @@
     <section>
       <div class="features">
         <div class="feature"><p class="t">💾 저장 걱정 없음</p><p class="d">타이핑을 멈추면 알아서 기록 — 닫을 때 "저장하시겠습니까?"를 묻지 않습니다.</p></div>
-        <div class="feature"><p class="t">🗂️ 탭 · 세션 복원</p><p class="d">껐다 켜도, 갑자기 꺼져도 열어둔 탭이 미저장 메모까지 그대로.</p></div>
+        <div class="feature"><p class="t">🗂️ 탭 · 세션 복원</p><p class="d">껐다 켜도, 갑자기 꺼져도 열어둔 탭이 미저장 메모까지 그대로 — 탭바 + 버튼, Ctrl+Tab 순환, 우클릭으로 한꺼번에 닫기.</p></div>
         <div class="feature"><p class="t">🎨 구문 강조</p><p class="d">143개 언어를 파일 이름만 보고 자동 판별합니다.</p></div>
-        <div class="feature"><p class="t">📄 문서 미리보기</p><p class="d">Markdown·Mermaid 실시간 렌더 · 스크롤 동기화 · HTML 내보내기 · 인쇄(PDF) · 편집기와 미리보기 따로 확대.</p></div>
+        <div class="feature"><p class="t">📄 문서 미리보기</p><p class="d">Markdown·Mermaid 실시간 렌더 · 스크롤 동기화 · HTML 내보내기 · 인쇄(PDF) · 편집기와 미리보기 따로 확대 — 확대 크기는 다시 켜도 유지.</p></div>
         <div class="feature"><p class="t">🌗 라이트·다크 테마</p><p class="d">시스템 설정을 따르거나 직접 선택 — 미리보기 색도 함께 바뀝니다.</p></div>
         <div class="feature"><p class="t">✂️ 줄 편집 도구</p><p class="d">정렬 · 중복/빈 줄 제거 · 공백 정리 · 대소문자 · 줄 이동.</p></div>
         <div class="feature"><p class="t">⌨️ 다중 커서 · 코드 폴딩</p><p class="d">같은 단어를 한꺼번에 선택해 고치고, 긴 코드는 접어서 봅니다. 공백 문자 표시까지.</p></div>
-        <div class="feature"><p class="t">🇰🇷 예전 인코딩 파일</p><p class="d">UTF-8은 물론 EUC-KR/CP949 · Shift-JIS · GBK · Big5도 판별해서 엽니다.</p></div>
+        <div class="feature"><p class="t">🇰🇷 예전 인코딩 파일</p><p class="d">UTF-8·UTF-16은 물론 EUC-KR/CP949 · Shift-JIS · GBK · Big5도 판별해서 엽니다. 표현할 수 없는 문자는 저장 전에 미리 경고.</p></div>
         <div class="feature"><p class="t">🪶 가벼움</p><p class="d">브라우저를 끼워 넣지 않고 OS 기능을 써서 설치 파일 3MB 안팎.</p></div>
       </div>
     </section>
@@ -264,11 +264,11 @@
       </details>
       <details>
         <summary>그럼 저장 버튼은 왜 있나요?</summary>
-        <p>앱이 알아서 보관하는 건 이 앱 안에서만 쓰는 임시 보관본입니다. 내용을 실제 파일로 남겨 다른 프로그램에서도 열려면 저장을 해야 합니다.</p>
+        <p>앱이 알아서 보관하는 건 이 앱 안에서만 쓰는 임시 보관본입니다. 내용을 실제 파일로 남겨 다른 프로그램에서도 열려면 저장을 해야 합니다. 저장할 때는 임시 파일에 먼저 완전히 쓴 뒤 순간적으로 바꿔치기하는 방식이라, 저장 도중 컴퓨터가 꺼져도 원래 파일이 깨지지 않습니다.</p>
       </details>
       <details>
         <summary>한글이 깨지지 않나요?</summary>
-        <p>UTF-8 파일은 (BOM이 있든 없든) 그대로 잘 열립니다. 예전 윈도우 메모장에서 "ANSI"로 저장한 한글 파일(EUC-KR/CP949)도 알아서 판별해 제대로 엽니다. 혹시 잘못 인식되면 상태 표시줄에서 EUC-KR을 직접 골라 다시 읽어올 수 있습니다. 일본어(Shift-JIS)·중국어 간체(GBK)·번체(Big5)로 저장된 옛 문서도 같은 방식으로 자동 판별해 열고, 상태 표시줄에서 직접 골라 다시 읽을 수도 있습니다.</p>
+        <p>UTF-8 파일은 (BOM이 있든 없든) 그대로 잘 열립니다. 예전 윈도우 메모장에서 "ANSI"로 저장한 한글 파일(EUC-KR/CP949)도 알아서 판별해 제대로 엽니다. 혹시 잘못 인식되면 상태 표시줄에서 EUC-KR을 직접 골라 다시 읽어올 수 있습니다. 일본어(Shift-JIS)·중국어 간체(GBK)·번체(Big5)로 저장된 옛 문서도 같은 방식으로 자동 판별해 열고, 상태 표시줄에서 직접 골라 다시 읽을 수도 있습니다. UTF-16(LE/BE) 파일도 마찬가지로 열고 저장할 수 있으며, 지금 고른 인코딩으로 표현할 수 없는 문자가 있으면 저장 전에 미리 알려줍니다.</p>
       </details>
       <details>
         <summary>작업하던 파일을 다른 프로그램에서 고치면요?</summary>
