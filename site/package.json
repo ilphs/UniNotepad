@@ -3,5 +3,8 @@
   "name": "uninotepad-site",
   "engines": {
     "node": "24.x"
+  },
+  "devDependencies": {
+    "vercel": "^56.3.2"
   }
 }
