@@ -1,15 +1,14 @@
 //! On-disk session store: paths, atomic writes, and fsync discipline.
 //!
 //! Durability model: every file (manifest and each backup) is written to a temp
-//! file in the same directory, fsync'd, then atomically renamed over the target.
-//! `atomicwrites` gives us the correct `rename` / `ReplaceFileW` behavior per OS.
-//! A `kill -9` or power loss therefore leaves each file as either the complete
-//! old version or the complete new version — never a torn write.
+//! file in the same directory, fsync'd, then atomically renamed over the target
+//! via `crate::fsio::atomic_write_bytes`. A `kill -9` or power loss therefore
+//! leaves each file as either the complete old version or the complete new
+//! version — never a torn write.
 
-use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use atomicwrites::{AtomicFile, OverwriteBehavior};
+use crate::fsio::atomic_write_bytes;
 
 use super::model::SessionManifest;
 
@@ -44,16 +43,6 @@ impl SessionPaths {
     pub fn ensure_dirs(&self) -> std::io::Result<()> {
         std::fs::create_dir_all(&self.backups_dir)
     }
-}
-
-/// Atomically write bytes to `target` (temp + fsync + rename).
-fn atomic_write_bytes(target: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    let af = AtomicFile::new(target, OverwriteBehavior::AllowOverwrite);
-    af.write(|f| f.write_all(bytes))
-        .map_err(|e| match e {
-            atomicwrites::Error::Internal(io) => io,
-            atomicwrites::Error::User(io) => io,
-        })
 }
 
 pub fn write_manifest(paths: &SessionPaths, manifest_json: &str) -> std::io::Result<()> {

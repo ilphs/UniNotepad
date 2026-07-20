@@ -1,5 +1,6 @@
 mod commands;
 mod encoding;
+mod fsio;
 mod menu;
 mod session;
 
@@ -44,7 +45,9 @@ fn deliver_paths<R: Runtime>(app: &AppHandle<R>, paths: Vec<String>) {
         return;
     }
     let state = app.state::<PendingOpen>();
-    let mut s = state.0.lock().unwrap();
+    // Recover from a poisoned lock instead of panicking: under release
+    // panic="abort" a poisoned mutex would otherwise take the whole app down.
+    let mut s = state.0.lock().unwrap_or_else(|e| e.into_inner());
     if s.ready {
         let _ = app.emit("open-paths", paths);
     } else {
@@ -54,7 +57,7 @@ fn deliver_paths<R: Runtime>(app: &AppHandle<R>, paths: Vec<String>) {
 
 #[tauri::command]
 fn frontend_ready(app: AppHandle, state: State<PendingOpen>) {
-    let mut s = state.0.lock().unwrap();
+    let mut s = state.0.lock().unwrap_or_else(|e| e.into_inner());
     s.ready = true;
     if !s.queue.is_empty() {
         let paths = std::mem::take(&mut s.queue);
