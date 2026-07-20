@@ -9,3 +9,5 @@ src-tauri/target/
 src-tauri/gen/
 .vercel
 .env*.local
+
+.DS_Store
