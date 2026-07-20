@@ -1,16 +1,11 @@
 
-# Claude Code runtime
-.claude/db/context.db*
-.claude/.ctx_state
-.claude/.backup-*
-.claude/.ralph_state
-.claude/.hud_cache
-.claude/.hook_feedback
-.claude/.project_root
-.claude/.messenger_enabled
+# Claude Code — 로컬 전용 (원격 미추적)
+.claude/
 
 # Node / build outputs
 node_modules/
 dist/
 src-tauri/target/
 src-tauri/gen/
+.vercel
+.env*.local
