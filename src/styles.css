@@ -128,14 +128,38 @@ body {
 }
 
 /* ---- Tab bar ---- */
+#tabrow {
+  display: flex;
+  align-items: stretch;
+  background: var(--chrome-bg);
+  border-bottom: 1px solid var(--border);
+  min-height: 34px;
+}
+
 #tabbar {
   display: flex;
   flex-wrap: nowrap;
   overflow-x: auto;
-  background: var(--chrome-bg);
-  border-bottom: 1px solid var(--border);
-  min-height: 34px;
+  flex: 1;
+  min-width: 0;
   user-select: none;
+}
+
+#tab-new {
+  flex: none;
+  border: none;
+  background: transparent;
+  color: var(--chrome-fg);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 10px;
+  border-radius: 3px;
+  user-select: none;
+}
+
+#tab-new:hover {
+  background: rgba(128, 128, 128, 0.3);
 }
 
 .tab {
@@ -827,7 +851,7 @@ body {
    Everything else — tabs, editor, divider, status bar — is hidden, and the
    preview expands to the full page with no internal scroll clipping. */
 @media print {
-  #tabbar,
+  #tabrow,
   #banner,
   #divider,
   #editor-host,

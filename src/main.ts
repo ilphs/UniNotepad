@@ -31,6 +31,7 @@ getVersion()
 
 async function bootstrap(): Promise<void> {
   const tabbar = document.getElementById("tabbar")!;
+  const tabNew = document.getElementById("tab-new")!;
   const banner = document.getElementById("banner")!;
   const editorHost = document.getElementById("editor-host")!;
   const statusbar = document.getElementById("statusbar")!;
@@ -39,6 +40,7 @@ async function bootstrap(): Promise<void> {
   const divider = document.getElementById("divider")!;
 
   initTabBar(tabbar, banner);
+  tabNew.addEventListener("click", () => newUntitled());
   initStatusBar(statusbar);
   mountEditor(editorHost);
   // Before any showTab() below (it calls updatePreview()).
