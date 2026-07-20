@@ -21,6 +21,7 @@ import {
   frameDiagram,
   setSoloMode,
   closeMermaidPopover,
+  setPreviewSelected,
 } from "./mermaid-view";
 import {
   isPreviewEnabled,
@@ -205,12 +206,32 @@ async function renderMermaid(mdBody: HTMLElement, myRun: number): Promise<void> 
   }
 }
 
+// ---- Selected pane (zoom target) -------------------------------------------
+
+/**
+ * Which pane the View ▸ Zoom items act on. Hover alone can't answer that for
+ * the menu path (the mouse is on the menu when the item is clicked), so clicks
+ * select a pane and mermaid-view's zoom routing honors the selection first,
+ * hover second. The selected pane gets a `pane-selected` outline — but only
+ * while both panes are visible; with the preview hidden there is nothing to
+ * disambiguate and a permanent outline would just be noise.
+ */
+function setSelectedPane(preview: boolean): void {
+  setPreviewSelected(preview);
+  const both = !previewHost.hidden;
+  previewHost.classList.toggle("pane-selected", both && preview);
+  editorHost.classList.toggle("pane-selected", both && !preview);
+}
+
 /** Show/hide the pane per the current tab + toggle, and render if visible.
  *  Call on tab switch, toggle, and Save As (extension may change md status). */
 export function updatePreview(): void {
   const show = shouldShow();
   previewHost.hidden = !show;
   dividerEl.hidden = !show;
+  // A hidden pane can't stay selected (its outline is gone and menu zoom would
+  // silently target an invisible chart); re-showing starts from the editor too.
+  setSelectedPane(false);
   applyRatio();
   if (show) void renderNow();
 }
@@ -380,6 +401,13 @@ export function mountPreview(
   // Diagram backdrop/zoom/pan. Delegated to the host, so it survives the
   // re-renders that rebuild every chart node.
   mountMermaidView(preview);
+
+  // Pane selection for zoom routing. Clicks pick a pane; `focusin` also covers
+  // the editor because CM6 takes focus through code paths (tab switch, find)
+  // that produce no pointerdown on the host.
+  preview.addEventListener("pointerdown", () => setSelectedPane(true));
+  editor.addEventListener("pointerdown", () => setSelectedPane(false));
+  editor.addEventListener("focusin", () => setSelectedPane(false));
 
   // Editor → preview scroll sync (one-way, proportional). Bound once to the
   // single shared editor scroller; no-op while the pane is hidden. One-way only

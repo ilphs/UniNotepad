@@ -279,6 +279,16 @@ body {
   display: none;
 }
 
+/* The pane View ▸ Zoom acts on (preview.ts applies the class only while both
+   panes are visible). Outline, not border (no layout shift) and not an inset
+   box-shadow (painted under the opaque CM6 editor); pulled inward so it isn't
+   clipped by the hosts' own overflow. */
+#editor-host.pane-selected,
+#preview-host.pane-selected {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
 /* ---- Rendered Markdown ---- */
 .md-body {
   flex: 1 1 auto;

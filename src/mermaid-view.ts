@@ -254,13 +254,27 @@ function flashBadge(text: string): void {
 
 // ---- Zoom routing ----------------------------------------------------------
 
-/** Whether a zoom shortcut should drive the chart instead of the editor font.
- *  Queried at action time rather than tracked with hover listeners: the DOM is
- *  rebuilt every 200ms while typing, so cached state could disagree with it,
- *  and the codebase has no hover-listener precedent (hover is CSS everywhere). */
+/** Whether the preview pane is the click-selected pane. Tracking this as state
+ *  is safe where tracking hover was not: it is set by clicks on `#preview-host`
+ *  itself (static markup), not on the diagram nodes the 200ms re-render
+ *  rebuilds. Session-scoped like `zoomExp`; preview.ts owns the wiring and
+ *  resets it when the pane hides. */
+let previewSelected = false;
+
+export function setPreviewSelected(sel: boolean): void {
+  previewSelected = sel;
+}
+
+/** Whether a zoom command should drive the chart instead of the editor font:
+ *  the pane is click-selected, or the mouse is over it. Hover alone can't carry
+ *  the menu path — clicking a menu item parks the mouse on the menu, so `:hover`
+ *  is always false there — which is why selection is checked first. Hover is
+ *  still queried at action time rather than tracked with listeners: the diagram
+ *  DOM is rebuilt every 200ms while typing, so cached state could disagree with
+ *  it, and the codebase has no hover-listener precedent (hover is CSS everywhere). */
 function targetsChart(): boolean {
   if (!hostEl || hostEl.hidden) return false;
-  if (!hostEl.matches(":hover")) return false;
+  if (!previewSelected && !hostEl.matches(":hover")) return false;
   return hostEl.querySelector(".mermaid-diagram svg") !== null;
 }
 
