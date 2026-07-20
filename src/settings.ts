@@ -4,6 +4,7 @@
  */
 
 const WRAP_KEY = "uninotepad.wordWrap";
+const SHOW_WHITESPACE_KEY = "uninotepad.showWhitespace";
 const TRIM_KEY = "uninotepad.trimTrailingOnSave";
 const FINAL_NL_KEY = "uninotepad.ensureFinalNewline";
 const PREVIEW_KEY = "uninotepad.markdownPreview";
@@ -42,6 +43,15 @@ export function isWordWrap(): boolean {
 
 export function setWordWrap(on: boolean): void {
   writeBool(WRAP_KEY, on);
+}
+
+/** Render spaces/tabs and mark trailing whitespace (default OFF). */
+export function isShowWhitespace(): boolean {
+  return readBool(SHOW_WHITESPACE_KEY, false);
+}
+
+export function setShowWhitespace(on: boolean): void {
+  writeBool(SHOW_WHITESPACE_KEY, on);
 }
 
 /** Strip trailing whitespace from every line on save (default OFF). */

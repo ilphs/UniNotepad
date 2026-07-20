@@ -10,6 +10,10 @@ import {
   zoomReset,
   openGotoLine,
   toggleWordWrap,
+  toggleShowWhitespace,
+  selectNextOccurrenceCmd,
+  foldAll,
+  unfoldAll,
 } from "./editor";
 import {
   newUntitled,
@@ -83,6 +87,9 @@ export function handleMenu(id: string): void {
     case "edit.replace":
       openReplace();
       break;
+    case "edit.selectNextOccurrence":
+      selectNextOccurrenceCmd();
+      break;
     case "edit.sortAsc":
       sortLinesAsc();
       break;
@@ -121,6 +128,15 @@ export function handleMenu(id: string): void {
       break;
     case "view.toggleWrap":
       toggleWordWrap();
+      break;
+    case "view.toggleWhitespace":
+      toggleShowWhitespace();
+      break;
+    case "view.foldAll":
+      foldAll();
+      break;
+    case "view.unfoldAll":
+      unfoldAll();
       break;
     case "view.togglePreview":
       togglePreview();

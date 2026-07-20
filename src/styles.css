@@ -601,6 +601,53 @@ body {
   background: var(--selection-bg) !important;
 }
 
+/* Fold gutter markers and the collapsed-range placeholder, bound to the gutter
+   theme variables so the fold chrome follows light/dark like the line numbers. */
+.cm-editor .cm-foldGutter .cm-gutterElement {
+  cursor: pointer;
+  color: var(--gutter-fg);
+}
+.cm-editor .cm-foldGutter .cm-gutterElement:hover {
+  color: var(--gutter-active-fg);
+}
+.cm-editor .cm-foldPlaceholder {
+  background: var(--gutter-bg);
+  color: var(--gutter-fg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0 4px;
+  margin: 0 2px;
+}
+
+/* Whitespace display (Show Whitespace Characters). The rendered space dot and
+   tab arrow use the muted gutter foreground so they read as chrome, not text;
+   trailing runs get a low-alpha warning wash that stays legible in both themes. */
+.cm-editor .cm-highlightSpace:before {
+  color: var(--gutter-fg);
+}
+/* Re-tint CM's default tab arrow (a fixed #888 SVG) to the light-theme gutter
+   foreground; the dark blocks below swap the stroke for the dark palette. */
+.cm-editor .cm-highlightTab {
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="20"><path stroke="%239aa0a6" stroke-width="1" fill="none" d="M1 10H196L190 5M190 15L196 10"/></svg>');
+}
+.cm-editor .cm-trailingSpace {
+  background: color-mix(in srgb, #e5534b 22%, transparent);
+}
+:root[data-theme="dark"] .cm-editor .cm-highlightTab {
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="20"><path stroke="%236272a4" stroke-width="1" fill="none" d="M1 10H196L190 5M190 15L196 10"/></svg>');
+}
+:root[data-theme="dark"] .cm-editor .cm-trailingSpace {
+  background: color-mix(in srgb, #ff5555 28%, transparent);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .cm-editor .cm-highlightTab {
+    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="20"><path stroke="%236272a4" stroke-width="1" fill="none" d="M1 10H196L190 5M190 15L196 10"/></svg>');
+  }
+  :root:not([data-theme]) .cm-editor .cm-trailingSpace {
+    background: color-mix(in srgb, #ff5555 28%, transparent);
+  }
+}
+
 /* ---- Status bar ---- */
 #statusbar {
   display: flex;

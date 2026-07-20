@@ -100,7 +100,12 @@ export function refreshStatusBar(): void {
   }
 
   const left = document.createElement("span");
-  left.textContent = `Ln ${line.number}, Col ${col} ${countInfo}`;
+  // With multiple cursors, a single Ln/Col is meaningless — show the count instead.
+  const ranges = state.selection.ranges.length;
+  left.textContent =
+    ranges > 1
+      ? `${ranges} selections ${countInfo}`
+      : `Ln ${line.number}, Col ${col} ${countInfo}`;
 
   const right = document.createElement("span");
   right.className = "status-right";

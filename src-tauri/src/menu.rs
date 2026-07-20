@@ -82,6 +82,16 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .accelerator("CmdOrCtrl+H")
         .build(app)?;
 
+    // No menu accelerator: CodeMirror's searchKeymap already binds Mod-d to
+    // selectNextOccurrence, and on macOS the WebView's preventDefault beats a
+    // native menu accelerator. The key is spelled out in the label instead.
+    #[cfg(target_os = "macos")]
+    let select_next_label = "Select Next Occurrence (Cmd+D)";
+    #[cfg(not(target_os = "macos"))]
+    let select_next_label = "Select Next Occurrence (Ctrl+D)";
+    let select_next_occurrence =
+        MenuItemBuilder::with_id("edit.selectNextOccurrence", select_next_label).build(app)?;
+
     // Line Operations — a Notepad++-style submenu. All act on the selected lines,
     // or the whole document when there is no selection.
     let sort_asc =
@@ -131,6 +141,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .item(&find_next)
         .item(&find_prev)
         .item(&replace)
+        .item(&select_next_occurrence)
         .separator()
         .item(&line_ops)
         .build()?;
@@ -158,6 +169,14 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let toggle_wrap = MenuItemBuilder::with_id("view.toggleWrap", "Toggle Word Wrap")
         .accelerator("Alt+Z")
         .build(app)?;
+    // No accelerator — a discoverable toggle for rendering spaces/tabs and
+    // marking trailing whitespace; the state persists in localStorage.
+    let toggle_whitespace =
+        MenuItemBuilder::with_id("view.toggleWhitespace", "Show Whitespace Characters").build(app)?;
+    // Fold/Unfold All — the fold gutter and foldKeymap (Ctrl+Shift+[ / ]) drive
+    // per-range folding; these operate on the whole document. No accelerator.
+    let fold_all = MenuItemBuilder::with_id("view.foldAll", "Fold All").build(app)?;
+    let unfold_all = MenuItemBuilder::with_id("view.unfoldAll", "Unfold All").build(app)?;
     let toggle_preview = MenuItemBuilder::with_id("view.togglePreview", "Toggle Preview")
         .accelerator("CmdOrCtrl+Shift+M")
         .build(app)?;
@@ -201,6 +220,9 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .separator()
         .item(&goto_line)
         .item(&toggle_wrap)
+        .item(&toggle_whitespace)
+        .item(&fold_all)
+        .item(&unfold_all)
         .item(&toggle_preview)
         .item(&eol_menu)
         .separator();

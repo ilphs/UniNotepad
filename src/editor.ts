@@ -7,6 +7,8 @@ import {
   highlightActiveLineGutter,
   drawSelection,
   rectangularSelection,
+  highlightWhitespace,
+  highlightTrailingWhitespace,
 } from "@codemirror/view";
 import {
   defaultKeymap,
@@ -16,7 +18,16 @@ import {
   undo,
   redo,
 } from "@codemirror/commands";
-import { bracketMatching, indentOnInput, indentUnit } from "@codemirror/language";
+import {
+  bracketMatching,
+  indentOnInput,
+  indentUnit,
+  foldGutter,
+  codeFolding,
+  foldKeymap,
+  foldAll as cmFoldAll,
+  unfoldAll as cmUnfoldAll,
+} from "@codemirror/language";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import {
   search,
@@ -26,6 +37,7 @@ import {
   gotoLine,
   findNext,
   findPrevious,
+  selectNextOccurrence,
 } from "@codemirror/search";
 import { store, type Tab, type FileTypeId } from "./state";
 import { onDocChanged } from "./session";
@@ -41,6 +53,8 @@ import {
 import {
   isWordWrap,
   setWordWrap,
+  isShowWhitespace,
+  setShowWhitespace,
   indentUnitString,
   indentWidth,
 } from "./settings";
@@ -66,12 +80,20 @@ const language = new Compartment();
 /** Per-state compartment holding the line-wrap extension, toggled app-wide. */
 const wrap = new Compartment();
 
+/** Per-state compartment holding the whitespace-display extension, toggled app-wide. */
+const whitespace = new Compartment();
+
 /** Per-state compartment holding indent unit + tab size, driven by settings. */
 const indent = new Compartment();
 
 /** Current wrap extension, driven by the persisted preference. */
 function wrapExtension(): Extension {
   return isWordWrap() ? EditorView.lineWrapping : [];
+}
+
+/** Current whitespace extension: render spaces/tabs and mark trailing runs when on. */
+function whitespaceExtension(): Extension {
+  return isShowWhitespace() ? [highlightWhitespace(), highlightTrailingWhitespace()] : [];
 }
 
 /** Current indent extension: the per-level string plus the Tab display width. */
@@ -94,8 +116,11 @@ export function makeState(
     selection: { anchor: head },
     extensions: [
       lineNumbers(),
+      foldGutter(),
       highlightActiveLineGutter(),
       history(),
+      codeFolding(),
+      EditorState.allowMultipleSelections.of(true),
       drawSelection(),
       rectangularSelection(),
       highlightActiveLine(),
@@ -118,9 +143,11 @@ export function makeState(
         // first command returning true wins.
         { key: "Mod-g", mac: "Ctrl-g", run: gotoLine },
         ...searchKeymap,
+        ...foldKeymap,
         indentWithTab,
       ]),
       wrap.of(wrapExtension()),
+      whitespace.of(whitespaceExtension()),
       EditorView.updateListener.of((u) => {
         // Ignore programmatic setState (tab switch): those carry no transactions.
         if (u.docChanged && u.transactions.length > 0) {
@@ -187,6 +214,38 @@ export function toggleWordWrap(): void {
     tab.state = tab.state.update({ effects: wrap.reconfigure(ext) }).state;
   }
   refreshStatusBar();
+}
+
+/** Flip the app-wide "show whitespace" preference and reconfigure every tab's
+ *  state (same active-vs-inactive split as toggleWordWrap). */
+export function toggleShowWhitespace(): void {
+  setShowWhitespace(!isShowWhitespace());
+  const ext = whitespaceExtension();
+  const activeId = store.state.activeTabId;
+  // The active tab's live doc lives in the view; others live in tab.state.
+  view.dispatch({ effects: whitespace.reconfigure(ext) });
+  for (const tab of store.state.tabs) {
+    if (tab.id === activeId) continue;
+    tab.state = tab.state.update({ effects: whitespace.reconfigure(ext) }).state;
+  }
+  refreshStatusBar();
+}
+
+/** Add the next occurrence of the current selection/word to the selection
+ *  (Cmd/Ctrl+D). Routed from the Edit menu; the key itself is bound by
+ *  searchKeymap. */
+export function selectNextOccurrenceCmd(): void {
+  selectNextOccurrence({ state: view.state, dispatch: (tr) => view.dispatch(tr) });
+}
+
+/** Collapse every foldable range in the active view. */
+export function foldAll(): void {
+  cmFoldAll(view);
+}
+
+/** Expand every folded range in the active view. */
+export function unfoldAll(): void {
+  cmUnfoldAll(view);
 }
 
 export function mountEditor(host: HTMLElement): void {
