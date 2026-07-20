@@ -21,6 +21,9 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let save_as = MenuItemBuilder::with_id("file.saveAs", "Save As…")
         .accelerator("CmdOrCtrl+Shift+S")
         .build(app)?;
+    let save_all = MenuItemBuilder::with_id("file.saveAll", "Save All")
+        .accelerator("CmdOrCtrl+Alt+S")
+        .build(app)?;
     let save_options = MenuItemBuilder::with_id("file.saveOptions", "Save Options…").build(app)?;
     let export_html =
         MenuItemBuilder::with_id("file.exportHtml", "Export Preview as HTML…").build(app)?;
@@ -33,14 +36,21 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let close_tab = MenuItemBuilder::with_id("file.close", "Close Tab")
         .accelerator("CmdOrCtrl+W")
         .build(app)?;
+    // Bulk close entries — no accelerators (they mirror the tab context menu).
+    let close_others =
+        MenuItemBuilder::with_id("file.closeOthers", "Close Other Tabs").build(app)?;
+    let close_right =
+        MenuItemBuilder::with_id("file.closeRight", "Close Tabs to the Right").build(app)?;
+    let close_all = MenuItemBuilder::with_id("file.closeAll", "Close All Tabs").build(app)?;
 
-    let file_menu = SubmenuBuilder::new(app, "File")
+    let file_builder = SubmenuBuilder::new(app, "File")
         .item(&new_tab)
         .item(&open)
         .item(&open_recent)
         .separator()
         .item(&save)
         .item(&save_as)
+        .item(&save_all)
         .item(&save_options)
         .separator()
         .item(&export_html)
@@ -48,9 +58,17 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .separator()
         .item(&reopen_closed)
         .item(&close_tab)
+        .item(&close_others)
+        .item(&close_right)
+        .item(&close_all);
+    // Quit lives in the macOS application menu (the first submenu); on the other
+    // platforms it stays at the bottom of File. Shadow-rebind rather than a
+    // `mut` builder so neither branch trips an unused-mut warning.
+    #[cfg(not(target_os = "macos"))]
+    let file_builder = file_builder
         .separator()
-        .item(&PredefinedMenuItem::quit(app, Some("Quit UniNotepad"))?)
-        .build()?;
+        .item(&PredefinedMenuItem::quit(app, Some("Quit UniNotepad"))?);
+    let file_menu = file_builder.build()?;
 
     // Edit — undo/redo are custom (must drive CodeMirror history), the rest are
     // predefined so native clipboard handling applies to the WebView.
@@ -78,8 +96,14 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let find_prev = MenuItemBuilder::with_id("edit.findPrev", "Find Previous")
         .accelerator(prev_accel)
         .build(app)?;
+    // macOS: Cmd+H now belongs to the app menu's Hide item, so Replace takes
+    // the platform-standard Option+Cmd+F instead (CM6 leaves Mod-Alt-f unbound).
     let replace = MenuItemBuilder::with_id("edit.replace", "Replace…")
-        .accelerator("CmdOrCtrl+H")
+        .accelerator(if cfg!(target_os = "macos") {
+            "Cmd+Alt+F"
+        } else {
+            "Ctrl+H"
+        })
         .build(app)?;
 
     // No menu accelerator: CodeMirror's searchKeymap already binds Mod-d to
@@ -166,9 +190,16 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let goto_line = MenuItemBuilder::with_id("view.gotoLine", "Go to Line…")
         .accelerator("Ctrl+G")
         .build(app)?;
+    // Alt+Z toggles word wrap. On macOS the accelerator is dropped: Option+Z
+    // emits "Ω", so the native match fails — the webview handles it via e.code
+    // instead (main.ts), and the key is spelled out in the label.
+    #[cfg(not(target_os = "macos"))]
     let toggle_wrap = MenuItemBuilder::with_id("view.toggleWrap", "Toggle Word Wrap")
         .accelerator("Alt+Z")
         .build(app)?;
+    #[cfg(target_os = "macos")]
+    let toggle_wrap =
+        MenuItemBuilder::with_id("view.toggleWrap", "Toggle Word Wrap (⌥Z)").build(app)?;
     // No accelerator — a discoverable toggle for rendering spaces/tabs and
     // marking trailing whitespace; the state persists in localStorage.
     let toggle_whitespace =
@@ -189,6 +220,14 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .item(&eol_lf)
         .item(&eol_crlf)
         .build()?;
+
+    // No accelerators: Ctrl+Tab / Ctrl+Shift+Tab are handled by a capture-phase
+    // keydown listener in the webview (main.ts). The keys are spelled out in the
+    // labels for discoverability, following the select_next_label precedent.
+    let next_tab =
+        MenuItemBuilder::with_id("view.nextTab", "Next Tab (Ctrl+Tab)").build(app)?;
+    let prev_tab =
+        MenuItemBuilder::with_id("view.prevTab", "Previous Tab (Ctrl+Shift+Tab)").build(app)?;
 
     let goto_tabs = (1..=9)
         .map(|n| {
@@ -229,8 +268,34 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     for item in &goto_tabs {
         view_builder = view_builder.item(item);
     }
+    view_builder = view_builder.item(&next_tab).item(&prev_tab);
     view_builder = view_builder.separator().item(&theme_menu);
     let view_menu = view_builder.build()?;
 
-    Menu::with_items(app, &[&file_menu, &edit_menu, &view_menu])
+    // macOS convention: a leading application menu named after the app, carrying
+    // About / Hide / Quit. The OS treats the first submenu as the app menu, so
+    // this must come before File.
+    #[cfg(target_os = "macos")]
+    let app_menu = SubmenuBuilder::new(app, "UniNotepad")
+        .item(&PredefinedMenuItem::about(
+            app,
+            None,
+            Some(tauri::menu::AboutMetadata::default()),
+        )?)
+        .separator()
+        .item(&PredefinedMenuItem::hide(app, None)?)
+        .item(&PredefinedMenuItem::hide_others(app, None)?)
+        .item(&PredefinedMenuItem::show_all(app, None)?)
+        .separator()
+        .item(&PredefinedMenuItem::quit(app, Some("Quit UniNotepad"))?)
+        .build()?;
+
+    #[cfg(target_os = "macos")]
+    {
+        Menu::with_items(app, &[&app_menu, &file_menu, &edit_menu, &view_menu])
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Menu::with_items(app, &[&file_menu, &edit_menu, &view_menu])
+    }
 }

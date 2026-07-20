@@ -1,16 +1,19 @@
 import "./styles.css";
 import { store } from "./state";
 import { ipc, onMenu, onOpenPaths, onFileDrop } from "./ipc";
-import { mountEditor, showTab, zoomIn } from "./editor";
+import { mountEditor, showTab, zoomIn, toggleWordWrap } from "./editor";
 import {
   initTabBar,
   renderTabBar,
   newUntitled,
   openPaths,
+  cycleTab,
 } from "./tabs";
 import { initStatusBar, refreshStatusBar } from "./statusbar";
 import { restoreSession, initSessionTriggers } from "./session";
 import { handleMenu } from "./menu";
+import { initContextMenus } from "./contextmenu";
+import { isModalOpen } from "./modal";
 import { applyStoredTheme } from "./theme";
 import { mountPreview } from "./preview";
 import { handleZoomShortcut } from "./mermaid-view";
@@ -62,6 +65,7 @@ async function bootstrap(): Promise<void> {
   await onMenu(handleMenu);
   await onOpenPaths((paths) => void openPaths(paths));
   await onFileDrop((paths) => void openPaths(paths));
+  initContextMenus(editorHost, tabbar);
   initSessionTriggers();
 
   // Zoom-in also on Cmd/Ctrl and "+" (Shift+=). The native menu accelerator
@@ -76,6 +80,36 @@ async function bootstrap(): Promise<void> {
       if (!handleZoomShortcut(1)) zoomIn();
     }
   });
+
+  // Ctrl+Tab / Ctrl+Shift+Tab cycle through tabs. Bound in the capture phase so
+  // it wins before CodeMirror or the WebView can act on Tab; the native menu
+  // registers no accelerator for these on purpose, so there's no double-fire.
+  window.addEventListener(
+    "keydown",
+    (e) => {
+      // Stand down while a modal is up: switching the tab under a dirty-close
+      // or lossy-save prompt would change what the prompt applies to.
+      if (e.ctrlKey && !e.metaKey && !e.altKey && e.key === "Tab" && !isModalOpen()) {
+        e.preventDefault();
+        cycleTab(e.shiftKey ? -1 : 1);
+      }
+    },
+    true,
+  );
+
+  // macOS: Alt+Z (Option+Z) toggles word wrap. The native menu can't own this
+  // accelerator on macOS because Option+Z produces "Ω" as e.key, so match on
+  // e.code instead. Guarded to macOS so it can't double-fire against the Alt+Z
+  // menu accelerator the other platforms register.
+  const isMac = navigator.userAgent.includes("Mac");
+  if (isMac) {
+    window.addEventListener("keydown", (e) => {
+      if (e.altKey && !e.metaKey && !e.ctrlKey && e.code === "KeyZ") {
+        e.preventDefault();
+        toggleWordWrap();
+      }
+    });
+  }
 
   // Tell the backend we are listening so any queued file-opens are delivered.
   await ipc.frontendReady();

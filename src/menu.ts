@@ -20,12 +20,18 @@ import {
   openDialog,
   saveActive,
   saveActiveAs,
+  saveAll,
   closeActive,
+  closeOthers,
+  closeTabsToRight,
+  closeAll,
   reopenClosed,
   activateTabByIndex,
   activateLastTab,
+  cycleTab,
   setActiveEol,
 } from "./tabs";
+import { store } from "./state";
 import { openSaveOptions, openRecentDialog } from "./dialogs";
 import { setTheme } from "./theme";
 import { togglePreview, exportPreviewHtml, printPreview } from "./preview";
@@ -60,6 +66,9 @@ export function handleMenu(id: string): void {
     case "file.saveAs":
       saveActiveAs();
       break;
+    case "file.saveAll":
+      void saveAll();
+      break;
     case "file.saveOptions":
       openSaveOptions();
       break;
@@ -74,6 +83,19 @@ export function handleMenu(id: string): void {
       break;
     case "file.close":
       closeActive();
+      break;
+    case "file.closeOthers": {
+      const id = store.activeTab?.id;
+      if (id) closeOthers(id);
+      break;
+    }
+    case "file.closeRight": {
+      const id = store.activeTab?.id;
+      if (id) closeTabsToRight(id);
+      break;
+    }
+    case "file.closeAll":
+      closeAll();
       break;
     case "edit.undo":
       doUndo();
@@ -182,5 +204,7 @@ export function handleMenu(id: string): void {
     case "view.gotoTab7": activateTabByIndex(6); break;
     case "view.gotoTab8": activateTabByIndex(7); break;
     case "view.gotoTab9": activateLastTab(); break;
+    case "view.nextTab": cycleTab(1); break;
+    case "view.prevTab": cycleTab(-1); break;
   }
 }
