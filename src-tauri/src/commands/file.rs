@@ -6,6 +6,7 @@ use std::time::UNIX_EPOCH;
 use serde::Serialize;
 
 use crate::encoding::{self, Encoding, Eol};
+use crate::fsio;
 
 #[derive(Serialize)]
 pub struct OpenedFile {
@@ -15,12 +16,19 @@ pub struct OpenedFile {
     pub eol: String,
     #[serde(rename = "mtimeMs")]
     pub mtime_ms: Option<u64>,
+    /// True when some bytes could not be decoded and were replaced (U+FFFD).
+    pub lossy: bool,
 }
 
 #[derive(Serialize)]
 pub struct SavedFile {
     #[serde(rename = "mtimeMs")]
     pub mtime_ms: Option<u64>,
+    /// False when the save was skipped because it would be lossy and the caller
+    /// did not pass `allow_lossy`.
+    pub written: bool,
+    /// True when the chosen encoding cannot represent every character.
+    pub lossy: bool,
 }
 
 #[derive(Serialize)]
@@ -46,6 +54,7 @@ pub fn open_file(path: String) -> Result<OpenedFile, String> {
         encoding: decoded.encoding.as_str().to_string(),
         eol: decoded.eol.as_str().to_string(),
         mtime_ms: mtime_ms(Path::new(&path)),
+        lossy: decoded.lossy,
     })
 }
 
@@ -61,6 +70,7 @@ pub fn open_file_as(path: String, encoding: String) -> Result<OpenedFile, String
         encoding: decoded.encoding.as_str().to_string(),
         eol: decoded.eol.as_str().to_string(),
         mtime_ms: mtime_ms(Path::new(&path)),
+        lossy: decoded.lossy,
     })
 }
 
@@ -70,13 +80,26 @@ pub fn save_file(
     content: String,
     encoding: String,
     eol: String,
+    allow_lossy: bool,
 ) -> Result<SavedFile, String> {
     let enc = Encoding::from_str(&encoding);
     let eol = Eol::from_str(&eol);
-    let bytes = encoding::encode(&content, enc, eol);
-    std::fs::write(&path, &bytes).map_err(|e| format!("{path}: {e}"))?;
+    let encoded = encoding::encode(&content, enc, eol);
+    // Would-be-lossy save the caller hasn't approved: report it and write
+    // nothing, letting the frontend prompt (Save as UTF-8 / Save Anyway).
+    if encoded.lossy && !allow_lossy {
+        return Ok(SavedFile {
+            mtime_ms: None,
+            written: false,
+            lossy: true,
+        });
+    }
+    fsio::atomic_save_user_file(Path::new(&path), &encoded.bytes)
+        .map_err(|e| format!("{path}: {e}"))?;
     Ok(SavedFile {
         mtime_ms: mtime_ms(Path::new(&path)),
+        written: true,
+        lossy: encoded.lossy,
     })
 }
 
