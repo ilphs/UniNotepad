@@ -6,7 +6,7 @@
     <title>UniNotepad — 껐다 켜도 그대로인 메모장</title>
     <meta
       name="description"
-      content="저장하지 않아도 열어둔 탭이 그대로 복원되는 경량 크로스플랫폼 메모장. Windows · macOS · Linux, 설치 파일 3MB 안팎."
+      content="저장하지 않아도 열어둔 탭이 그대로 복원되는 경량 크로스플랫폼 메모장. Markdown·Mermaid 실시간 미리보기 내장. Windows · macOS · Linux, 설치 파일 3MB 안팎."
     />
     <link rel="icon" href="/assets/favicon.png" />
 
@@ -15,7 +15,7 @@
     <meta property="og:title" content="UniNotepad — 껐다 켜도 그대로인 메모장" />
     <meta
       property="og:description"
-      content="저장하지 않아도 열어둔 탭이 그대로 복원되는 경량 메모장. Windows · macOS · Linux."
+      content="저장하지 않아도 열어둔 탭이 그대로 복원되는 경량 메모장. Markdown·Mermaid 실시간 미리보기 내장. Windows · macOS · Linux."
     />
     <meta property="og:image" content="/assets/syntax-markdown.png" />
     <meta name="twitter:card" content="summary_large_image" />
@@ -125,6 +125,7 @@
       .feature { border: 1px solid var(--border); border-radius: 12px; padding: 1.1rem 1.25rem; background: var(--card); }
       .feature .t { font-weight: 700; margin: 0 0 0.35rem; }
       .feature .d { margin: 0; color: var(--muted); font-size: 0.95rem; }
+      .feature .d code { background: var(--bg); border: 1px solid var(--border); padding: 0.05rem 0.3rem; border-radius: 4px; font-size: 0.85em; white-space: nowrap; }
 
       /* ---- Screenshots --------------------------------------------------- */
       .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem; }
@@ -161,6 +162,10 @@
         저장하는 걸 깜빡한 채 창을 닫아도, 컴퓨터가 갑자기 꺼져도 괜찮습니다.
         열어둔 탭은 <b>저장하지 않은 내용까지</b> 그대로 남아 있다가 다음에 앱을 열면
         떠날 때 모습 그대로 돌아옵니다. Windows · macOS · Linux, 설치 파일 3MB 안팎.
+      </p>
+      <p class="lead">
+        그리고 <b>Markdown과 Mermaid는 쓰는 즉시 오른쪽에서 그려집니다.</b>
+        표도, 코드블록도, 순서도도 인터넷 없이 앱 안에서 바로 렌더됩니다.
       </p>
 
       <div class="cta">
@@ -214,8 +219,10 @@
       <div class="features">
         <div class="feature"><p class="t">💾 저장 걱정 없음</p><p class="d">타이핑을 멈추면 알아서 기록 — 닫을 때 "저장하시겠습니까?"를 묻지 않습니다.</p></div>
         <div class="feature"><p class="t">🗂️ 탭 · 세션 복원</p><p class="d">껐다 켜도, 갑자기 꺼져도 열어둔 탭이 미저장 메모까지 그대로 — 탭바 + 버튼, Ctrl+Tab 순환, 우클릭으로 한꺼번에 닫기.</p></div>
+        <div class="feature"><p class="t">📝 Markdown 실시간 미리보기</p><p class="d">타이핑하는 대로 오른쪽에 렌더 — GFM 표 · 체크박스 · 코드블록 색칠 · 스크롤 따라가기. Ctrl/Cmd+Shift+M으로 열고 닫고, 가운데 경계선을 끌어 비율 조절.</p></div>
+        <div class="feature"><p class="t">🧜 Mermaid 다이어그램</p><p class="d">```mermaid 코드블록은 물론 .mmd 파일도 통째로 그림으로 — 순서도·시퀀스·간트·클래스 등 Mermaid 11이 그리는 건 다 됩니다. 차트만 따로 확대하고 배경색도 선택.</p></div>
+        <div class="feature"><p class="t">🖨️ 미리보기 내보내기</p><p class="d">렌더된 문서를 HTML 한 파일로 저장하거나 그대로 인쇄(PDF) — 다이어그램도 그림째로 담깁니다.</p></div>
         <div class="feature"><p class="t">🎨 구문 강조</p><p class="d">143개 언어를 파일 이름만 보고 자동 판별합니다.</p></div>
-        <div class="feature"><p class="t">📄 문서 미리보기</p><p class="d">Markdown·Mermaid 실시간 렌더 · 스크롤 동기화 · HTML 내보내기 · 인쇄(PDF) · 편집기와 미리보기 따로 확대 — 확대 크기는 다시 켜도 유지.</p></div>
         <div class="feature"><p class="t">🌗 라이트·다크 테마</p><p class="d">시스템 설정을 따르거나 직접 선택 — 미리보기 색도 함께 바뀝니다.</p></div>
         <div class="feature"><p class="t">✂️ 줄 편집 도구</p><p class="d">정렬 · 중복/빈 줄 제거 · 공백 정리 · 대소문자 · 줄 이동.</p></div>
         <div class="feature"><p class="t">⌨️ 다중 커서 · 코드 폴딩</p><p class="d">같은 단어를 한꺼번에 선택해 고치고, 긴 코드는 접어서 봅니다. 공백 문자 표시까지.</p></div>
@@ -224,21 +231,51 @@
       </div>
     </section>
 
+    <!-- ==================== Preview spotlight ==================== -->
+    <h2 id="preview">📄 Markdown · Mermaid 미리보기</h2>
+    <section>
+      <p class="dl-note">
+        글을 쓰는 화면 오른쪽에서 결과가 바로 그려집니다. 브라우저를 따로 띄우거나 플러그인을 깔 필요가 없고,
+        <b>인터넷 없이도 전부 앱 안에서 렌더</b>되므로 문서 내용이 밖으로 나가지 않습니다.
+      </p>
+      <div class="grid" style="margin-top: 1.5rem">
+        <figure>
+          <img src="/assets/syntax-markdown.png" alt="Markdown 분할 미리보기" />
+          <figcaption><b>Markdown</b> — 쓰는 대로 오른쪽 미리보기가 따라옵니다. GFM 표·체크박스·코드블록 색칠까지</figcaption>
+        </figure>
+        <figure>
+          <img src="/assets/syntax-mermaid.png" alt="Mermaid 다이어그램 미리보기" />
+          <figcaption><b>Mermaid</b> — 순서도를 글로 적으면 그림이 됩니다. 차트만 따로 확대하고 배경색도 선택</figcaption>
+        </figure>
+      </div>
+      <div class="features" style="margin-top: 1.25rem">
+        <div class="feature">
+          <p class="t">📝 Markdown</p>
+          <p class="d">표 · 체크박스 목록 · 인용 · 이미지를 그대로 렌더하고, 코드블록은 미리보기 안에서도 언어별로 색이 입혀집니다. 편집기를 스크롤하면 미리보기가 같은 위치를 따라옵니다. 문서 안의 <code>```mermaid</code> 블록은 그 자리에서 다이어그램으로 바뀝니다.</p>
+        </div>
+        <div class="feature">
+          <p class="t">🧜 Mermaid</p>
+          <p class="d"><code>.mmd</code> · <code>.mermaid</code> 파일은 문서 전체가 하나의 다이어그램으로 크게 그려집니다. 순서도 · 시퀀스 · 간트 · 클래스 · 상태도 등 Mermaid 11이 지원하는 종류 그대로. 문법이 틀리면 화면을 지우지 않고 어디가 문제인지 그 자리에 보여줍니다.</p>
+        </div>
+        <div class="feature">
+          <p class="t">⌨️ 쓰는 법</p>
+          <p class="d">
+            열고 닫기 <code>Ctrl/Cmd+Shift+M</code> · 가운데 경계선을 끌어 좌우 비율 조절(다음에 켜도 유지) ·
+            다이어그램 확대 <code>Ctrl/Cmd</code> + <code>=</code> <code>-</code> <code>0</code> ·
+            HTML로 내보내기 <code>File ▸ Export Preview as HTML…</code> · 인쇄(PDF) <code>Ctrl/Cmd+P</code>.
+            저장하지 않은 새 글은 상태 표시줄에서 파일 타입만 골라 주면 바로 열립니다.
+          </p>
+        </div>
+      </div>
+    </section>
+
     <!-- ==================== Screenshots ==================== -->
     <h2>🖼 화면</h2>
     <section>
       <div class="grid">
         <figure>
-          <img src="/assets/syntax-markdown.png" alt="Markdown 분할 미리보기" />
-          <figcaption><b>Markdown</b> — 쓰는 대로 오른쪽 미리보기가 따라옵니다</figcaption>
-        </figure>
-        <figure>
           <img src="/assets/filetype-picker.png" alt="상태 표시줄의 파일 타입 선택 메뉴" />
           <figcaption><b>파일 타입 선택</b> — 저장하지 않은 새 글도 Markdown·Mermaid로 지정하면 바로 미리보기가 열립니다</figcaption>
-        </figure>
-        <figure>
-          <img src="/assets/syntax-mermaid.png" alt="Mermaid 다이어그램 미리보기" />
-          <figcaption><b>Mermaid</b> — 순서도를 글로 적으면 그림이 됩니다</figcaption>
         </figure>
         <figure>
           <img src="/assets/syntax-typescript.png" alt="TypeScript 구문 강조" />

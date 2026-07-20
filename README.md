@@ -25,7 +25,10 @@ UniNotepad에서는 그런 일이 생기지 않습니다. 열어둔 탭은 **저
 그대로 남아 있다가, 다음에 앱을 열면 떠날 때 모습 그대로 돌아옵니다.
 앱을 종료하든, 갑자기 꺼지든, 컴퓨터를 재시작하든 똑같습니다. 저장 버튼을 누를 필요가 없습니다.
 
-**바로가기** — [무엇이 다른가요](#-무엇이-다른가요) · [화면](#-화면) · [설치](#-설치) · [자주 묻는 질문](#-자주-묻는-질문)
+그리고 **Markdown과 Mermaid는 쓰는 즉시 오른쪽에서 그려집니다.** 표도, 코드블록도,
+순서도도 인터넷 없이 앱 안에서 바로 렌더됩니다 — 위 화면이 실제 분할 미리보기 모습입니다.
+
+**바로가기** — [무엇이 다른가요](#-무엇이-다른가요) · [Markdown · Mermaid 미리보기](#-markdown--mermaid-미리보기) · [화면](#-화면) · [설치](#-설치) · [자주 묻는 질문](#-자주-묻는-질문)
 
 ## ✨ 무엇이 다른가요
 
@@ -33,8 +36,10 @@ UniNotepad에서는 그런 일이 생기지 않습니다. 열어둔 탭은 **저
 |:--|:--|
 | 💾 **저장 걱정 없음** | 타이핑을 멈추면 알아서 기록 — 닫을 때 "저장하시겠습니까?"를 묻지 않습니다 |
 | 🗂️ **탭 · 세션 복원** | 껐다 켜도, 갑자기 꺼져도 열어둔 탭이 **미저장 메모까지** 그대로 — 탭바 **+** 버튼, Ctrl+Tab 순환, 우클릭 메뉴로 다른 탭 한꺼번에 닫기 |
+| 📝 **Markdown 실시간 미리보기** | 타이핑하는 대로 오른쪽에 렌더 — GFM 표 · 체크박스 · 코드블록 색칠 · 스크롤 따라가기. `Ctrl/Cmd+Shift+M`으로 열고 닫고, 가운데 경계선을 끌어 비율 조절 |
+| 🧜 **Mermaid 다이어그램** | ` ```mermaid ` 코드블록은 물론 `.mmd` 파일도 통째로 그림으로 — 순서도·시퀀스·간트·클래스 등 [Mermaid 11](https://mermaid.js.org/)이 그리는 건 다 됩니다. 차트만 따로 확대하고 배경색도 고를 수 있어요 |
+| 🖨️ **미리보기 내보내기** | 렌더된 문서를 HTML 한 파일로 저장하거나 그대로 인쇄(PDF) — 다이어그램도 그림째로 담깁니다 |
 | 🎨 **구문 강조** | 143개 언어를 파일 이름만 보고 자동 판별 |
-| 📄 **문서 미리보기** | Markdown·Mermaid 실시간 렌더 · 스크롤 동기화 · HTML 내보내기 · 인쇄(PDF) · 편집기와 미리보기 따로 확대 — 확대 크기는 다시 켜도 유지 |
 | 🌗 **라이트·다크 테마** | 시스템 설정을 따르거나 직접 선택 — 미리보기 색도 함께 바뀝니다 |
 | ✂️ **줄 편집 도구** | 정렬 · 중복/빈 줄 제거 · 공백 정리 · 대소문자 · 줄 이동 (`Edit ▸ Line Operations`) |
 | ⌨️ **다중 커서 · 코드 폴딩** | 같은 단어를 한꺼번에 선택해 고치고(Cmd/Ctrl+D), 긴 코드는 접어서 봅니다 — 공백 문자 표시 토글도 (`View` 메뉴) |
@@ -42,6 +47,42 @@ UniNotepad에서는 그런 일이 생기지 않습니다. 열어둔 탭은 **저
 | 🪶 **가벼움** | 브라우저를 끼워 넣지 않고 OS 기능을 써서 설치 파일 **3MB 안팎** |
 
 > Linux `.AppImage`만은 필요한 것을 전부 담느라 큽니다 — 가볍게 쓰시려면 `.deb`나 `.rpm`을 받으세요.
+
+## 📄 Markdown · Mermaid 미리보기
+
+글을 쓰는 화면 오른쪽에서 결과가 바로 그려집니다. 브라우저를 따로 띄우거나
+플러그인을 깔 필요가 없고, **인터넷 없이도 전부 앱 안에서 렌더**됩니다.
+
+| |
+|:--|
+| [![Mermaid 다이어그램 미리보기](docs/syntax-mermaid.png)](https://uninotepad-xi.vercel.app/) |
+| ` ```mermaid ` 블록에 순서도를 글로 적으면 그림이 됩니다 |
+
+**Markdown**
+
+- GFM 표, 체크박스 목록, 인용, 이미지까지 그대로 렌더
+- 코드블록은 미리보기 안에서도 언어별로 색이 입혀집니다
+- 편집기를 스크롤하면 미리보기가 같은 위치를 따라옵니다
+- 문서 안의 ` ```mermaid ` 코드블록은 그 자리에서 다이어그램으로 바뀝니다
+
+**Mermaid**
+
+- `.mmd` · `.mermaid` 파일은 문서 전체가 하나의 다이어그램으로 크게 그려집니다
+- 순서도(flowchart) · 시퀀스 · 간트 · 클래스 · 상태도 등 Mermaid 11이 지원하는 종류 그대로
+- 다이어그램만 따로 확대·축소(`Ctrl/Cmd` + `=` `-` `0`)하고, 배경을 투명하게 두거나 원하는 색으로 지정할 수 있습니다
+- 문법이 틀리면 화면을 지우지 않고 어디가 문제인지 그 자리에 보여줍니다
+
+**쓰는 법**
+
+| 하고 싶은 것 | 방법 |
+|:--|:--|
+| 미리보기 열기/닫기 | `Ctrl/Cmd + Shift + M` (또는 `View ▸ Toggle Preview`) |
+| 좌우 비율 조절 | 가운데 경계선을 마우스로 끌기 (다음에 켜도 유지) |
+| 저장 안 한 새 글에서 쓰기 | 상태 표시줄의 파일 타입에서 **Markdown**이나 **Mermaid** 선택 |
+| HTML 파일로 내보내기 | `File ▸ Export Preview as HTML…` |
+| 종이·PDF로 인쇄 | `Ctrl/Cmd + P` |
+
+> 미리보기 색은 앱 테마(라이트·다크)를 따라갑니다. 인쇄와 HTML 내보내기는 읽기 좋도록 밝은 배경으로 나갑니다.
 
 ## 🖼 화면
 
@@ -54,14 +95,14 @@ UniNotepad에서는 그런 일이 생기지 않습니다. 열어둔 탭은 **저
 | **파일 타입 선택** — 상태 표시줄에서 고르면 됩니다. 저장하지 않은 새 글도 Markdown이나 Mermaid로 지정하면 바로 색이 입혀지고 미리보기가 열립니다 |
 | [![상태 표시줄의 파일 타입 선택 메뉴](docs/filetype-picker.png)](https://uninotepad-xi.vercel.app/) |
 
-> 상단의 큰 화면이 **Markdown** 분할 미리보기입니다.
+> 맨 위의 큰 화면이 **Markdown** 분할 미리보기, 바로 위가 **Mermaid** 다이어그램입니다.
 
 | | |
 |:--|:--|
-| **Mermaid** — 순서도를 글로 적으면 그림이 됩니다 | **TypeScript** — 타입과 제네릭까지 |
-| [![Mermaid 다이어그램 미리보기](docs/syntax-mermaid.png)](https://uninotepad-xi.vercel.app/) | [![TypeScript 구문 강조](docs/syntax-typescript.png)](https://uninotepad-xi.vercel.app/) |
-| **Python** — docstring과 데코레이터 | **Bash** — 명령어 스크립트 |
-| [![Python 구문 강조](docs/syntax-python.png)](https://uninotepad-xi.vercel.app/) | [![Bash 구문 강조](docs/syntax-bash.png)](https://uninotepad-xi.vercel.app/) |
+| **TypeScript** — 타입과 제네릭까지 | **Python** — docstring과 데코레이터 |
+| [![TypeScript 구문 강조](docs/syntax-typescript.png)](https://uninotepad-xi.vercel.app/) | [![Python 구문 강조](docs/syntax-python.png)](https://uninotepad-xi.vercel.app/) |
+| **Bash** — 명령어 스크립트 | |
+| [![Bash 구문 강조](docs/syntax-bash.png)](https://uninotepad-xi.vercel.app/) | |
 
 ## 📥 설치
 
@@ -137,6 +178,29 @@ xattr -cr /Applications/UniNotepad.app
 
 저장하지 않은 탭을 닫을 때는 저장할지 물어봅니다. 앱을 통째로 종료할 때와 달리,
 탭을 닫는 건 "이제 그만 보겠다"는 분명한 의사 표시로 보기 때문입니다.
+
+</details>
+
+<details>
+<summary><b>Markdown 미리보기가 안 보여요</b></summary>
+
+<br>
+
+미리보기는 파일 종류가 Markdown이나 Mermaid일 때만 열립니다. 아직 저장하지 않은
+새 글이라면 앱이 종류를 알 수 없으니, 상태 표시줄의 파일 타입을 눌러 **Markdown**
+(또는 **Mermaid**)으로 골라 주세요. 그래도 안 보이면 `Ctrl/Cmd + Shift + M`으로
+미리보기가 꺼져 있는지 확인하시면 됩니다.
+
+</details>
+
+<details>
+<summary><b>다이어그램을 그리려면 인터넷이 필요한가요?</b></summary>
+
+<br>
+
+아니요. Mermaid 렌더링은 전부 앱 안에서 이루어집니다. 비행기 안에서도, 사내망에서도
+똑같이 그려지고, 문서 내용이 밖으로 나가지 않습니다. HTML로 내보낸 파일도 다이어그램이
+그림째 들어 있어서 인터넷 없이 열립니다.
 
 </details>
 
