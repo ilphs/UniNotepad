@@ -1,7 +1,7 @@
 {
   "name": "uninotepad",
   "private": true,
-  "version": "0.6.1",
+  "version": "0.6.6",
   "type": "module",
   "description": "Lightweight cross-platform plain-text editor with Notepad++-style session persistence",
   "scripts": {
