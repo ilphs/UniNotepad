@@ -140,7 +140,9 @@ body {
   display: flex;
   flex-wrap: nowrap;
   overflow-x: auto;
-  flex: 1;
+  /* Shrink-to-fit so the + button hugs the last tab; min-width lets the bar
+     compress and scroll when tabs overflow, pushing the button to the edge. */
+  flex: 0 1 auto;
   min-width: 0;
   user-select: none;
 }
