@@ -299,7 +299,8 @@ export async function exportPreviewHtml(): Promise<void> {
   if (!path) return;
   const doc = htmlDocument(title, body);
   try {
-    await ipc.saveFile(path, doc, "utf8", "lf");
+    // UTF-8 is lossless for any string, so allowLossy is a formality here.
+    await ipc.saveFile(path, doc, "utf8", "lf", true);
   } catch (err) {
     await message(`Failed to export:\n${err}`, { title: "UniNotepad", kind: "error" });
   }

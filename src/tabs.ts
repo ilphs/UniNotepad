@@ -5,6 +5,7 @@ import { makeState, showTab, syncTabFromView, reconfigureLanguage } from "./edit
 import { flushNow, dropPending, markBackupDirty, basename } from "./session";
 import { recordRecent } from "./recent";
 import { applySaveOptions, setPreviewEnabled } from "./settings";
+import { openModal, button, type ModalHandle } from "./modal";
 
 function platformEol(): EolId {
   return navigator.userAgent.includes("Windows") ? "crlf" : "lf";
@@ -75,13 +76,23 @@ export async function openPath(path: string, fileType: FileTypeId | null = null)
       missingOnDisk: false,
       state: makeState(opened.content, id, undefined, path, fileType),
       scrollTop: 0,
-      notice: null,
+      notice: opened.lossy ? lossyNotice() : null,
     };
     store.state.tabs.push(tab);
     activateTab(id);
   } catch (err) {
     await message(`Failed to open ${path}:\n${err}`, { title: "UniNotepad", kind: "error" });
   }
+}
+
+/** Notice shown when a file opened/reinterpreted with undecodable bytes. */
+function lossyNotice(): { kind: "lossy"; message: string } {
+  return {
+    kind: "lossy",
+    message:
+      "Some bytes could not be decoded and were replaced (�). " +
+      "Try reinterpreting with a different encoding.",
+  };
 }
 
 export async function openPaths(paths: string[]): Promise<void> {
@@ -108,6 +119,16 @@ export function activateLastTab(): void {
   if (tab) activateTab(tab.id);
 }
 
+/** Activate the next (dir=1) or previous (dir=-1) tab, wrapping at both ends. */
+export function cycleTab(dir: 1 | -1): void {
+  const tabs = store.state.tabs;
+  const n = tabs.length;
+  if (n === 0) return;
+  const i = tabs.findIndex((t) => t.id === store.state.activeTabId);
+  const cur = i === -1 ? 0 : i;
+  activateTab(tabs[(cur + dir + n) % n].id);
+}
+
 export async function openDialog(): Promise<void> {
   const sel = await open({ multiple: true });
   if (!sel) return;
@@ -126,12 +147,23 @@ async function saveTabAs(tab: Tab): Promise<boolean> {
   return saveTab(tab);
 }
 
-export async function saveTab(tab: Tab): Promise<boolean> {
+export async function saveTab(tab: Tab, allowLossy = false): Promise<boolean> {
   if (!tab.path) return saveTabAs(tab);
   if (store.activeTab?.id === tab.id) syncTabFromView(tab);
   try {
     const content = applySaveOptions(tab.state.doc.toString());
-    const res = await ipc.saveFile(tab.path, content, tab.encoding, tab.eol);
+    const res = await ipc.saveFile(tab.path, content, tab.encoding, tab.eol, allowLossy);
+    // Rust wrote nothing because the save would drop characters the encoding
+    // can't represent — ask the user how to proceed instead of losing data.
+    if (!res.written && res.lossy) {
+      const choice = await confirmLossy(tab.encoding);
+      if (choice === "cancel") return false;
+      if (choice === "utf8") {
+        tab.encoding = "utf8";
+        return saveTab(tab, false);
+      }
+      return saveTab(tab, true); // "anyway"
+    }
     tab.dirty = false;
     tab.diskMtimeMs = res.mtimeMs;
     tab.missingOnDisk = false;
@@ -183,6 +215,7 @@ export async function setActiveEncoding(enc: EncodingId): Promise<void> {
       t.diskMtimeMs = opened.mtimeMs;
       t.dirty = false;
       t.state = makeState(opened.content, t.id, undefined, t.path, t.fileType);
+      t.notice = opened.lossy ? lossyNotice() : null;
       if (store.state.activeTabId === t.id) showTab(t);
       store.emit();
       void flushNow();
@@ -306,21 +339,24 @@ export function closeActive(): void {
   if (t) void closeTab(t.id);
 }
 
-export async function closeTab(id: string): Promise<void> {
+/** Close one tab. Resolves true when the tab was closed, false when the user
+ *  cancelled the unsaved-changes prompt or a required save failed — so bulk
+ *  callers (closeMany) can stop on the first tab the user declined to close. */
+export async function closeTab(id: string): Promise<boolean> {
   const tab = store.tabById(id);
-  if (!tab) return;
+  if (!tab) return false;
 
   if (tab.dirty) {
     const choice = await confirmClose(tab.title);
-    if (choice === "cancel") return;
+    if (choice === "cancel") return false;
     if (choice === "save") {
       const ok = await saveTab(tab);
-      if (!ok) return;
+      if (!ok) return false;
     }
   }
 
   const idx = store.state.tabs.findIndex((t) => t.id === id);
-  if (idx === -1) return;
+  if (idx === -1) return false;
   // Capture the latest buffer (active tab's edits live in the view) before drop.
   if (store.activeTab?.id === id) syncTabFromView(tab);
   pushClosed(tab);
@@ -331,7 +367,7 @@ export async function closeTab(id: string): Promise<void> {
   if (store.state.tabs.length === 0) {
     store.state.activeTabId = null;
     newUntitled(); // always keep at least one tab
-    return;
+    return true;
   }
 
   if (store.state.activeTabId === id) {
@@ -340,6 +376,47 @@ export async function closeTab(id: string): Promise<void> {
   } else {
     store.emit();
     void flushNow();
+  }
+  return true;
+}
+
+/** Close each id in turn, stopping at the first one the user declines to close
+ *  (cancelled prompt / failed save). Emptying the tab bar is fine — closeTab's
+ *  "always keep one tab" rule re-seeds an untitled tab. */
+export async function closeMany(ids: string[]): Promise<void> {
+  for (const id of ids) {
+    const ok = await closeTab(id);
+    if (!ok) break;
+  }
+}
+
+/** Close every tab except `id` (snapshot first — closeTab mutates the list). */
+export function closeOthers(id: string): void {
+  const ids = store.state.tabs.filter((t) => t.id !== id).map((t) => t.id);
+  void closeMany(ids);
+}
+
+/** Close every tab positioned to the right of `id`. */
+export function closeTabsToRight(id: string): void {
+  const idx = store.state.tabs.findIndex((t) => t.id === id);
+  if (idx === -1) return;
+  const ids = store.state.tabs.slice(idx + 1).map((t) => t.id);
+  void closeMany(ids);
+}
+
+/** Close all tabs (an untitled tab is re-seeded once the last one closes). */
+export function closeAll(): void {
+  const ids = store.state.tabs.map((t) => t.id);
+  void closeMany(ids);
+}
+
+/** Save every dirty tab in order, stopping at the first save that fails or is
+ *  cancelled (e.g. the Save As dialog dismissed, or a lossy-encoding prompt). */
+export async function saveAll(): Promise<void> {
+  const dirty = store.state.tabs.filter((t) => t.dirty);
+  for (const t of dirty) {
+    const ok = await saveTab(t);
+    if (!ok) break;
   }
 }
 
@@ -370,7 +447,7 @@ export async function reloadFromDisk(id: string): Promise<void> {
     tab.eol = opened.eol;
     tab.diskMtimeMs = opened.mtimeMs;
     tab.dirty = false;
-    tab.notice = null;
+    tab.notice = opened.lossy ? lossyNotice() : null;
     tab.missingOnDisk = false;
     // Pass the type pick through: without it the tab keeps fileType while the
     // language compartment reverts to the extension's — picker/editor desync.
@@ -383,6 +460,15 @@ export async function reloadFromDisk(id: string): Promise<void> {
   } catch (err) {
     await message(`Failed to reload:\n${err}`, { title: "UniNotepad", kind: "error" });
   }
+}
+
+/** Clear a tab's notice with no disk-reconciliation side effects (used for the
+ *  purely-informational lossy-decode notice). */
+export function clearNotice(id: string): void {
+  const tab = store.tabById(id);
+  if (!tab) return;
+  tab.notice = null;
+  store.emit();
 }
 
 export function dismissNotice(id: string): void {
@@ -553,18 +639,14 @@ function renderBanner(): void {
   if (tab.notice.kind === "conflict") {
     actions.appendChild(button("Keep my version", () => dismissNotice(tab.id)));
     actions.appendChild(button("Reload from disk", () => void reloadFromDisk(tab.id)));
-  } else {
+  } else if (tab.notice.kind === "deleted") {
     actions.appendChild(button("Save As…", () => void saveTabAs(tab)));
     actions.appendChild(button("Dismiss", () => dismissNotice(tab.id)));
+  } else {
+    // lossy: nothing to reconcile against disk — just let the user dismiss.
+    actions.appendChild(button("Dismiss", () => clearNotice(tab.id)));
   }
   bannerEl.appendChild(actions);
-}
-
-function button(text: string, onClick: () => void): HTMLButtonElement {
-  const b = document.createElement("button");
-  b.textContent = text;
-  b.addEventListener("click", onClick);
-  return b;
 }
 
 // ---- Custom 3-button close confirmation ------------------------------------
@@ -573,34 +655,66 @@ type CloseChoice = "save" | "discard" | "cancel";
 
 function confirmClose(title: string): Promise<CloseChoice> {
   return new Promise((resolve) => {
-    const overlay = document.createElement("div");
-    overlay.className = "modal-overlay";
-    const box = document.createElement("div");
-    box.className = "modal";
+    let handle: ModalHandle;
+    const finish = (choice: CloseChoice) => {
+      handle.close();
+      resolve(choice);
+    };
+    handle = openModal({ ariaLabel: "Unsaved Changes", onCancel: () => finish("cancel") });
 
     const text = document.createElement("p");
     text.textContent = `"${title}" has unsaved changes. Save before closing?`;
-    box.appendChild(text);
+    handle.box.appendChild(text);
 
     const row = document.createElement("div");
     row.className = "modal-actions";
-
-    const finish = (choice: CloseChoice) => {
-      document.body.removeChild(overlay);
-      resolve(choice);
-    };
-
     row.appendChild(button("Save", () => finish("save")));
     row.appendChild(button("Don't Save", () => finish("discard")));
+    // Cancel is the safe default for a destructive prompt: mark it primary so
+    // openModal's initial focus lands here (Enter won't discard by accident).
     const cancel = button("Cancel", () => finish("cancel"));
     cancel.className = "primary";
     row.appendChild(cancel);
+    handle.box.appendChild(row);
+  });
+}
 
-    box.appendChild(row);
-    overlay.appendChild(box);
-    overlay.addEventListener("click", (e) => {
-      if (e.target === overlay) finish("cancel");
-    });
-    document.body.appendChild(overlay);
+// ---- Lossy-save confirmation -----------------------------------------------
+
+type LossyChoice = "utf8" | "anyway" | "cancel";
+
+/** Friendly names for the encodings that can be lossy on save. */
+const LOSSY_ENCODING_NAMES: Partial<Record<EncodingId, string>> = {
+  latin1: "Latin-1",
+  euckr: "EUC-KR",
+  sjis: "Shift-JIS",
+  gbk: "GBK",
+  big5: "Big5",
+};
+
+/** Prompt before a save that would replace unrepresentable characters. Reuses
+ *  the confirmClose modal pattern (3 buttons, click-outside cancels). */
+function confirmLossy(encoding: EncodingId): Promise<LossyChoice> {
+  return new Promise((resolve) => {
+    let handle: ModalHandle;
+    const finish = (choice: LossyChoice) => {
+      handle.close();
+      resolve(choice);
+    };
+    handle = openModal({ ariaLabel: "Encoding Warning", onCancel: () => finish("cancel") });
+
+    const encName = LOSSY_ENCODING_NAMES[encoding] ?? encoding;
+    const text = document.createElement("p");
+    text.textContent = `Some characters cannot be represented in ${encName} and will be replaced.`;
+    handle.box.appendChild(text);
+
+    const row = document.createElement("div");
+    row.className = "modal-actions";
+    row.appendChild(button("Save as UTF-8", () => finish("utf8")));
+    row.appendChild(button("Save Anyway", () => finish("anyway")));
+    const cancel = button("Cancel", () => finish("cancel"));
+    cancel.className = "primary";
+    row.appendChild(cancel);
+    handle.box.appendChild(row);
   });
 }

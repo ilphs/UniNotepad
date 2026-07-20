@@ -14,6 +14,17 @@ let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let flushing = false;
 let flushAgain = false;
 
+/** Consecutive persist failures + last error, surfaced via sessionHealth(). */
+let persistFailCount = 0;
+let lastPersistError: string | null = null;
+
+/** Whether background session persistence is currently failing (and why), for
+ *  the status-bar indicator. Only flagged after 2+ consecutive failures so a
+ *  single transient blip stays silent. */
+export function sessionHealth(): { failing: boolean; error: string | null } {
+  return { failing: persistFailCount >= 2, error: lastPersistError };
+}
+
 /** A tab needs a backup file iff it is untitled or has unsaved edits. */
 function needsBackup(t: Tab): boolean {
   return t.path === null || t.dirty;
@@ -88,8 +99,21 @@ export async function flushNow(): Promise<void> {
     await ipc.persistSession(JSON.stringify(manifest), backups);
     // Only clear ids we actually just wrote (new edits during the await stay).
     for (const id of snapshot) pendingBackups.delete(id);
+    // Success: clear any prior failure and drop the indicator if it was shown.
+    if (persistFailCount > 0) {
+      const wasFailing = persistFailCount >= 2;
+      persistFailCount = 0;
+      lastPersistError = null;
+      if (wasFailing) store.emit();
+    }
   } catch (err) {
     console.error("session flush failed", err);
+    persistFailCount += 1;
+    lastPersistError = String(err);
+    // Surface only after a second consecutive failure. pendingBackups is left
+    // intact, so the existing 30s safety interval retries automatically — no
+    // bespoke retry logic here.
+    if (persistFailCount >= 2) store.emit();
   } finally {
     flushing = false;
     if (flushAgain) {

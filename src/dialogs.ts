@@ -13,34 +13,22 @@ import {
 import { recentFiles, clearRecent } from "./recent";
 import { openPath } from "./tabs";
 import { basename } from "./session";
-
-/** Build an overlay whose backdrop-click resolves via `onClose`. */
-function overlay(onClose: () => void): { overlay: HTMLElement; box: HTMLElement } {
-  const ov = document.createElement("div");
-  ov.className = "modal-overlay";
-  const box = document.createElement("div");
-  box.className = "modal";
-  ov.appendChild(box);
-  ov.addEventListener("click", (e) => {
-    if (e.target === ov) onClose();
-  });
-  return { overlay: ov, box };
-}
+import { openModal } from "./modal";
 
 // ---- Save options ----------------------------------------------------------
 
 export function openSaveOptions(): void {
-  const close = () => document.body.removeChild(ui.overlay);
-  const ui = overlay(() => close());
+  const handle = openModal({ ariaLabel: "Save Options", onCancel: () => handle.close() });
+  const box = handle.box;
 
   const title = document.createElement("p");
   title.textContent = "Save Options";
-  ui.box.appendChild(title);
+  box.appendChild(title);
 
-  ui.box.appendChild(
+  box.appendChild(
     checkboxRow("Trim trailing whitespace on save", trimTrailingOnSave(), setTrimTrailingOnSave),
   );
-  ui.box.appendChild(
+  box.appendChild(
     checkboxRow("Ensure final newline on save", ensureFinalNewline(), setEnsureFinalNewline),
   );
 
@@ -49,11 +37,9 @@ export function openSaveOptions(): void {
   const done = document.createElement("button");
   done.className = "primary";
   done.textContent = "Done";
-  done.addEventListener("click", () => close());
+  done.addEventListener("click", () => handle.close());
   row.appendChild(done);
-  ui.box.appendChild(row);
-
-  document.body.appendChild(ui.overlay);
+  box.appendChild(row);
 }
 
 function checkboxRow(
@@ -76,19 +62,19 @@ function checkboxRow(
 // ---- Recent files ----------------------------------------------------------
 
 export function openRecentDialog(): void {
-  const close = () => document.body.removeChild(ui.overlay);
-  const ui = overlay(() => close());
+  const handle = openModal({ ariaLabel: "Recent Files", onCancel: () => handle.close() });
+  const box = handle.box;
 
   const title = document.createElement("p");
   title.textContent = "Recent Files";
-  ui.box.appendChild(title);
+  box.appendChild(title);
 
   const files = recentFiles();
   if (files.length === 0) {
     const empty = document.createElement("div");
     empty.className = "recent-empty";
     empty.textContent = "No recent files.";
-    ui.box.appendChild(empty);
+    box.appendChild(empty);
   } else {
     const list = document.createElement("div");
     list.className = "recent-list";
@@ -104,12 +90,12 @@ export function openRecentDialog(): void {
       dir.textContent = path;
       item.append(name, dir);
       item.addEventListener("click", () => {
-        close();
+        handle.close();
         void openPath(path);
       });
       list.appendChild(item);
     }
-    ui.box.appendChild(list);
+    box.appendChild(list);
   }
 
   const row = document.createElement("div");
@@ -119,16 +105,14 @@ export function openRecentDialog(): void {
     clear.textContent = "Clear";
     clear.addEventListener("click", () => {
       clearRecent();
-      close();
+      handle.close();
     });
     row.appendChild(clear);
   }
   const cancel = document.createElement("button");
   cancel.className = "primary";
   cancel.textContent = "Close";
-  cancel.addEventListener("click", () => close());
+  cancel.addEventListener("click", () => handle.close());
   row.appendChild(cancel);
-  ui.box.appendChild(row);
-
-  document.body.appendChild(ui.overlay);
+  box.appendChild(row);
 }

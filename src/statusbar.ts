@@ -2,6 +2,7 @@ import { store, type EncodingId, type EolId, type FileTypeId } from "./state";
 import { getView, getZoomPercent } from "./editor";
 import { setActiveEncoding, setActiveEol, setActiveFileType } from "./tabs";
 import { effectiveFileType } from "./language";
+import { sessionHealth, flushNow } from "./session";
 
 let el: HTMLElement;
 
@@ -30,6 +31,10 @@ function encLabel(enc: string): string {
       return "GBK";
     case "big5":
       return "Big5";
+    case "utf16le":
+      return "UTF-16 LE";
+    case "utf16be":
+      return "UTF-16 BE";
     default:
       return "UTF-8";
   }
@@ -125,6 +130,18 @@ export function refreshStatusBar(): void {
   );
   right.append(zoom, typeBtn, eolBtn, encBtn);
 
+  // Backup-persistence failure indicator (leads the right group so it stands
+  // out). Clicking it retries the flush immediately.
+  const health = sessionHealth();
+  if (health.failing) {
+    const warn = document.createElement("span");
+    warn.className = "status-item";
+    warn.textContent = "⚠ Backup save failed";
+    warn.title = health.error ?? "Session backup could not be written. Click to retry.";
+    warn.addEventListener("click", () => void flushNow());
+    right.prepend(warn);
+  }
+
   el.replaceChildren(left, right);
 }
 
@@ -148,6 +165,8 @@ const ENC_OPTIONS: PickerOption[] = [
   { id: "sjis", label: "Shift-JIS (日本語)" },
   { id: "gbk", label: "GBK (简体中文)" },
   { id: "big5", label: "Big5 (繁體中文)" },
+  { id: "utf16le", label: "UTF-16 LE" },
+  { id: "utf16be", label: "UTF-16 BE" },
 ];
 
 // Derived from the label table, so the picker can't drift out of sync with it.

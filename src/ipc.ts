@@ -8,10 +8,16 @@ export interface OpenedFile {
   encoding: EncodingId;
   eol: EolId;
   mtimeMs: number | null;
+  /** True when some bytes could not be decoded and were replaced (U+FFFD). */
+  lossy: boolean;
 }
 
 export interface SavedFile {
   mtimeMs: number | null;
+  /** False when a lossy save was skipped because allowLossy was not set. */
+  written: boolean;
+  /** True when the chosen encoding cannot represent every character. */
+  lossy: boolean;
 }
 
 export interface FileStat {
@@ -50,8 +56,13 @@ export const ipc = {
   openFile: (path: string) => invoke<OpenedFile>("open_file", { path }),
   openFileAs: (path: string, encoding: EncodingId) =>
     invoke<OpenedFile>("open_file_as", { path, encoding }),
-  saveFile: (path: string, content: string, encoding: EncodingId, eol: EolId) =>
-    invoke<SavedFile>("save_file", { path, content, encoding, eol }),
+  saveFile: (
+    path: string,
+    content: string,
+    encoding: EncodingId,
+    eol: EolId,
+    allowLossy: boolean,
+  ) => invoke<SavedFile>("save_file", { path, content, encoding, eol, allowLossy }),
   statFile: (path: string) => invoke<FileStat>("stat_file", { path }),
 
   loadSession: () => invoke<LoadedSession | null>("load_session"),
