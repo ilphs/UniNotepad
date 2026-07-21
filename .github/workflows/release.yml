@@ -3,10 +3,17 @@ name: release
 # Build native binaries for macOS (arm64 + x86_64), Windows (x86_64), and
 # Linux (x86_64) on their respective runners, and attach them to the GitHub
 # release for the pushed tag. Triggered by pushing a v* tag.
+#
+# Can also be run manually (workflow_dispatch) to get installable test builds
+# without publishing anything: with no tag in the ref, tagName is left empty so
+# tauri-action skips release creation, and the bundles are uploaded as workflow
+# artifacts instead. Use this to verify a platform-specific fix before cutting
+# a real release.
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -55,11 +62,13 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      # An empty tagName makes tauri-action build only — no release is created
+      # or uploaded to. That is the manual-run path.
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
           releaseName: ${{ github.ref_name }}
           releaseBody: |
             See the attached assets for macOS (arm64/x86_64), Windows, and Linux downloads.
@@ -75,3 +84,15 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+
+      # Manual runs produce no release, so keep the bundles as workflow
+      # artifacts. Both globs are listed because a --target build nests the
+      # bundle dir under the triple while a plain build does not.
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          name: bundle-${{ matrix.platform }}-${{ matrix.rust-target || 'default' }}
+          if-no-files-found: error
+          path: |
+            src-tauri/target/release/bundle/**
+            src-tauri/target/${{ matrix.rust-target }}/release/bundle/**
