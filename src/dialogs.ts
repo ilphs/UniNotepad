@@ -14,7 +14,11 @@ import appIcon from "../src-tauri/icons/128x128@2x.png";
 
 // ---- About -----------------------------------------------------------------
 
-/** Scoped in src-tauri/capabilities/default.json — keep both in sync. */
+/**
+ * Scoped in src-tauri/capabilities/default.json — keep both in sync. The scope
+ * is a literal glob over the URL string, so the bare origin needs its own entry
+ * alongside `…/*`; a mismatch rejects the call rather than opening anything.
+ */
 const HOMEPAGE = "https://uninotepad-xi.vercel.app";
 
 export function openAbout(): void {
@@ -53,7 +57,9 @@ export function openAbout(): void {
   // The webview must not navigate away from the app: open in the OS browser.
   a.addEventListener("click", (e) => {
     e.preventDefault();
-    void openUrl(HOMEPAGE).catch(() => {});
+    // Surface failures: a scope rejection is otherwise indistinguishable from
+    // a dead link, since nothing visible happens either way.
+    void openUrl(HOMEPAGE).catch((err) => console.error("openUrl failed", err));
   });
   link.appendChild(a);
   box.appendChild(link);
