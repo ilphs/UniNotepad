@@ -113,6 +113,70 @@ async function bootstrap(): Promise<void> {
     });
   }
 
+  // Windows: native menu accelerators never fire while the WebView has focus.
+  // WebView2 pumps keyboard input inside its own child HWND/thread, so the
+  // host message loop — where Tauri's msg_hook would run TranslateAcceleratorW
+  // against the menu's HACCEL table — never sees the WM_KEYDOWN. The editor
+  // effectively always has focus, so every accelerator-only shortcut silently
+  // no-ops there. Replay the menu's accelerator table from the webview
+  // instead: keydown → handleMenu(id), the same dispatch a real menu click
+  // takes. Gated to Windows — on macOS/Linux native accelerators do fire and
+  // this would double-trigger. Bound in the bubble phase and skipping
+  // defaultPrevented events so CodeMirror keeps priority for the keys it owns
+  // (Ctrl+Z/F/G, F3, …) while the same combos still work when focus is
+  // outside the editor.
+  const isWindows = navigator.userAgent.includes("Windows");
+  if (isWindows) {
+    // Mirror of the accelerators in src-tauri/src/menu.rs (Windows spellings).
+    // Key format: mods + "+" + e.key.toLowerCase(), mods being "C"=Ctrl,
+    // "S"=Shift, "A"=Alt in that fixed order. Ctrl+Tab and Ctrl+"+" (the
+    // shifted zoom-in) stay with their dedicated listeners above.
+    const accelTable: Record<string, string> = {
+      "C+n": "file.new",
+      "C+o": "file.open",
+      "C+s": "file.save",
+      "CS+s": "file.saveAs",
+      "CA+s": "file.saveAll",
+      "C+p": "file.print",
+      "CS+t": "file.reopenClosed",
+      "C+w": "file.close",
+      "C+z": "edit.undo",
+      "CS+z": "edit.redo",
+      "C+f": "edit.find",
+      "+f3": "edit.findNext",
+      "S+f3": "edit.findPrev",
+      "C+h": "edit.replace",
+      "C+=": "view.zoomIn",
+      "C+-": "view.zoomOut",
+      "C+0": "view.zoomReset",
+      "C+g": "view.gotoLine",
+      "A+z": "view.toggleWrap",
+      "CS+m": "view.togglePreview",
+      "C+1": "view.gotoTab1",
+      "C+2": "view.gotoTab2",
+      "C+3": "view.gotoTab3",
+      "C+4": "view.gotoTab4",
+      "C+5": "view.gotoTab5",
+      "C+6": "view.gotoTab6",
+      "C+7": "view.gotoTab7",
+      "C+8": "view.gotoTab8",
+      "C+9": "view.gotoTab9",
+    };
+    window.addEventListener("keydown", (e) => {
+      if (e.defaultPrevented) return; // CodeMirror (or another handler) took it
+      if (e.metaKey) return;
+      // Same stand-down as Ctrl+Tab: acting under a dirty-close or lossy-save
+      // prompt would change what the prompt applies to.
+      if (isModalOpen()) return;
+      const mods =
+        (e.ctrlKey ? "C" : "") + (e.shiftKey ? "S" : "") + (e.altKey ? "A" : "");
+      const id = accelTable[`${mods}+${e.key.toLowerCase()}`];
+      if (!id) return;
+      e.preventDefault();
+      handleMenu(id);
+    });
+  }
+
   // Tell the backend we are listening so any queued file-opens are delivered.
   await ipc.frontendReady();
 }

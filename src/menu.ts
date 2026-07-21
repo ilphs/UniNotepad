@@ -170,13 +170,13 @@ export function handleMenu(id: string): void {
       void setActiveEol("crlf");
       break;
     // Zoom forks here — pointing at a diagram scales the chart, otherwise the
-    // editor font. The fork has to live on the *menu* path, not on keydown:
-    // Cmd/Ctrl+= / - / 0 are native accelerators (src-tauri/src/menu.rs), and on
-    // Windows tao's msg_hook runs TranslateAcceleratorW first and only calls
-    // DispatchMessageW `if (!handled)`, so the WebView never sees those keys at
-    // all — a keydown-based fork would be dead code there. macOS is the mirror
-    // image: WKWebView sees the key first and would starve the menu if it
-    // preventDefault'd. The menu event is the one path all three OSes share.
+    // editor font. The fork lives on the *menu-id* path rather than in a raw
+    // keydown handler so every entry point shares it: native accelerators and
+    // menu clicks (macOS/Linux), and the Windows keydown fallback in main.ts —
+    // there WebView2 pumps keyboard input in its own child HWND, the host loop
+    // never sees the keys while the editor has focus, and native accelerators
+    // never fire, so main.ts replays them as handleMenu(id) calls into this
+    // same switch. The menu id is the one path all three OSes share.
     case "view.zoomIn":
       if (!handleZoomShortcut(1)) zoomIn();
       break;

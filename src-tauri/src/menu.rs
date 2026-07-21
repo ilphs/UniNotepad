@@ -15,6 +15,15 @@
 //! its "Ctrl+S" hints and mouse clicks still work, but no shortcut ever fires.
 //! macOS and GTK are unaffected because they store accelerators per item at
 //! creation time, so the bug is invisible outside Windows.
+//!
+//! Even with a populated table, `TranslateAcceleratorW` only sees keys that
+//! reach the host thread's message loop — and WebView2 pumps keyboard input in
+//! its own child HWND, so while the webview has focus (practically always)
+//! accelerators still never fire on Windows. The webview-side fallback in
+//! `src/main.ts` replays this table as `handleMenu(id)` calls for that case;
+//! the accelerators declared here remain the source of truth for the menu's
+//! hint text, and the two never double-fire because they are separated by
+//! focus. Keep the fallback table in sync when touching accelerators here.
 
 use tauri::menu::{Menu, MenuItemBuilder, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Runtime};
