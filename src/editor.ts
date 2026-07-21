@@ -44,10 +44,9 @@ import { onDocChanged } from "./session";
 import { refreshStatusBar } from "./statusbar";
 import {
   highlighting,
-  languageForPath,
-  languageForFileType,
-  detectFileType,
   effectiveFileType,
+  isFastPathType,
+  loadFastPathLanguage,
   loadLanguageFor,
 } from "./language";
 import {
@@ -55,10 +54,13 @@ import {
   setWordWrap,
   isShowWhitespace,
   setShowWhitespace,
+  showLineNumbers,
+  setShowLineNumbers,
   indentUnitString,
   indentWidth,
   editorFontSize,
   setEditorFontSize,
+  editorFontFamily,
 } from "./settings";
 import { updatePreview, schedulePreviewRender } from "./preview";
 
@@ -86,6 +88,11 @@ const wrap = new Compartment();
 /** Per-state compartment holding the whitespace-display extension, toggled app-wide. */
 const whitespace = new Compartment();
 
+/** Per-state compartment holding the line-number gutter, toggled app-wide.
+ *  Only lineNumbers() lives here; foldGutter/highlightActiveLineGutter stay
+ *  outside so folding and the active-line marker survive the toggle. */
+const gutter = new Compartment();
+
 /** Per-state compartment holding indent unit + tab size, driven by settings. */
 const indent = new Compartment();
 
@@ -99,6 +106,11 @@ function whitespaceExtension(): Extension {
   return isShowWhitespace() ? [highlightWhitespace(), highlightTrailingWhitespace()] : [];
 }
 
+/** Current gutter extension: the line-number column, driven by the preference. */
+function gutterExtension(): Extension {
+  return showLineNumbers() ? lineNumbers() : [];
+}
+
 /** Current indent extension: the per-level string plus the Tab display width. */
 function indentExtension(): Extension {
   return [indentUnit.of(indentUnitString()), EditorState.tabSize.of(indentWidth())];
@@ -110,30 +122,41 @@ export function makeState(
   cursor?: number,
   path?: string | null,
   fileType?: FileTypeId | null,
+  large?: boolean,
 ): EditorState {
   const head = cursor == null ? 0 : Math.max(0, Math.min(cursor, doc.length));
-  const p = path ?? null;
-  const ft = fileType ?? detectFileType(p);
+  // path/fileType are kept in the signature for call-site stability, but the
+  // language is resolved lazily by applyLanguage() once the tab is shown.
+  void path;
+  void fileType;
+  // Large-file reduced mode: keep the buffer usable but drop the heavy, per-line
+  // features (syntax highlighting, folding, match highlighting). The language
+  // compartment stays present but empty so reconfigureLanguage/applyLanguage
+  // have something to target while continuing to no-op for large tabs.
+  //
+  // The compartment always starts empty (even for a recognized type): the
+  // grammar is imported dynamically, so applyLanguage() fills it in once the tab
+  // is shown. That keeps the language grammars out of the entry chunk.
   return EditorState.create({
     doc,
     selection: { anchor: head },
     extensions: [
-      lineNumbers(),
-      foldGutter(),
+      gutter.of(gutterExtension()),
+      large ? [] : foldGutter(),
       highlightActiveLineGutter(),
       history(),
-      codeFolding(),
+      large ? [] : codeFolding(),
       EditorState.allowMultipleSelections.of(true),
       drawSelection(),
       rectangularSelection(),
       highlightActiveLine(),
-      highlightSelectionMatches(),
+      large ? [] : highlightSelectionMatches(),
       search({ top: true }),
       closeBrackets(),
       bracketMatching(),
       indentOnInput(),
       indent.of(indentExtension()),
-      language.of(languageForFileType(ft, p)),
+      language.of([]),
       highlighting,
       keymap.of([
         ...closeBracketsKeymap,
@@ -169,34 +192,56 @@ export function makeState(
  *  and after the type picker changes the tab's type). Takes the tab, not a path:
  *  a path alone would discard an explicit pick. */
 export function reconfigureLanguage(tab: Tab): void {
-  const ext = languageForFileType(effectiveFileType(tab), tab.path);
-  view.dispatch({ effects: language.reconfigure(ext) });
+  // Large files stay unhighlighted (the empty language makeState installed): a
+  // full re-parse is exactly the cost the reduced mode exists to avoid.
+  if (tab.largeFile) return;
+  // Normal — whether an explicit pick or a Save As into an unmapped extension —
+  // clears highlighting synchronously so the old language doesn't linger during
+  // the async resolution below. (For a detected-normal, applyLanguage may still
+  // broaden it via the language-data path; an explicit Normal it leaves alone.)
+  if (effectiveFileType(tab) === "normal") {
+    view.dispatch({ effects: language.reconfigure([]) });
+  }
   updatePreview(); // the effective type may have changed the tab's preview status
-  void applyLazyLanguage(tab);
+  void applyLanguage(tab);
 }
 
 /**
- * For extensions the static fast-path doesn't cover, lazily resolve a language
- * via @codemirror/language-data and reconfigure the live view once it loads.
- * No-op when the fast-path already handled the file (avoids a re-highlight
- * flash for common languages). Guarded against the tab switching mid-load.
+ * Resolve and install the tab's language into the live view, importing the
+ * grammar lazily. Fast-path types (json, python, …) load their dedicated
+ * grammar chunk; everything else (unmapped extensions with no explicit pick)
+ * falls through to @codemirror/language-data for Notepad++-level coverage.
+ * Guarded against the tab switching or being re-typed mid-import, and a no-op
+ * when the resolved grammar is already installed (avoids a re-parse on every
+ * tab switch).
  */
-async function applyLazyLanguage(tab: Tab): Promise<void> {
-  // An explicit pick outranks whatever language-data matches on the filename;
-  // without this, switching tabs would silently undo it (e.g. CMakeLists.txt
-  // set to Markdown). The test is fileType, not the effective type: an explicit
-  // Normal resolves to no language, which would let language-data back in.
+async function applyLanguage(tab: Tab): Promise<void> {
+  // Large files never load a language — reduced mode leaves them unhighlighted.
+  if (tab.largeFile) return;
+  const ft = effectiveFileType(tab);
+
+  if (isFastPathType(ft)) {
+    const ext = await loadFastPathLanguage(ft, tab.path);
+    if (!ext) return;
+    // The tab may have been switched away from, or re-typed, during the import.
+    if (store.state.activeTabId !== tab.id || effectiveFileType(tab) !== ft) return;
+    // Same instance already installed → nothing to do (no re-parse on tab switch).
+    if (language.get(view.state) === ext) return;
+    view.dispatch({ effects: language.reconfigure(ext) });
+    return;
+  }
+
+  // Non-fast-path (effective "normal"): an explicit pick outranks whatever
+  // language-data matches on the filename; without this, switching tabs would
+  // silently undo it. The test is fileType, not the effective type: an explicit
+  // Normal resolves here but must stay plain, so this blocks language-data too.
   if (tab.fileType !== null) return;
   const path = tab.path;
   if (!path) return;
-  const staticExt = languageForPath(path);
-  // Fast-path already resolved a language → nothing to lazy-load.
-  if (!Array.isArray(staticExt) || staticExt.length > 0) return;
   const ext = await loadLanguageFor(path);
   if (!ext) return;
-  // The tab may have been switched away from, or given an explicit type, during
-  // the async import.
   if (store.state.activeTabId !== tab.id || tab.fileType !== null) return;
+  if (language.get(view.state) === ext) return;
   view.dispatch({ effects: language.reconfigure(ext) });
 }
 
@@ -205,32 +250,57 @@ export function openGotoLine(): void {
   gotoLine(view);
 }
 
+/** Reconfigure one compartment across every tab. The active tab's live doc
+ *  lives in the view; the others live in each tab's detached `state`. Shared by
+ *  the View-menu toggles and the Preferences modal so a setting written by
+ *  either path lands on all open tabs identically. */
+function reconfigureAll(compartment: Compartment, ext: Extension): void {
+  const activeId = store.state.activeTabId;
+  view.dispatch({ effects: compartment.reconfigure(ext) });
+  for (const tab of store.state.tabs) {
+    if (tab.id === activeId) continue;
+    tab.state = tab.state.update({ effects: compartment.reconfigure(ext) }).state;
+  }
+}
+
+/** Re-apply the current word-wrap preference to every tab. */
+export function applyWrap(): void {
+  reconfigureAll(wrap, wrapExtension());
+}
+
+/** Re-apply the current "show whitespace" preference to every tab. */
+export function applyWhitespace(): void {
+  reconfigureAll(whitespace, whitespaceExtension());
+}
+
+/** Re-apply the current line-number preference to every tab. */
+export function applyGutter(): void {
+  reconfigureAll(gutter, gutterExtension());
+}
+
+/** Re-apply the current indent unit + tab size to every tab. */
+export function applyIndent(): void {
+  reconfigureAll(indent, indentExtension());
+}
+
 /** Flip the app-wide word-wrap preference and reconfigure every tab's state. */
 export function toggleWordWrap(): void {
   setWordWrap(!isWordWrap());
-  const ext = wrapExtension();
-  const activeId = store.state.activeTabId;
-  // The active tab's live doc lives in the view; others live in tab.state.
-  view.dispatch({ effects: wrap.reconfigure(ext) });
-  for (const tab of store.state.tabs) {
-    if (tab.id === activeId) continue;
-    tab.state = tab.state.update({ effects: wrap.reconfigure(ext) }).state;
-  }
+  applyWrap();
   refreshStatusBar();
 }
 
-/** Flip the app-wide "show whitespace" preference and reconfigure every tab's
- *  state (same active-vs-inactive split as toggleWordWrap). */
+/** Flip the app-wide "show whitespace" preference and reconfigure every tab. */
 export function toggleShowWhitespace(): void {
   setShowWhitespace(!isShowWhitespace());
-  const ext = whitespaceExtension();
-  const activeId = store.state.activeTabId;
-  // The active tab's live doc lives in the view; others live in tab.state.
-  view.dispatch({ effects: whitespace.reconfigure(ext) });
-  for (const tab of store.state.tabs) {
-    if (tab.id === activeId) continue;
-    tab.state = tab.state.update({ effects: whitespace.reconfigure(ext) }).state;
-  }
+  applyWhitespace();
+  refreshStatusBar();
+}
+
+/** Flip the app-wide line-number preference and reconfigure every tab. */
+export function toggleLineNumbers(): void {
+  setShowLineNumbers(!showLineNumbers());
+  applyGutter();
   refreshStatusBar();
 }
 
@@ -257,8 +327,35 @@ export function mountEditor(host: HTMLElement): void {
   view = new EditorView({ parent: host });
 }
 
+/** The built-in fallback stack, kept in sync with styles.css's .cm-scroller
+ *  default. A chosen font is prepended to this so unavailable glyphs still fall
+ *  through to a working monospace. */
+const BASE_FONT_STACK = '"SFMono-Regular", "Consolas", "Menlo", monospace';
+
+function fontFamilyValue(): string {
+  const chosen = editorFontFamily();
+  return chosen ? `"${chosen}", ${BASE_FONT_STACK}` : BASE_FONT_STACK;
+}
+
+/** Push the current font size + family into the CSS variables .cm-scroller
+ *  reads. Called by the zoom commands and by Preferences. */
 function applyZoom(): void {
   hostEl.style.setProperty("--editor-font-size", `${fontSize}px`);
+  hostEl.style.setProperty("--editor-font-family", fontFamilyValue());
+}
+
+/** Re-apply the current font family (Preferences font picker). */
+export function applyFontFamily(): void {
+  applyZoom();
+}
+
+/** Set an absolute editor font size in px (Preferences number input). Reuses the
+ *  same clamp + persistence the zoom commands use, then refreshes the CSS var. */
+export function setEditorFontSizePx(px: number): void {
+  fontSize = Math.max(MIN_FONT, Math.min(MAX_FONT, Math.round(px)));
+  setEditorFontSize(fontSize);
+  applyZoom();
+  refreshStatusBar();
 }
 
 export function zoomIn(): void {
@@ -298,7 +395,7 @@ export function showTab(tab: Tab): void {
     view.scrollDOM.scrollTop = tab.scrollTop;
   });
   updatePreview(); // show/hide + render for the newly active tab
-  void applyLazyLanguage(tab); // broaden highlighting for long-tail extensions
+  void applyLanguage(tab); // resolve + install highlighting for the shown tab
 }
 
 /** Persist the live view (doc, selection, undo history, scroll) back into a tab. */

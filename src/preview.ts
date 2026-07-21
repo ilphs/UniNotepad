@@ -10,10 +10,14 @@
  * first use so app start and non-preview use pay nothing (see plan: 무게 검토).
  */
 import { save, message } from "@tauri-apps/plugin-dialog";
+import { LanguageDescription, type LanguageSupport } from "@codemirror/language";
+import { languages } from "@codemirror/language-data";
+import { highlightCode } from "@lezer/highlight";
+import { StyleModule } from "style-mod";
 import { store } from "./state";
 import { currentDoc, getView } from "./editor";
 import { ipc } from "./ipc";
-import { effectiveFileType } from "./language";
+import { effectiveFileType, highlightStyle } from "./language";
 import { refreshStatusBar } from "./statusbar";
 import { themeChoice } from "./theme";
 import {
@@ -45,29 +49,84 @@ let loading: Promise<{ marked: Marked; DOMPurify: Purify }> | null = null;
 function ensureMods(): Promise<{ marked: Marked; DOMPurify: Purify }> {
   if (mods) return Promise.resolve(mods);
   if (!loading) {
-    loading = Promise.all([
-      import("marked"),
-      import("dompurify"),
-      import("marked-highlight"),
-      import("highlight.js/lib/common"),
-    ]).then(([{ marked }, { default: DOMPurify }, { markedHighlight }, { default: hljs }]) => {
-      marked.setOptions({ gfm: true, breaks: false });
-      // Syntax-highlight fenced code via highlight.js; the `hljs-*` span
-      // classes it emits are themed by the shared --cm-* palette in styles.css.
-      marked.use(
-        markedHighlight({
-          langPrefix: "hljs language-",
-          highlight: (code, lang) =>
-            hljs.highlight(code, {
-              language: hljs.getLanguage(lang) ? lang : "plaintext",
-            }).value,
-        }),
-      );
-      mods = { marked, DOMPurify };
-      return mods;
-    });
+    loading = Promise.all([import("marked"), import("dompurify")]).then(
+      ([{ marked }, { default: DOMPurify }]) => {
+        marked.setOptions({ gfm: true, breaks: false });
+        // Fenced code is left as plain `<pre><code class="language-…">` by marked;
+        // it's syntax-highlighted after sanitize by reusing CodeMirror's own
+        // grammars + HighlightStyle (highlightCodeBlocks), so the preview shares
+        // the exact token→color palette with the editor and ships no separate
+        // highlighter in the entry bundle.
+        mods = { marked, DOMPurify };
+        return mods;
+      },
+    );
   }
   return loading;
+}
+
+// ---- Fenced code highlighting (reuses the editor's CM grammars) ------------
+
+/** Mount the shared HighlightStyle's CSS rules into the document once, so the
+ *  token spans produced below pick up the same `--cm-*` palette the editor uses.
+ *  (The editor mounts them too, but not necessarily before the first preview.) */
+let highlightStyleMounted = false;
+function ensureHighlightStyleMounted(): void {
+  if (highlightStyleMounted) return;
+  if (highlightStyle.module) StyleModule.mount(document, highlightStyle.module);
+  highlightStyleMounted = true;
+}
+
+/** Replace a `<code>` block's text with CodeMirror-highlighted token spans,
+ *  using the shared HighlightStyle so colors follow the active theme. */
+function highlightInto(codeEl: HTMLElement, support: LanguageSupport): void {
+  const code = codeEl.textContent ?? "";
+  const tree = support.language.parser.parse(code);
+  const frag = document.createDocumentFragment();
+  highlightCode(
+    code,
+    tree,
+    highlightStyle,
+    (text, classes) => {
+      if (classes) {
+        const span = document.createElement("span");
+        span.className = classes;
+        span.textContent = text;
+        frag.appendChild(span);
+      } else {
+        frag.appendChild(document.createTextNode(text));
+      }
+    },
+    () => frag.appendChild(document.createTextNode("\n")),
+  );
+  codeEl.replaceChildren(frag);
+}
+
+/** Syntax-highlight every ```lang fenced block whose language CodeMirror knows,
+ *  loading each grammar lazily via @codemirror/language-data. Mermaid blocks are
+ *  skipped (renderMermaid turns them into diagrams). Unknown languages stay
+ *  plain. Re-checks the render token after each async load so a superseded
+ *  render never injects into a rebuilt (or hidden) preview. */
+async function highlightCodeBlocks(mdBody: HTMLElement, myRun: number): Promise<void> {
+  const blocks = mdBody.querySelectorAll<HTMLElement>('pre code[class*="language-"]');
+  if (blocks.length === 0) return;
+  ensureHighlightStyleMounted();
+  for (const codeEl of Array.from(blocks)) {
+    const name = /language-([\w+#.-]+)/.exec(codeEl.className)?.[1];
+    if (!name || name === "mermaid") continue; // mermaid → renderMermaid handles it
+    const desc = LanguageDescription.matchLanguageName(languages, name, true);
+    if (!desc) continue; // unknown language → leave the block plain
+    let support: LanguageSupport;
+    try {
+      support = await desc.load();
+    } catch {
+      continue; // a grammar chunk failed to load; leave this block plain
+    }
+    // A newer render (fast edit / tab switch / theme change) superseded this one,
+    // or the pane was hidden: the mdBody these nodes live in is stale — abort.
+    if (renderSeq !== myRun || previewHost.hidden) return;
+    highlightInto(codeEl, support);
+  }
 }
 
 // ---- Mermaid (lazy, only when a diagram is present) ------------------------
@@ -104,6 +163,9 @@ function effectiveDark(): boolean {
  *  document or a standalone Mermaid diagram — by extension, or by an explicit
  *  pick in the status-bar type picker. */
 function shouldShow(): boolean {
+  // Large files run in reduced mode with no highlighting; rendering a multi-MB
+  // Markdown/Mermaid preview would defeat that, so suppress it entirely.
+  if (store.activeTab?.largeFile) return false;
   const ft = effectiveFileType(store.activeTab);
   return isPreviewEnabled() && (ft === "markdown" || ft === "mermaid");
 }
@@ -163,13 +225,15 @@ async function renderNow(): Promise<void> {
   const doc = currentDoc();
   const mdBody = ensureMdBody();
   mdBody.innerHTML = DOMPurify.sanitize(marked.parse(doc) as string);
+  await highlightCodeBlocks(mdBody, myRun);
+  if (renderSeq !== myRun || previewHost.hidden) return;
   await renderMermaid(mdBody, myRun);
 }
 
 /** Replace ```mermaid code blocks with rendered SVG diagrams. The block's
- *  source survives as plain text in `code.language-mermaid` (highlight.js
- *  treats the unknown language as plaintext), so we read it and hand it to
- *  mermaid. mermaid's own securityLevel:"strict" sanitizes the SVG. */
+ *  source survives as plain text in `code.language-mermaid` (highlightCodeBlocks
+ *  skips mermaid), so we read it and hand it to mermaid. mermaid's own
+ *  securityLevel:"strict" sanitizes the SVG. */
 async function renderMermaid(mdBody: HTMLElement, myRun: number): Promise<void> {
   const blocks = mdBody.querySelectorAll<HTMLElement>("code.language-mermaid");
   if (blocks.length === 0) return;

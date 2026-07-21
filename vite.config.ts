@@ -22,8 +22,29 @@ export default defineConfig({
     target: "es2021",
     minify: "esbuild",
     sourcemap: false,
-    // Loaded from local disk in a WebView — no network cost, so the grammar
-    // parsers pushing the bundle past 500 kB is fine.
-    chunkSizeWarningLimit: 2000,
+    // The language grammars now load as dynamic chunks (src/language.ts), so the
+    // entry stays lean. This lowered limit is a regression guard: if a grammar's
+    // static import ever creeps back into the entry chunk, the build warns.
+    chunkSizeWarningLimit: 600,
+    rolldownOptions: {
+      output: {
+        // Keep the always-loaded CodeMirror runtime (view/state/commands/…) in
+        // its own vendor chunk instead of letting rolldown fold it into the app
+        // entry. This is purely a code-organization split — the same bytes load
+        // at startup either way — but it keeps the app entry small and readable.
+        //
+        // Crucially it must NOT capture the per-language grammars: @codemirror/
+        // lang-* and @codemirror/legacy-modes stay excluded so they keep
+        // code-splitting into their own lazy chunks (loaded only on demand).
+        advancedChunks: {
+          groups: [
+            {
+              name: "codemirror",
+              test: /[\\/]node_modules[\\/](@codemirror[\\/](?!lang-|legacy-modes)[^\\/]+|@lezer[\\/](common|highlight)|style-mod|crelt|w3c-keyname)[\\/]/,
+            },
+          ],
+        },
+      },
+    },
   },
 });

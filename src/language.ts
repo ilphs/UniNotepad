@@ -7,29 +7,23 @@ import {
 } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
 import { tags as t } from "@lezer/highlight";
-import { json } from "@codemirror/lang-json";
-import { sql } from "@codemirror/lang-sql";
-import { java } from "@codemirror/lang-java";
-import { python } from "@codemirror/lang-python";
-import { html } from "@codemirror/lang-html";
-import { css } from "@codemirror/lang-css";
-import { javascript } from "@codemirror/lang-javascript";
-import { markdown } from "@codemirror/lang-markdown";
-import { xml } from "@codemirror/lang-xml";
-import { yaml } from "@codemirror/lang-yaml";
-import { cpp } from "@codemirror/lang-cpp";
-import { rust } from "@codemirror/lang-rust";
-import { shell } from "@codemirror/legacy-modes/mode/shell";
-import { go } from "@codemirror/legacy-modes/mode/go";
 import { mermaidMode } from "./mermaid-lang";
 import type { Tab, FileTypeId } from "./state";
+
+// NOTE: the per-language grammars (@codemirror/lang-*, legacy-modes shell/go)
+// are intentionally NOT imported statically here — each ships its own Lezer
+// grammar (~400 kB combined) and would land in the entry chunk. They load
+// dynamically in buildFastPathLanguage() so opening a plain file pays nothing.
+// Only mermaidMode (local), @codemirror/language, language-data and
+// @lezer/highlight stay static.
 
 /**
  * Theme-aware highlight style. Colors are CSS variables (defined in styles.css
  * per light/dark) so highlighting stays readable in both themes with a single
- * style definition.
+ * style definition. Exported so the Markdown preview can reuse the exact same
+ * token→color mapping for its fenced code blocks (see preview.ts).
  */
-const highlightStyle = HighlightStyle.define([
+export const highlightStyle = HighlightStyle.define([
   { tag: [t.comment, t.lineComment, t.blockComment], color: "var(--cm-comment)", fontStyle: "italic" },
   { tag: [t.keyword, t.modifier, t.controlKeyword, t.operatorKeyword], color: "var(--cm-keyword)" },
   { tag: [t.string, t.special(t.string), t.character], color: "var(--cm-string)" },
@@ -105,62 +99,102 @@ export function effectiveFileType(tab: Tab | null): FileTypeId {
   return tab.fileType ?? detectFileType(tab.path);
 }
 
-/** Resolve a type to its language extension. `path` only refines a type it
- *  can't change (JSX/TSX dialects), so an explicit pick still wins.
- *
- *  "normal" is plain text — picking it is how the user turns highlighting and
- *  the preview off. Detection also lands here for unmapped extensions, but that
- *  leaves `fileType` null, which is what lets `applyLazyLanguage` still reach
- *  the lazy language-data path for them. */
-export function languageForFileType(ft: FileTypeId, path: string | null): Extension {
+/** True for every type the static-detection fast-path knows how to build a
+ *  grammar for — i.e. everything except plain "normal". editor.ts routes these
+ *  to loadFastPathLanguage; anything else (unmapped extensions) falls through to
+ *  the lazy language-data path. */
+export function isFastPathType(ft: FileTypeId): boolean {
+  return ft !== "normal";
+}
+
+/** Cache key for a fast-path language. Includes the dialect for JS/TS because
+ *  `javascript({ jsx })` / `javascript({ typescript, tsx })` are distinct
+ *  configurations that must not share one cached instance — the no-op guard in
+ *  editor.ts relies on "same key → same Extension instance". */
+function fastPathKey(ft: FileTypeId, path: string | null): string | null {
   switch (ft) {
-    case "markdown":
-      return markdown();
-    case "mermaid":
-      return StreamLanguage.define(mermaidMode);
-    case "json":
-      return json();
-    case "sql":
-      return sql();
-    case "java":
-      return java();
-    case "python":
-      return python();
-    case "shell":
-      return StreamLanguage.define(shell);
-    case "html":
-      return html();
-    case "css":
-      return css();
+    case "normal":
+      return null;
     case "javascript":
-      return javascript({ jsx: extOf(path) === "jsx" });
+      return extOf(path) === "jsx" ? "javascript:jsx" : "javascript:plain";
     case "typescript":
-      return javascript({ typescript: true, jsx: extOf(path) === "tsx" });
-    case "xml":
-      return xml();
-    case "yaml":
-      return yaml();
-    case "cpp":
-      return cpp();
-    case "rust":
-      return rust();
-    case "go":
-      return StreamLanguage.define(go);
+      return extOf(path) === "tsx" ? "typescript:tsx" : "typescript:plain";
     default:
-      return [];
+      return ft;
   }
 }
 
-/** Resolve a file path to its language extension (empty for plain text). "txt"
- *  and every other unmapped extension land on [], leaving them to the lazy
- *  language-data path (loadLanguageFor) for Notepad++-level coverage. */
-export function languageForPath(path: string | null): Extension {
-  if (!path) return [];
-  return languageForFileType(detectFileType(path), path);
+/** Dynamically import and build the language extension for a fast-path type.
+ *  Each grammar is its own async chunk, so only the ones actually opened load. */
+async function buildFastPathLanguage(ft: FileTypeId, path: string | null): Promise<Extension | null> {
+  switch (ft) {
+    case "markdown":
+      return (await import("@codemirror/lang-markdown")).markdown();
+    case "mermaid":
+      return StreamLanguage.define(mermaidMode);
+    case "json":
+      return (await import("@codemirror/lang-json")).json();
+    case "sql":
+      return (await import("@codemirror/lang-sql")).sql();
+    case "java":
+      return (await import("@codemirror/lang-java")).java();
+    case "python":
+      return (await import("@codemirror/lang-python")).python();
+    case "shell":
+      return StreamLanguage.define((await import("@codemirror/legacy-modes/mode/shell")).shell);
+    case "html":
+      return (await import("@codemirror/lang-html")).html();
+    case "css":
+      return (await import("@codemirror/lang-css")).css();
+    case "javascript":
+      return (await import("@codemirror/lang-javascript")).javascript({ jsx: extOf(path) === "jsx" });
+    case "typescript":
+      return (await import("@codemirror/lang-javascript")).javascript({
+        typescript: true,
+        jsx: extOf(path) === "tsx",
+      });
+    case "xml":
+      return (await import("@codemirror/lang-xml")).xml();
+    case "yaml":
+      return (await import("@codemirror/lang-yaml")).yaml();
+    case "cpp":
+      return (await import("@codemirror/lang-cpp")).cpp();
+    case "rust":
+      return (await import("@codemirror/lang-rust")).rust();
+    case "go":
+      return StreamLanguage.define((await import("@codemirror/legacy-modes/mode/go")).go);
+    default:
+      return null;
+  }
 }
 
-/** Loaded LanguageSupport cached by language name, so re-activating a tab
- *  reuses the same extension instance instead of re-importing. */
+/**
+ * Resolve a fast-path type to its language extension, importing the grammar
+ * lazily. `path` only refines a type it can't change (JSX/TSX dialects), so an
+ * explicit pick still wins. Returns null for "normal" (plain text — no grammar).
+ *
+ * Cached by dialect-inclusive key, so re-activating a tab of the same type
+ * reuses the exact same Extension instance. That identity is what lets
+ * editor.ts skip a redundant reconfigure (and re-parse) on every tab switch.
+ */
+export async function loadFastPathLanguage(ft: FileTypeId, path: string | null): Promise<Extension | null> {
+  const key = fastPathKey(ft, path);
+  if (key === null) return null;
+  const cached = langCache.get(key);
+  if (cached) return cached;
+  try {
+    const ext = await buildFastPathLanguage(ft, path);
+    if (ext) langCache.set(key, ext);
+    return ext;
+  } catch {
+    return null; // a grammar chunk failed to load; leave the doc as plain text
+  }
+}
+
+/** Loaded LanguageSupport cached by name (language-data path) and by
+ *  dialect-inclusive key (fast-path), so re-activating a tab reuses the same
+ *  extension instance instead of re-importing. Keys never collide: language-data
+ *  names are capitalized ("JavaScript"), fast-path keys are lowercased ids. */
 const langCache = new Map<string, Extension>();
 
 /**
