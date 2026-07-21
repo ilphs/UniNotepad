@@ -47,6 +47,9 @@ export interface Tab {
   fileType: FileTypeId | null;
   diskMtimeMs: number | null;
   missingOnDisk: boolean;
+  /** Loaded in large-file reduced mode: no syntax highlighting, no crash
+   *  backup (for file-backed tabs). Set from the opened file's `large` flag. */
+  largeFile: boolean;
   /** CodeMirror state: holds doc, selection, and undo history. */
   state: EditorState;
   /** Scroll position (not part of EditorState — captured on switch/flush). */

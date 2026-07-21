@@ -10,6 +10,14 @@ export interface OpenedFile {
   mtimeMs: number | null;
   /** True when some bytes could not be decoded and were replaced (U+FFFD). */
   lossy: boolean;
+  /** File size in bytes, from the pre-read stat. */
+  sizeBytes: number;
+  /** True when the file is over the warn threshold and allowLarge was not set:
+   *  nothing was read (content is empty) and the caller must confirm first. */
+  needsLargeConfirm: boolean;
+  /** True whenever the file is over the warn threshold — signals reduced mode
+   *  (no highlighting, no crash backup) even after the user approves. */
+  large: boolean;
 }
 
 export interface SavedFile {
@@ -25,6 +33,14 @@ export interface FileStat {
   mtimeMs: number | null;
 }
 
+/** Emitted by the backend when a watched file changes on disk. `path` echoes
+ *  the exact string passed to watchFile, so it matches a tab's `path`. */
+export interface FileChangedPayload {
+  path: string;
+  exists: boolean;
+  mtimeMs: number | null;
+}
+
 export interface TabEntry {
   id: string;
   path: string | null;
@@ -36,6 +52,9 @@ export interface TabEntry {
   /** Rust round-trips this untyped, so treat it as untrusted on read. */
   fileType: FileTypeId | null;
   diskMtimeMs: number | null;
+  /** Whether this tab loaded in large-file reduced mode (absent in older
+   *  manifests → treated as false). */
+  largeFile: boolean;
   cursor: number | null;
   scrollTop: number | null;
 }
@@ -53,9 +72,10 @@ export interface LoadedSession {
 }
 
 export const ipc = {
-  openFile: (path: string) => invoke<OpenedFile>("open_file", { path }),
-  openFileAs: (path: string, encoding: EncodingId) =>
-    invoke<OpenedFile>("open_file_as", { path, encoding }),
+  openFile: (path: string, allowLarge = false) =>
+    invoke<OpenedFile>("open_file", { path, allowLarge }),
+  openFileAs: (path: string, encoding: EncodingId, allowLarge = false) =>
+    invoke<OpenedFile>("open_file_as", { path, encoding, allowLarge }),
   saveFile: (
     path: string,
     content: string,
@@ -64,6 +84,16 @@ export const ipc = {
     allowLossy: boolean,
   ) => invoke<SavedFile>("save_file", { path, content, encoding, eol, allowLossy }),
   statFile: (path: string) => invoke<FileStat>("stat_file", { path }),
+
+  // Watch/unwatch are best-effort: a failed watch just means no live updates
+  // (the focus-mtime fallback still catches changes), so errors are swallowed.
+  watchFile: (path: string) => invoke<void>("watch_file", { path }).catch(() => {}),
+  unwatchFile: (path: string) => invoke<void>("unwatch_file", { path }).catch(() => {}),
+
+  // Rebuild the native menu so its "Open Recent" submenu reflects `paths`
+  // (newest first). Best-effort: a failure just leaves the last-good menu.
+  setRecentFiles: (paths: string[]) =>
+    invoke<void>("set_recent_files", { paths }).catch(() => {}),
 
   loadSession: () => invoke<LoadedSession | null>("load_session"),
   persistSession: (manifestJson: string, dirtyBackups: [string, string][]) =>
@@ -79,6 +109,11 @@ export function onOpenPaths(cb: (paths: string[]) => void): Promise<UnlistenFn> 
 
 export function onMenu(cb: (id: string) => void): Promise<UnlistenFn> {
   return listen<string>("menu", (e) => cb(e.payload));
+}
+
+/** Fires when a watched file changes on disk (created/modified/deleted). */
+export function onFileChanged(cb: (p: FileChangedPayload) => void): Promise<UnlistenFn> {
+  return listen<FileChangedPayload>("file-changed", (e) => cb(e.payload));
 }
 
 /** Fires when the user drags file(s) from the OS file explorer onto the app window. */

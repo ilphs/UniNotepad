@@ -48,6 +48,10 @@ pub struct TabEntry {
     pub file_type: Option<String>,
     #[serde(rename = "diskMtimeMs", default)]
     pub disk_mtime_ms: Option<u64>,
+    /// Whether this tab loaded in large-file reduced mode. Absent in older
+    /// manifests, so it defaults to false and round-trips otherwise.
+    #[serde(rename = "largeFile", default)]
+    pub large_file: bool,
     #[serde(default)]
     pub cursor: Option<u64>,
     #[serde(rename = "scrollTop", default)]

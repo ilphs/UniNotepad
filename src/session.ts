@@ -25,8 +25,15 @@ export function sessionHealth(): { failing: boolean; error: string | null } {
   return { failing: persistFailCount >= 2, error: lastPersistError };
 }
 
-/** A tab needs a backup file iff it is untitled or has unsaved edits. */
+/** A tab needs a backup file iff it is untitled or has unsaved edits. Large
+ *  file-backed tabs are excluded: copying tens of MB on every flush is exactly
+ *  the cost reduced mode avoids, and the file on disk is the source of truth.
+ *  Large *untitled* tabs still get backed up — the buffer is their only copy.
+ *  A large file-backed tab whose file vanished from disk (`missingOnDisk`) also
+ *  gets backed up: the on-disk source is gone, so the buffer is the only copy
+ *  left and dropping it would lose the data on a crash despite its size. */
 function needsBackup(t: Tab): boolean {
+  if (t.largeFile && t.path !== null && !t.missingOnDisk) return false;
   return t.path === null || t.dirty;
 }
 
@@ -71,6 +78,7 @@ function buildManifest(): SessionManifest {
     eol: t.eol,
     fileType: t.fileType,
     diskMtimeMs: t.diskMtimeMs,
+    largeFile: t.largeFile,
     cursor: t.state.selection.main.head,
     scrollTop: t.scrollTop,
   }));
@@ -138,6 +146,7 @@ function tabFromEntry(entry: TabEntry, doc: string): Tab {
   // Resolved before makeState: the language is baked into the state it builds,
   // so assigning fileType afterwards would leave the two out of sync.
   const fileType = fileTypeFromEntry(entry.fileType);
+  const largeFile = entry.largeFile === true;
   return {
     id: entry.id,
     path: entry.path,
@@ -148,7 +157,8 @@ function tabFromEntry(entry: TabEntry, doc: string): Tab {
     fileType,
     diskMtimeMs: entry.diskMtimeMs,
     missingOnDisk: false,
-    state: makeState(doc, entry.id, entry.cursor ?? undefined, entry.path, fileType),
+    largeFile,
+    state: makeState(doc, entry.id, entry.cursor ?? undefined, entry.path, fileType, largeFile),
     scrollTop: entry.scrollTop ?? 0,
     notice: null,
   };
@@ -187,14 +197,31 @@ export async function restoreSession(): Promise<void> {
     }
 
     if (!entry.dirty) {
-      // Clean file-backed: re-read from disk (Notepad++ behavior).
+      // Clean file-backed: re-read from disk (Notepad++ behavior). Carry the
+      // tab's prior large-file decision so restore never re-prompts with a modal.
       try {
-        const opened = await ipc.openFile(entry.path);
+        const opened = await ipc.openFile(entry.path, entry.largeFile === true);
+        // The file grew past the warn threshold since last session (its entry
+        // wasn't flagged large, so we didn't pre-approve): don't silently load
+        // tens of MB — leave the buffer empty with a dismissible notice.
+        if (opened.needsLargeConfirm) {
+          const tab = tabFromEntry(entry, "");
+          tab.largeFile = true;
+          tab.notice = {
+            kind: "lossy",
+            message:
+              `${tab.title} is large and was not reloaded automatically. ` +
+              "Reopen it from the File menu to load it.",
+          };
+          store.state.tabs.push(tab);
+          continue;
+        }
         const tab = tabFromEntry(entry, opened.content);
         tab.encoding = opened.encoding;
         tab.eol = opened.eol;
         tab.diskMtimeMs = opened.mtimeMs;
         tab.dirty = false;
+        tab.largeFile = opened.large;
         store.state.tabs.push(tab);
       } catch {
         const tab = tabFromEntry(entry, "");
