@@ -1,8 +1,10 @@
 /**
  * Most-recently-opened file paths, persisted in localStorage (theme.ts pattern).
- * Front-end only: the native menu cannot be rebuilt at runtime here, so the list
- * is surfaced through a small in-app picker (see dialogs.ts).
+ * The list is surfaced two ways that stay in sync: the native "Open Recent"
+ * submenu (rebuilt in Rust via setRecentFiles) and the in-app "Show All…"
+ * picker (see dialogs.ts).
  */
+import { ipc } from "./ipc";
 
 const STORAGE_KEY = "uninotepad.recentFiles";
 const MAX_ENTRIES = 12;
@@ -19,13 +21,21 @@ export function recentFiles(): string[] {
   }
 }
 
+/** Push the current list into the native menu's Open Recent submenu. Called
+ *  after every mutation and once at startup (main.ts) so the two views agree. */
+export function syncRecentMenu(): void {
+  void ipc.setRecentFiles(recentFiles());
+}
+
 /** Record a freshly-opened path: move it to the front, de-duplicated, capped. */
 export function recordRecent(path: string): void {
   const list = recentFiles().filter((p) => p !== path);
   list.unshift(path);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(list.slice(0, MAX_ENTRIES)));
+  syncRecentMenu();
 }
 
 export function clearRecent(): void {
   localStorage.removeItem(STORAGE_KEY);
+  syncRecentMenu();
 }

@@ -11,6 +11,7 @@ import {
   openGotoLine,
   toggleWordWrap,
   toggleShowWhitespace,
+  toggleLineNumbers,
   selectNextOccurrenceCmd,
   foldAll,
   unfoldAll,
@@ -30,9 +31,13 @@ import {
   activateLastTab,
   cycleTab,
   setActiveEol,
+  openPath,
 } from "./tabs";
 import { store } from "./state";
-import { openSaveOptions, openRecentDialog, openAbout } from "./dialogs";
+import { openRecentDialog, openAbout } from "./dialogs";
+import { checkForUpdates } from "./updater";
+import { openPreferences } from "./preferences";
+import { clearRecent } from "./recent";
 import { setTheme } from "./theme";
 import { togglePreview, exportPreviewHtml, printPreview } from "./preview";
 import { handleZoomShortcut } from "./mermaid-view";
@@ -50,6 +55,13 @@ import {
 
 /** Map a native-menu item id (from the `menu` event) to a frontend action. */
 export function handleMenu(id: string): void {
+  // Native "Open Recent" submenu entries carry the full path in their id
+  // (file.recent:<path>) — muda allows an arbitrary String MenuId. Handle the
+  // prefix before the fixed-id switch below.
+  if (id.startsWith("file.recent:")) {
+    void openPath(id.slice("file.recent:".length));
+    return;
+  }
   switch (id) {
     case "file.new":
       newUntitled();
@@ -60,6 +72,12 @@ export function handleMenu(id: string): void {
     case "file.openRecent":
       openRecentDialog();
       break;
+    case "file.clearRecent":
+      clearRecent();
+      break;
+    case "app.preferences":
+      openPreferences();
+      break;
     case "file.save":
       saveActive();
       break;
@@ -68,9 +86,6 @@ export function handleMenu(id: string): void {
       break;
     case "file.saveAll":
       void saveAll();
-      break;
-    case "file.saveOptions":
-      openSaveOptions();
       break;
     case "file.exportHtml":
       void exportPreviewHtml();
@@ -154,6 +169,9 @@ export function handleMenu(id: string): void {
     case "view.toggleWhitespace":
       toggleShowWhitespace();
       break;
+    case "view.toggleLineNumbers":
+      toggleLineNumbers();
+      break;
     case "view.foldAll":
       foldAll();
       break;
@@ -207,5 +225,6 @@ export function handleMenu(id: string): void {
     case "view.nextTab": cycleTab(1); break;
     case "view.prevTab": cycleTab(-1); break;
     case "help.about": openAbout(); break;
+    case "help.checkUpdates": void checkForUpdates(true); break;
   }
 }

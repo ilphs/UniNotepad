@@ -123,3 +123,55 @@ export function button(text: string, onClick: () => void): HTMLButtonElement {
   b.addEventListener("click", onClick);
   return b;
 }
+
+/** A checkbox + label row (`.checkbox-row`). Shared by the save-options dialog
+ *  and the Preferences modal; lives here so both can build on it without an
+ *  import cycle. */
+export function checkboxRow(
+  label: string,
+  initial: boolean,
+  onChange: (v: boolean) => void,
+): HTMLElement {
+  const wrap = document.createElement("label");
+  wrap.className = "checkbox-row";
+  const cb = document.createElement("input");
+  cb.type = "checkbox";
+  cb.checked = initial;
+  cb.addEventListener("change", () => onChange(cb.checked));
+  const text = document.createElement("span");
+  text.textContent = label;
+  wrap.append(cb, text);
+  return wrap;
+}
+
+/** One option in a {@link selectRow} dropdown. */
+export interface SelectOption {
+  label: string;
+  value: string;
+}
+
+/** A labeled `<select>` row (`.field-row`). The current value is pre-selected;
+ *  `onChange` fires with the chosen option's value. */
+export function selectRow(
+  label: string,
+  options: readonly SelectOption[],
+  value: string,
+  onChange: (v: string) => void,
+): HTMLElement {
+  const wrap = document.createElement("label");
+  wrap.className = "field-row";
+  const text = document.createElement("span");
+  text.className = "field-label";
+  text.textContent = label;
+  const sel = document.createElement("select");
+  for (const o of options) {
+    const opt = document.createElement("option");
+    opt.value = o.value;
+    opt.textContent = o.label;
+    if (o.value === value) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  sel.addEventListener("change", () => onChange(sel.value));
+  wrap.append(text, sel);
+  return wrap;
+}

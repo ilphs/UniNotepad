@@ -5,6 +5,8 @@
 
 const WRAP_KEY = "uninotepad.wordWrap";
 const SHOW_WHITESPACE_KEY = "uninotepad.showWhitespace";
+const SHOW_LINE_NUMBERS_KEY = "uninotepad.showLineNumbers";
+const FONT_FAMILY_KEY = "uninotepad.editorFontFamily";
 const TRIM_KEY = "uninotepad.trimTrailingOnSave";
 const FINAL_NL_KEY = "uninotepad.ensureFinalNewline";
 const PREVIEW_KEY = "uninotepad.markdownPreview";
@@ -59,6 +61,57 @@ export function isShowWhitespace(): boolean {
 
 export function setShowWhitespace(on: boolean): void {
   writeBool(SHOW_WHITESPACE_KEY, on);
+}
+
+/** Show the line-number gutter (default ON — matches the app's prior always-on
+ *  gutter). Only the line numbers are toggled; fold/active-line gutters stay. */
+export function showLineNumbers(): boolean {
+  return readBool(SHOW_LINE_NUMBERS_KEY, true);
+}
+
+export function setShowLineNumbers(on: boolean): void {
+  writeBool(SHOW_LINE_NUMBERS_KEY, on);
+}
+
+/** A curated monospace font choice. `value` is what we persist and hand to CSS;
+ *  the empty string means "System Default" (keep the built-in stack). */
+export interface FontOption {
+  label: string;
+  value: string;
+}
+
+/** Curated candidates — we do not enumerate system fonts. Preferences hides the
+ *  ones `document.fonts.check` says are not installed (empty value excepted). */
+const FONT_CANDIDATES: readonly FontOption[] = [
+  { label: "System Default", value: "" },
+  { label: "SF Mono", value: "SF Mono" },
+  { label: "Menlo", value: "Menlo" },
+  { label: "Monaco", value: "Monaco" },
+  { label: "Consolas", value: "Consolas" },
+  { label: "Cascadia Code", value: "Cascadia Code" },
+  { label: "JetBrains Mono", value: "JetBrains Mono" },
+  { label: "Fira Code", value: "Fira Code" },
+  { label: "D2Coding", value: "D2Coding" },
+  { label: "Nanum Gothic Coding", value: "Nanum Gothic Coding" },
+  { label: "Courier New", value: "Courier New" },
+];
+
+const FONT_VALUES = new Set(FONT_CANDIDATES.map((f) => f.value));
+
+/** The full curated list (including System Default) for Preferences to render. */
+export function fontCandidates(): readonly FontOption[] {
+  return FONT_CANDIDATES;
+}
+
+/** Persisted font-family choice, validated against the whitelist. Anything not
+ *  in the curated list (stale/tampered value) falls back to System Default. */
+export function editorFontFamily(): string {
+  const v = localStorage.getItem(FONT_FAMILY_KEY) ?? "";
+  return FONT_VALUES.has(v) ? v : "";
+}
+
+export function setEditorFontFamily(name: string): void {
+  localStorage.setItem(FONT_FAMILY_KEY, FONT_VALUES.has(name) ? name : "");
 }
 
 /** Strip trailing whitespace from every line on save (default OFF). */

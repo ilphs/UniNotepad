@@ -380,31 +380,10 @@ body {
   padding: 0;
   font-size: 0.88em;
 }
-/* highlight.js tokens mapped to the shared syntax palette (--cm-*), so code
-   blocks in the preview follow the active light/dark theme automatically.
-   Unmapped tokens fall back to --fg. */
-.md-body .hljs-comment,
-.md-body .hljs-quote { color: var(--cm-comment); font-style: italic; }
-.md-body .hljs-keyword,
-.md-body .hljs-built_in { color: var(--cm-keyword); }
-.md-body .hljs-string,
-.md-body .hljs-meta .hljs-string { color: var(--cm-string); }
-.md-body .hljs-number,
-.md-body .hljs-literal { color: var(--cm-number); }
-.md-body .hljs-title,
-.md-body .hljs-title.function_ { color: var(--cm-function); }
-.md-body .hljs-type,
-.md-body .hljs-class .hljs-title { color: var(--cm-type); }
-.md-body .hljs-attr,
-.md-body .hljs-property,
-.md-body .hljs-attribute { color: var(--cm-property); }
-.md-body .hljs-variable,
-.md-body .hljs-name,
-.md-body .hljs-tag { color: var(--cm-variable); }
-.md-body .hljs-operator,
-.md-body .hljs-punctuation { color: var(--cm-operator); }
-.md-body .hljs-emphasis { font-style: italic; }
-.md-body .hljs-strong { font-weight: 600; }
+/* Fenced code blocks are syntax-highlighted by reusing CodeMirror's own
+   HighlightStyle (see preview.ts highlightCodeBlocks): its generated token
+   classes carry the shared --cm-* palette, so preview code follows the active
+   light/dark theme automatically with no separate highlight.js mapping. */
 /* Mermaid: rendered diagram centered; SVG scales to the pane width.
    `.mermaid-frame` wraps the diagram and owns the 1em flow margin the diagram
    used to carry, so this stays pixel-identical to the pre-frame layout. It
@@ -607,7 +586,7 @@ body {
 .md-body th { background: var(--gutter-bg); font-weight: 600; }
 
 .cm-scroller {
-  font-family: "SFMono-Regular", "Consolas", "Menlo", monospace;
+  font-family: var(--editor-font-family, "SFMono-Regular", "Consolas", "Menlo", monospace);
 }
 
 /* CM6 ships a light default baseTheme for gutter/active-line/caret/selection.
@@ -759,6 +738,64 @@ body {
   cursor: pointer;
 }
 
+/* ---- Preferences modal ---- */
+.modal.preferences {
+  min-width: 380px;
+  max-width: 460px;
+}
+.pref-section {
+  margin-bottom: 18px;
+}
+.pref-section:last-of-type {
+  margin-bottom: 8px;
+}
+.pref-heading {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+/* Labeled select/number/radio rows: label on the left, control on the right. */
+.field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0;
+  font-size: 13px;
+}
+.field-row .field-label {
+  flex: 0 0 auto;
+}
+.field-row select,
+.field-row input[type="number"] {
+  flex: 0 0 auto;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 13px;
+}
+.field-row input[type="number"] {
+  width: 64px;
+}
+.radio-group {
+  display: flex;
+  gap: 12px;
+}
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+}
+.radio-option input {
+  cursor: pointer;
+}
+
 .recent-empty {
   margin: 4px 0 16px;
   font-size: 13px;
@@ -891,6 +928,47 @@ body {
 
 .modal.about .modal-actions button {
   min-width: 96px;
+}
+
+/* ---- Update modal + status-bar chip ---- */
+.status-item.update-badge {
+  color: var(--accent);
+  font-weight: 600;
+}
+.modal.update {
+  min-width: 360px;
+  max-width: 440px;
+}
+.modal.update .update-title,
+.update-title {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.update-versions {
+  margin: 0 0 12px;
+  font-size: 13px;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
+.update-message {
+  white-space: pre-wrap;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.update-notes {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  max-height: 240px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  background: color-mix(in srgb, var(--fg) 6%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }
 
 .modal-actions {

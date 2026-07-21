@@ -28,7 +28,25 @@
 use tauri::menu::{Menu, MenuItemBuilder, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Runtime};
 
-pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
+/// Label for one "Open Recent" entry: the file's basename plus a dir hint so
+/// two files with the same name are still tellable apart.
+fn recent_label(path: &str) -> String {
+    let p = std::path::Path::new(path);
+    let name = p
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or(path);
+    match p.parent().and_then(|d| d.to_str()).filter(|d| !d.is_empty()) {
+        Some(dir) => format!("{name}  —  {dir}"),
+        None => name.to_string(),
+    }
+}
+
+/// Build the native menu. `recent` is the recent-files list (newest first) used
+/// to populate the File → Open Recent submenu; pass an empty slice for the
+/// initial build (the frontend re-invokes `set_recent_files` once it has read
+/// localStorage, which rebuilds the whole menu with a populated list).
+pub fn build<R: Runtime>(app: &AppHandle<R>, recent: &[String]) -> tauri::Result<Menu<R>> {
     let menu = Menu::new(app)?;
 
     // macOS convention: a leading application menu named after the app, carrying
@@ -42,8 +60,20 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         // emit no `menu` event, so the frontend could not show its own dialog.
         // Non-macOS gets the same id under a Help submenu at the bottom.
         let about = MenuItemBuilder::with_id("help.about", "About UniNotepad").build(app)?;
+        // Manual update check — no accelerator, so main.ts's accelTable is
+        // untouched. Sits under About, the platform-standard place for it.
+        let check_updates =
+            MenuItemBuilder::with_id("help.checkUpdates", "Check for Updates…").build(app)?;
+        // Platform-standard Settings item under the app menu (Cmd+,). On other
+        // OSes this lives in the File menu as "Preferences…" (Ctrl+,) instead.
+        let settings = MenuItemBuilder::with_id("app.preferences", "Settings…")
+            .accelerator("Cmd+,")
+            .build(app)?;
         app_menu.append_items(&[
             &about,
+            &check_updates,
+            &PredefinedMenuItem::separator(app)?,
+            &settings,
             &PredefinedMenuItem::separator(app)?,
             &PredefinedMenuItem::hide(app, None)?,
             &PredefinedMenuItem::hide_others(app, None)?,
@@ -63,7 +93,11 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let open = MenuItemBuilder::with_id("file.open", "Open…")
         .accelerator("CmdOrCtrl+O")
         .build(app)?;
-    let open_recent = MenuItemBuilder::with_id("file.openRecent", "Open Recent…").build(app)?;
+    // "Open Recent" is a submenu rebuilt from `recent`. It is attached to the
+    // File menu (below) *before* its items are appended, per the Windows HACCEL
+    // ordering rule in this module's header — even though its entries carry no
+    // accelerators, the pattern is kept uniform.
+    let open_recent = Submenu::new(app, "Open Recent", true)?;
     let save = MenuItemBuilder::with_id("file.save", "Save")
         .accelerator("CmdOrCtrl+S")
         .build(app)?;
@@ -73,7 +107,13 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let save_all = MenuItemBuilder::with_id("file.saveAll", "Save All")
         .accelerator("CmdOrCtrl+Alt+S")
         .build(app)?;
-    let save_options = MenuItemBuilder::with_id("file.saveOptions", "Save Options…").build(app)?;
+    // Non-macOS Preferences lives in the File menu with Ctrl+,. On macOS the
+    // equivalent "Settings…" (Cmd+,) sits in the app menu instead, so it is
+    // omitted here to avoid a duplicate.
+    #[cfg(not(target_os = "macos"))]
+    let preferences = MenuItemBuilder::with_id("app.preferences", "Preferences…")
+        .accelerator("Ctrl+,")
+        .build(app)?;
     let export_html =
         MenuItemBuilder::with_id("file.exportHtml", "Export Preview as HTML…").build(app)?;
     let print_preview = MenuItemBuilder::with_id("file.print", "Print Preview…")
@@ -100,7 +140,11 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         &save,
         &save_as,
         &save_all,
-        &save_options,
+    ])?;
+    // Preferences sits between Save All and the export group on non-macOS.
+    #[cfg(not(target_os = "macos"))]
+    file_menu.append_items(&[&preferences])?;
+    file_menu.append_items(&[
         &PredefinedMenuItem::separator(app)?,
         &export_html,
         &print_preview,
@@ -111,6 +155,31 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         &close_right,
         &close_all,
     ])?;
+
+    // Populate the Open Recent submenu now that it is attached to File. A
+    // "Show All…" entry (keeping the old file.openRecent id) opens the in-app
+    // picker as a fallback; then the recent paths, or a disabled placeholder.
+    let show_all = MenuItemBuilder::with_id("file.openRecent", "Show All…").build(app)?;
+    open_recent.append(&show_all)?;
+    open_recent.append(&PredefinedMenuItem::separator(app)?)?;
+    if recent.is_empty() {
+        let none = MenuItemBuilder::with_id("file.recentNone", "No Recent Files")
+            .enabled(false)
+            .build(app)?;
+        open_recent.append(&none)?;
+    } else {
+        for path in recent {
+            // The MenuId carries the full path so the click handler can reopen
+            // it directly (muda accepts an arbitrary String id).
+            let item =
+                MenuItemBuilder::with_id(format!("file.recent:{path}"), recent_label(path))
+                    .build(app)?;
+            open_recent.append(&item)?;
+        }
+        open_recent.append(&PredefinedMenuItem::separator(app)?)?;
+        let clear = MenuItemBuilder::with_id("file.clearRecent", "Clear Recent").build(app)?;
+        open_recent.append(&clear)?;
+    }
     // Quit lives in the macOS application menu (the first submenu); on the other
     // platforms it stays at the bottom of File.
     #[cfg(not(target_os = "macos"))]
@@ -260,6 +329,10 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     // marking trailing whitespace; the state persists in localStorage.
     let toggle_whitespace =
         MenuItemBuilder::with_id("view.toggleWhitespace", "Show Whitespace Characters").build(app)?;
+    // No accelerator — a discoverable toggle for the line-number gutter; the
+    // state persists in localStorage.
+    let toggle_line_numbers =
+        MenuItemBuilder::with_id("view.toggleLineNumbers", "Show Line Numbers").build(app)?;
     // Fold/Unfold All — the fold gutter and foldKeymap (Ctrl+Shift+[ / ]) drive
     // per-range folding; these operate on the whole document. No accelerator.
     let fold_all = MenuItemBuilder::with_id("view.foldAll", "Fold All").build(app)?;
@@ -276,6 +349,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         &goto_line,
         &toggle_wrap,
         &toggle_whitespace,
+        &toggle_line_numbers,
         &fold_all,
         &unfold_all,
         &toggle_preview,
@@ -329,7 +403,9 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         let help_menu = Submenu::new(app, "Help", true)?;
         menu.append(&help_menu)?;
         let about = MenuItemBuilder::with_id("help.about", "About UniNotepad").build(app)?;
-        help_menu.append_items(&[&about])?;
+        let check_updates =
+            MenuItemBuilder::with_id("help.checkUpdates", "Check for Updates…").build(app)?;
+        help_menu.append_items(&[&check_updates, &PredefinedMenuItem::separator(app)?, &about])?;
     }
 
     Ok(menu)

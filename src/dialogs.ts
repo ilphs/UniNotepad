@@ -1,15 +1,8 @@
 /**
  * Small in-app modal dialogs (reusing the .modal-overlay/.modal CSS from
- * styles.css): the save-options preferences and the recent-files picker.
- * These live in the front-end because the native menu can't be rebuilt at
- * runtime from here.
+ * styles.css): the About dialog and the recent-files picker (the "Show All…"
+ * fallback for the native Open Recent submenu).
  */
-import {
-  trimTrailingOnSave,
-  setTrimTrailingOnSave,
-  ensureFinalNewline,
-  setEnsureFinalNewline,
-} from "./settings";
 import { recentFiles, clearRecent } from "./recent";
 import { openPath } from "./tabs";
 import { basename } from "./session";
@@ -73,50 +66,6 @@ export function openAbout(): void {
   close.addEventListener("click", () => handle.close());
   row.appendChild(close);
   box.appendChild(row);
-}
-
-// ---- Save options ----------------------------------------------------------
-
-export function openSaveOptions(): void {
-  const handle = openModal({ ariaLabel: "Save Options", onCancel: () => handle.close() });
-  const box = handle.box;
-
-  const title = document.createElement("p");
-  title.textContent = "Save Options";
-  box.appendChild(title);
-
-  box.appendChild(
-    checkboxRow("Trim trailing whitespace on save", trimTrailingOnSave(), setTrimTrailingOnSave),
-  );
-  box.appendChild(
-    checkboxRow("Ensure final newline on save", ensureFinalNewline(), setEnsureFinalNewline),
-  );
-
-  const row = document.createElement("div");
-  row.className = "modal-actions";
-  const done = document.createElement("button");
-  done.className = "primary";
-  done.textContent = "Done";
-  done.addEventListener("click", () => handle.close());
-  row.appendChild(done);
-  box.appendChild(row);
-}
-
-function checkboxRow(
-  label: string,
-  initial: boolean,
-  onChange: (v: boolean) => void,
-): HTMLElement {
-  const wrap = document.createElement("label");
-  wrap.className = "checkbox-row";
-  const cb = document.createElement("input");
-  cb.type = "checkbox";
-  cb.checked = initial;
-  cb.addEventListener("change", () => onChange(cb.checked));
-  const text = document.createElement("span");
-  text.textContent = label;
-  wrap.append(cb, text);
-  return wrap;
 }
 
 // ---- Recent files ----------------------------------------------------------
