@@ -2,12 +2,48 @@
 //! webview carrying the item id (e.g. "file.save"); the frontend maps ids to
 //! actions. Editing/clipboard items use Tauri predefined items so the OS drives
 //! them against the focused WebView natively.
+//!
+//! ## Assembly order matters on Windows
+//!
+//! Every submenu is attached to the root `Menu` *before* its items are appended,
+//! and nested submenus follow the same rule. This is not stylistic: on Windows,
+//! muda registers an item's accelerator into the accelerator table owned by the
+//! root menu at the moment the item is appended, and it does not walk back into
+//! submenus that were already populated. Building bottom-up (items → submenu →
+//! root) therefore leaves the root's `HACCEL` table empty, and Tauri's Win32
+//! `TranslateAcceleratorW` hook silently matches nothing — the menu renders with
+//! its "Ctrl+S" hints and mouse clicks still work, but no shortcut ever fires.
+//! macOS and GTK are unaffected because they store accelerators per item at
+//! creation time, so the bug is invisible outside Windows.
 
-use tauri::menu::{Menu, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder};
+use tauri::menu::{Menu, MenuItemBuilder, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Runtime};
 
 pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
+    let menu = Menu::new(app)?;
+
+    // macOS convention: a leading application menu named after the app, carrying
+    // About / Hide / Quit. The OS treats the first submenu as the app menu, so
+    // this must come before File.
+    #[cfg(target_os = "macos")]
+    {
+        let app_menu = Submenu::new(app, "UniNotepad", true)?;
+        menu.append(&app_menu)?;
+        app_menu.append_items(&[
+            &PredefinedMenuItem::about(app, None, Some(tauri::menu::AboutMetadata::default()))?,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::hide(app, None)?,
+            &PredefinedMenuItem::hide_others(app, None)?,
+            &PredefinedMenuItem::show_all(app, None)?,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::quit(app, Some("Quit UniNotepad"))?,
+        ])?;
+    }
+
     // File
+    let file_menu = Submenu::new(app, "File", true)?;
+    menu.append(&file_menu)?;
+
     let new_tab = MenuItemBuilder::with_id("file.new", "New Tab")
         .accelerator("CmdOrCtrl+N")
         .build(app)?;
@@ -43,35 +79,38 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         MenuItemBuilder::with_id("file.closeRight", "Close Tabs to the Right").build(app)?;
     let close_all = MenuItemBuilder::with_id("file.closeAll", "Close All Tabs").build(app)?;
 
-    let file_builder = SubmenuBuilder::new(app, "File")
-        .item(&new_tab)
-        .item(&open)
-        .item(&open_recent)
-        .separator()
-        .item(&save)
-        .item(&save_as)
-        .item(&save_all)
-        .item(&save_options)
-        .separator()
-        .item(&export_html)
-        .item(&print_preview)
-        .separator()
-        .item(&reopen_closed)
-        .item(&close_tab)
-        .item(&close_others)
-        .item(&close_right)
-        .item(&close_all);
+    file_menu.append_items(&[
+        &new_tab,
+        &open,
+        &open_recent,
+        &PredefinedMenuItem::separator(app)?,
+        &save,
+        &save_as,
+        &save_all,
+        &save_options,
+        &PredefinedMenuItem::separator(app)?,
+        &export_html,
+        &print_preview,
+        &PredefinedMenuItem::separator(app)?,
+        &reopen_closed,
+        &close_tab,
+        &close_others,
+        &close_right,
+        &close_all,
+    ])?;
     // Quit lives in the macOS application menu (the first submenu); on the other
-    // platforms it stays at the bottom of File. Shadow-rebind rather than a
-    // `mut` builder so neither branch trips an unused-mut warning.
+    // platforms it stays at the bottom of File.
     #[cfg(not(target_os = "macos"))]
-    let file_builder = file_builder
-        .separator()
-        .item(&PredefinedMenuItem::quit(app, Some("Quit UniNotepad"))?);
-    let file_menu = file_builder.build()?;
+    file_menu.append_items(&[
+        &PredefinedMenuItem::separator(app)?,
+        &PredefinedMenuItem::quit(app, Some("Quit UniNotepad"))?,
+    ])?;
 
     // Edit — undo/redo are custom (must drive CodeMirror history), the rest are
     // predefined so native clipboard handling applies to the WebView.
+    let edit_menu = Submenu::new(app, "Edit", true)?;
+    menu.append(&edit_menu)?;
+
     let undo = MenuItemBuilder::with_id("edit.undo", "Undo")
         .accelerator("CmdOrCtrl+Z")
         .build(app)?;
@@ -116,12 +155,30 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let select_next_occurrence =
         MenuItemBuilder::with_id("edit.selectNextOccurrence", select_next_label).build(app)?;
 
+    edit_menu.append_items(&[
+        &undo,
+        &redo,
+        &PredefinedMenuItem::separator(app)?,
+        &PredefinedMenuItem::cut(app, Some("Cut"))?,
+        &PredefinedMenuItem::copy(app, Some("Copy"))?,
+        &PredefinedMenuItem::paste(app, Some("Paste"))?,
+        &PredefinedMenuItem::select_all(app, Some("Select All"))?,
+        &PredefinedMenuItem::separator(app)?,
+        &find,
+        &find_next,
+        &find_prev,
+        &replace,
+        &select_next_occurrence,
+        &PredefinedMenuItem::separator(app)?,
+    ])?;
+
     // Line Operations — a Notepad++-style submenu. All act on the selected lines,
     // or the whole document when there is no selection.
-    let sort_asc =
-        MenuItemBuilder::with_id("edit.sortAsc", "Sort Lines Ascending").build(app)?;
-    let sort_desc =
-        MenuItemBuilder::with_id("edit.sortDesc", "Sort Lines Descending").build(app)?;
+    let line_ops = Submenu::new(app, "Line Operations", true)?;
+    edit_menu.append(&line_ops)?;
+
+    let sort_asc = MenuItemBuilder::with_id("edit.sortAsc", "Sort Lines Ascending").build(app)?;
+    let sort_desc = MenuItemBuilder::with_id("edit.sortDesc", "Sort Lines Descending").build(app)?;
     let dedupe =
         MenuItemBuilder::with_id("edit.removeDuplicate", "Remove Duplicate Lines").build(app)?;
     let remove_empty =
@@ -137,43 +194,29 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let move_up = MenuItemBuilder::with_id("edit.moveLineUp", "Move Line Up (Alt+↑)").build(app)?;
     let move_down =
         MenuItemBuilder::with_id("edit.moveLineDown", "Move Line Down (Alt+↓)").build(app)?;
-    let line_ops = SubmenuBuilder::new(app, "Line Operations")
-        .item(&sort_asc)
-        .item(&sort_desc)
-        .separator()
-        .item(&dedupe)
-        .item(&remove_empty)
-        .item(&trim_trailing)
-        .separator()
-        .item(&to_upper)
-        .item(&to_lower)
-        .separator()
-        .item(&move_up)
-        .item(&move_down)
-        .build()?;
 
-    let edit_menu = SubmenuBuilder::new(app, "Edit")
-        .item(&undo)
-        .item(&redo)
-        .separator()
-        .item(&PredefinedMenuItem::cut(app, Some("Cut"))?)
-        .item(&PredefinedMenuItem::copy(app, Some("Copy"))?)
-        .item(&PredefinedMenuItem::paste(app, Some("Paste"))?)
-        .item(&PredefinedMenuItem::select_all(app, Some("Select All"))?)
-        .separator()
-        .item(&find)
-        .item(&find_next)
-        .item(&find_prev)
-        .item(&replace)
-        .item(&select_next_occurrence)
-        .separator()
-        .item(&line_ops)
-        .build()?;
+    line_ops.append_items(&[
+        &sort_asc,
+        &sort_desc,
+        &PredefinedMenuItem::separator(app)?,
+        &dedupe,
+        &remove_empty,
+        &trim_trailing,
+        &PredefinedMenuItem::separator(app)?,
+        &to_upper,
+        &to_lower,
+        &PredefinedMenuItem::separator(app)?,
+        &move_up,
+        &move_down,
+    ])?;
 
-    // View — zoom
-    // Accelerator is "=" (not "Plus") so it fires on Cmd/Ctrl+= without Shift,
-    // matching what users actually press. The Shift variant (Cmd/Ctrl and "+")
-    // is handled by a keydown listener in the webview.
+    // View
+    let view_menu = Submenu::new(app, "View", true)?;
+    menu.append(&view_menu)?;
+
+    // Zoom accelerator is "=" (not "Plus") so it fires on Cmd/Ctrl+= without
+    // Shift, matching what users actually press. The Shift variant (Cmd/Ctrl and
+    // "+") is handled by a keydown listener in the webview.
     let zoom_in = MenuItemBuilder::with_id("view.zoomIn", "Zoom In")
         .accelerator("CmdOrCtrl+=")
         .build(app)?;
@@ -212,22 +255,28 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .accelerator("CmdOrCtrl+Shift+M")
         .build(app)?;
 
+    view_menu.append_items(&[
+        &zoom_in,
+        &zoom_out,
+        &zoom_reset,
+        &PredefinedMenuItem::separator(app)?,
+        &goto_line,
+        &toggle_wrap,
+        &toggle_whitespace,
+        &fold_all,
+        &unfold_all,
+        &toggle_preview,
+    ])?;
+
     // Convert Line Endings — a discoverable menu entry for what the status-bar
     // EOL picker already does; converts the active tab's line endings.
+    let eol_menu = Submenu::new(app, "Convert Line Endings", true)?;
+    view_menu.append(&eol_menu)?;
     let eol_lf = MenuItemBuilder::with_id("view.eolLf", "LF (Unix)").build(app)?;
     let eol_crlf = MenuItemBuilder::with_id("view.eolCrlf", "CRLF (Windows)").build(app)?;
-    let eol_menu = SubmenuBuilder::new(app, "Convert Line Endings")
-        .item(&eol_lf)
-        .item(&eol_crlf)
-        .build()?;
+    eol_menu.append_items(&[&eol_lf, &eol_crlf])?;
 
-    // No accelerators: Ctrl+Tab / Ctrl+Shift+Tab are handled by a capture-phase
-    // keydown listener in the webview (main.ts). The keys are spelled out in the
-    // labels for discoverability, following the select_next_label precedent.
-    let next_tab =
-        MenuItemBuilder::with_id("view.nextTab", "Next Tab (Ctrl+Tab)").build(app)?;
-    let prev_tab =
-        MenuItemBuilder::with_id("view.prevTab", "Previous Tab (Ctrl+Shift+Tab)").build(app)?;
+    view_menu.append(&PredefinedMenuItem::separator(app)?)?;
 
     let goto_tabs = (1..=9)
         .map(|n| {
@@ -241,61 +290,25 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
                 .build(app)
         })
         .collect::<tauri::Result<Vec<_>>>()?;
+    for item in &goto_tabs {
+        view_menu.append(item)?;
+    }
+
+    // No accelerators: Ctrl+Tab / Ctrl+Shift+Tab are handled by a capture-phase
+    // keydown listener in the webview (main.ts). The keys are spelled out in the
+    // labels for discoverability, following the select_next_label precedent.
+    let next_tab = MenuItemBuilder::with_id("view.nextTab", "Next Tab (Ctrl+Tab)").build(app)?;
+    let prev_tab =
+        MenuItemBuilder::with_id("view.prevTab", "Previous Tab (Ctrl+Shift+Tab)").build(app)?;
+    view_menu.append_items(&[&next_tab, &prev_tab, &PredefinedMenuItem::separator(app)?])?;
 
     // Theme — manual light/dark selection; "System" follows the OS.
+    let theme_menu = Submenu::new(app, "Theme", true)?;
+    view_menu.append(&theme_menu)?;
     let theme_light = MenuItemBuilder::with_id("view.themeLight", "Light").build(app)?;
     let theme_dark = MenuItemBuilder::with_id("view.themeDark", "Dark").build(app)?;
     let theme_system = MenuItemBuilder::with_id("view.themeSystem", "System").build(app)?;
-    let theme_menu = SubmenuBuilder::new(app, "Theme")
-        .item(&theme_light)
-        .item(&theme_dark)
-        .item(&theme_system)
-        .build()?;
+    theme_menu.append_items(&[&theme_light, &theme_dark, &theme_system])?;
 
-    let mut view_builder = SubmenuBuilder::new(app, "View")
-        .item(&zoom_in)
-        .item(&zoom_out)
-        .item(&zoom_reset)
-        .separator()
-        .item(&goto_line)
-        .item(&toggle_wrap)
-        .item(&toggle_whitespace)
-        .item(&fold_all)
-        .item(&unfold_all)
-        .item(&toggle_preview)
-        .item(&eol_menu)
-        .separator();
-    for item in &goto_tabs {
-        view_builder = view_builder.item(item);
-    }
-    view_builder = view_builder.item(&next_tab).item(&prev_tab);
-    view_builder = view_builder.separator().item(&theme_menu);
-    let view_menu = view_builder.build()?;
-
-    // macOS convention: a leading application menu named after the app, carrying
-    // About / Hide / Quit. The OS treats the first submenu as the app menu, so
-    // this must come before File.
-    #[cfg(target_os = "macos")]
-    let app_menu = SubmenuBuilder::new(app, "UniNotepad")
-        .item(&PredefinedMenuItem::about(
-            app,
-            None,
-            Some(tauri::menu::AboutMetadata::default()),
-        )?)
-        .separator()
-        .item(&PredefinedMenuItem::hide(app, None)?)
-        .item(&PredefinedMenuItem::hide_others(app, None)?)
-        .item(&PredefinedMenuItem::show_all(app, None)?)
-        .separator()
-        .item(&PredefinedMenuItem::quit(app, Some("Quit UniNotepad"))?)
-        .build()?;
-
-    #[cfg(target_os = "macos")]
-    {
-        Menu::with_items(app, &[&app_menu, &file_menu, &edit_menu, &view_menu])
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        Menu::with_items(app, &[&file_menu, &edit_menu, &view_menu])
-    }
+    Ok(menu)
 }
