@@ -93,8 +93,8 @@
 
       .hero .shot { margin: 2.5rem auto 0; max-width: 56rem; }
       .hero .shot img { width: 100%; border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow); }
-      /* 히어로를 다크/라이트 두 장으로 — 좁은 화면에서는 한 줄씩 쌓인다. */
-      .hero .shot.pair { max-width: 64rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; }
+      /* 히어로는 다크/라이트를 위아래로 — 한 장씩 크게 보여 준다. */
+      .hero .shot.pair { max-width: 64rem; display: grid; grid-template-columns: 1fr; gap: 2rem; }
       .hero .shot.pair figure { border: none; border-radius: 0; background: transparent; overflow: visible; }
       .hero .shot.pair figcaption { padding: 0.6rem 0 0; text-align: center; }
 
