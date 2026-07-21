@@ -38,6 +38,7 @@ export function newUntitled(): void {
     fileType: null,
     diskMtimeMs: null,
     missingOnDisk: false,
+    largeFile: false,
     state: makeState("", id),
     scrollTop: 0,
     notice: null,
@@ -61,7 +62,14 @@ export async function openPath(path: string, fileType: FileTypeId | null = null)
     return;
   }
   try {
-    const opened = await ipc.openFile(path);
+    let opened = await ipc.openFile(path);
+    // Over the warn threshold: confirm before loading, since large files load
+    // slowly and run without highlighting or crash backup. Cancel → no tab.
+    if (opened.needsLargeConfirm) {
+      const proceed = await confirmLargeOpen(basename(path), opened.sizeBytes);
+      if (!proceed) return;
+      opened = await ipc.openFile(path, true);
+    }
     recordRecent(path);
     const id = newId();
     const tab: Tab = {
@@ -74,11 +82,13 @@ export async function openPath(path: string, fileType: FileTypeId | null = null)
       fileType,
       diskMtimeMs: opened.mtimeMs,
       missingOnDisk: false,
-      state: makeState(opened.content, id, undefined, path, fileType),
+      largeFile: opened.large,
+      state: makeState(opened.content, id, undefined, path, fileType, opened.large),
       scrollTop: 0,
       notice: opened.lossy ? lossyNotice() : null,
     };
     store.state.tabs.push(tab);
+    void ipc.watchFile(path); // live external-change detection
     activateTab(id);
   } catch (err) {
     await message(`Failed to open ${path}:\n${err}`, { title: "UniNotepad", kind: "error" });
@@ -137,6 +147,7 @@ export async function openDialog(): Promise<void> {
 }
 
 async function saveTabAs(tab: Tab): Promise<boolean> {
+  const prevPath = tab.path;
   const path = await save({ defaultPath: tab.path ?? tab.title });
   if (!path) return false;
   tab.path = path;
@@ -144,7 +155,14 @@ async function saveTabAs(tab: Tab): Promise<boolean> {
   tab.missingOnDisk = false;
   // Re-highlight for the new extension (only the active tab is in the view).
   if (store.state.activeTabId === tab.id) reconfigureLanguage(tab);
-  return saveTab(tab);
+  const ok = await saveTab(tab);
+  // Move the watch to the new path (untitled tabs had none). Skip when the path
+  // is unchanged (Save As over the same file) so the dir refcount stays balanced.
+  if (ok && prevPath !== path) {
+    if (prevPath) void ipc.unwatchFile(prevPath);
+    void ipc.watchFile(path);
+  }
+  return ok;
 }
 
 export async function saveTab(tab: Tab, allowLossy = false): Promise<boolean> {
@@ -210,11 +228,22 @@ export async function setActiveEncoding(enc: EncodingId): Promise<void> {
     // Reinterpret from disk. Mirrors reloadFromDisk's state swap, but forces
     // the chosen encoding instead of re-detecting.
     try {
-      const opened = await ipc.openFileAs(t.path, enc);
+      // Pass largeFile through so a big file already open in reduced mode
+      // reinterprets without re-prompting (the hard limit still applies in Rust).
+      let opened = await ipc.openFileAs(t.path, enc, t.largeFile);
+      // Grew past the warn threshold while open in normal mode: openFileAs read
+      // nothing (empty content). Confirm before loading it in reduced mode
+      // instead of blanking the buffer; a decline leaves the tab untouched.
+      if (opened.needsLargeConfirm) {
+        const proceed = await confirmLargeOpen(t.title, opened.sizeBytes);
+        if (!proceed) return;
+        opened = await ipc.openFileAs(t.path, enc, true);
+      }
       t.encoding = opened.encoding;
       t.diskMtimeMs = opened.mtimeMs;
       t.dirty = false;
-      t.state = makeState(opened.content, t.id, undefined, t.path, t.fileType);
+      t.largeFile = opened.large;
+      t.state = makeState(opened.content, t.id, undefined, t.path, t.fileType, opened.large);
       t.notice = opened.lossy ? lossyNotice() : null;
       if (store.state.activeTabId === t.id) showTab(t);
       store.emit();
@@ -270,6 +299,7 @@ interface ClosedTab {
   fileType: FileTypeId | null;
   scrollTop: number;
   dirty: boolean;
+  largeFile: boolean;
 }
 
 const closedStack: ClosedTab[] = [];
@@ -289,6 +319,7 @@ function pushClosed(tab: Tab): void {
     fileType: tab.fileType,
     scrollTop: tab.scrollTop,
     dirty: tab.dirty,
+    largeFile: tab.largeFile,
   });
   if (closedStack.length > CLOSED_STACK_MAX) closedStack.shift();
 }
@@ -325,11 +356,13 @@ export async function reopenClosed(): Promise<void> {
     fileType: snap.fileType,
     diskMtimeMs: null,
     missingOnDisk: false,
-    state: makeState(snap.doc, id, snap.cursor, snap.path, snap.fileType),
+    largeFile: snap.largeFile,
+    state: makeState(snap.doc, id, snap.cursor, snap.path, snap.fileType, snap.largeFile),
     scrollTop: snap.scrollTop,
     notice: null,
   };
   store.state.tabs.push(tab);
+  if (tab.path) void ipc.watchFile(tab.path); // reopened file-backed tab
   if (snap.dirty || snap.path === null) markBackupDirty(id);
   activateTab(id);
 }
@@ -360,6 +393,7 @@ export async function closeTab(id: string): Promise<boolean> {
   // Capture the latest buffer (active tab's edits live in the view) before drop.
   if (store.activeTab?.id === id) syncTabFromView(tab);
   pushClosed(tab);
+  if (tab.path) void ipc.unwatchFile(tab.path); // stop live watching
   dropPending(id);
   await ipc.deleteBackup(id).catch(() => {});
   store.state.tabs.splice(idx, 1);
@@ -438,28 +472,146 @@ export function reorderTab(fromId: string, beforeId: string | null): void {
 
 // ---- Conflict notice actions ----------------------------------------------
 
-export async function reloadFromDisk(id: string): Promise<void> {
+/** Per-tab timestamp of the last auto-reload, to throttle append-heavy files
+ *  (e.g. a growing log) so a burst of change events can't thrash the editor. */
+const lastAutoReload = new Map<string, number>();
+const AUTO_RELOAD_THROTTLE_MS = 1000;
+
+export async function reloadFromDisk(id: string, interactive = false): Promise<void> {
   const tab = store.tabById(id);
   if (!tab || !tab.path) return;
+  // Capture the caret + scroll before the read so a live reload keeps the
+  // user's place. The active tab's live state is in the view; sync it first.
+  const isActive = store.state.activeTabId === tab.id;
+  if (isActive) syncTabFromView(tab);
+  const cursor = tab.state.selection.main.head;
+  const scrollTop = tab.scrollTop;
+  // Whether this reload started from a clean tab: an auto-reload does, and if a
+  // keystroke lands during the async read the buffer is no longer disposable.
+  const wasDirty = tab.dirty;
   try {
-    const opened = await ipc.openFile(tab.path);
+    // Reuse the tab's large-file decision so a re-read skips the confirm prompt;
+    // Rust still refuses anything past the hard limit.
+    const opened = await ipc.openFile(tab.path, tab.largeFile);
+    // The file grew past the warn threshold and this tab wasn't in reduced mode,
+    // so openFile read nothing (empty content). Never clobber the buffer with
+    // that. An explicit reload (banner button) confirms and re-reads in reduced
+    // mode; an auto-reload just flags it and leaves the buffer intact.
+    if (opened.needsLargeConfirm) {
+      if (interactive) {
+        const proceed = await confirmLargeOpen(tab.title, opened.sizeBytes);
+        if (!proceed) return;
+        tab.largeFile = true; // re-read passes allowLarge, so no re-prompt loop
+        await reloadFromDisk(id, true);
+        return;
+      }
+      tab.notice = {
+        kind: "conflict",
+        message: `${tab.title} grew past the large-file limit; reload it manually.`,
+      };
+      store.emit();
+      return;
+    }
+    // The user typed while the read was in flight: their unsaved edits now
+    // outrank the disk copy — abandon the reload and surface a conflict instead
+    // of clobbering the keystrokes. (Manual reloads start dirty on purpose and
+    // are meant to discard, so only guard the clean→dirty race.)
+    if (!wasDirty && tab.dirty) {
+      tab.notice = {
+        kind: "conflict",
+        message: `${tab.title} changed on disk after your unsaved edits.`,
+      };
+      store.emit();
+      return;
+    }
     tab.encoding = opened.encoding;
     tab.eol = opened.eol;
     tab.diskMtimeMs = opened.mtimeMs;
     tab.dirty = false;
+    tab.largeFile = opened.large;
     tab.notice = opened.lossy ? lossyNotice() : null;
     tab.missingOnDisk = false;
+    tab.scrollTop = scrollTop; // showTab restores this after the state swap
     // Pass the type pick through: without it the tab keeps fileType while the
     // language compartment reverts to the extension's — picker/editor desync.
-    tab.state = makeState(opened.content, tab.id, undefined, tab.path, tab.fileType);
+    // The captured caret rides along (makeState clamps it to the new length).
+    tab.state = makeState(opened.content, tab.id, cursor, tab.path, tab.fileType, opened.large);
     dropPending(tab.id);
     await ipc.deleteBackup(tab.id).catch(() => {});
-    if (store.state.activeTabId === tab.id) showTab(tab);
+    if (isActive) showTab(tab);
     store.emit();
     void flushNow();
   } catch (err) {
     await message(`Failed to reload:\n${err}`, { title: "UniNotepad", kind: "error" });
   }
+}
+
+/** Register a live watch for every file-backed tab. Called once after session
+ *  restore (openPath already watches tabs opened afterwards). */
+export function watchAllTabs(): void {
+  for (const t of store.state.tabs) {
+    if (t.path) void ipc.watchFile(t.path);
+  }
+}
+
+/** Reconcile one tab against an external disk change (from the file watcher or
+ *  the focus-mtime fallback). Never blocks with a modal — divergences surface as
+ *  the same per-tab notices restoreSession uses. */
+export async function reconcileExternalChange(
+  path: string,
+  exists: boolean,
+  mtimeMs: number | null,
+): Promise<void> {
+  const tab = store.state.tabs.find((t) => t.path === path);
+  if (!tab) return;
+
+  if (!exists) {
+    if (tab.missingOnDisk) return; // already flagged
+    // Message mirrors restoreSession: clean tabs lost their only-on-disk copy,
+    // dirty tabs still hold their edits and can Save As to keep them.
+    tab.notice = {
+      kind: "deleted",
+      message: tab.dirty
+        ? "Original file was deleted; use Save As to keep your changes."
+        : "File no longer exists on disk.",
+    };
+    tab.missingOnDisk = true;
+    // A clean tab's buffer is now the only copy: make it dirty and start backing
+    // it up so a crash can't lose it.
+    if (!tab.dirty) {
+      tab.dirty = true;
+      markBackupDirty(tab.id);
+      void flushNow();
+    }
+    store.emit();
+    return;
+  }
+
+  // Second line of defense against our own save's echo (Rust suppresses it too).
+  if (mtimeMs !== null && mtimeMs === tab.diskMtimeMs) return;
+
+  if (tab.dirty) {
+    tab.notice = {
+      kind: "conflict",
+      message: `${tab.title} changed on disk after your unsaved edits.`,
+    };
+    store.emit();
+    return;
+  }
+
+  // Clean tab in large-file reduced mode: never silently pull tens of MB back
+  // in — just flag it so the user can reload deliberately.
+  if (tab.largeFile) {
+    tab.notice = { kind: "conflict", message: `${tab.title} changed on disk.` };
+    store.emit();
+    return;
+  }
+
+  // Clean, normal-size tab: auto-reload (Notepad++ behavior), throttled.
+  const now = Date.now();
+  if (now - (lastAutoReload.get(tab.id) ?? 0) < AUTO_RELOAD_THROTTLE_MS) return;
+  lastAutoReload.set(tab.id, now);
+  await reloadFromDisk(tab.id);
 }
 
 /** Clear a tab's notice with no disk-reconciliation side effects (used for the
@@ -638,7 +790,7 @@ function renderBanner(): void {
 
   if (tab.notice.kind === "conflict") {
     actions.appendChild(button("Keep my version", () => dismissNotice(tab.id)));
-    actions.appendChild(button("Reload from disk", () => void reloadFromDisk(tab.id)));
+    actions.appendChild(button("Reload from disk", () => void reloadFromDisk(tab.id, true)));
   } else if (tab.notice.kind === "deleted") {
     actions.appendChild(button("Save As…", () => void saveTabAs(tab)));
     actions.appendChild(button("Dismiss", () => dismissNotice(tab.id)));
@@ -713,6 +865,39 @@ function confirmLossy(encoding: EncodingId): Promise<LossyChoice> {
     row.appendChild(button("Save as UTF-8", () => finish("utf8")));
     row.appendChild(button("Save Anyway", () => finish("anyway")));
     const cancel = button("Cancel", () => finish("cancel"));
+    cancel.className = "primary";
+    row.appendChild(cancel);
+    handle.box.appendChild(row);
+  });
+}
+
+// ---- Large-file open confirmation ------------------------------------------
+
+/** Prompt before opening a file over the warn threshold. Reuses the confirmLossy
+ *  modal pattern (click-outside cancels). Resolves true to open in reduced mode,
+ *  false to leave the file unopened. */
+function confirmLargeOpen(name: string, sizeBytes: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    let handle: ModalHandle;
+    const finish = (open: boolean) => {
+      handle.close();
+      resolve(open);
+    };
+    handle = openModal({ ariaLabel: "Large File", onCancel: () => finish(false) });
+
+    const mb = (sizeBytes / 1048576).toFixed(1) + " MB";
+    const text = document.createElement("p");
+    text.textContent =
+      `"${name}" is ${mb}. Opening large files may be slow; ` +
+      "syntax highlighting and crash backup will be disabled.";
+    handle.box.appendChild(text);
+
+    const row = document.createElement("div");
+    row.className = "modal-actions";
+    row.appendChild(button("Open Anyway", () => finish(true)));
+    // Cancel is the safe default: mark it primary so openModal focuses it and
+    // Enter won't kick off a slow open by accident.
+    const cancel = button("Cancel", () => finish(false));
     cancel.className = "primary";
     row.appendChild(cancel);
     handle.box.appendChild(row);

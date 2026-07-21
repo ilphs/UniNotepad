@@ -3,6 +3,7 @@ mod encoding;
 mod fsio;
 mod menu;
 mod session;
+mod watcher;
 
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
@@ -55,6 +56,27 @@ fn deliver_paths<R: Runtime>(app: &AppHandle<R>, paths: Vec<String>) {
     }
 }
 
+/// Rebuild the whole native menu with a fresh recent-files list and swap it in.
+/// The JS-side recent list lives in localStorage, so the frontend drives this
+/// after every change (and once at startup). Best-effort on the JS side.
+#[tauri::command]
+fn set_recent_files(app: AppHandle, paths: Vec<String>) -> tauri::Result<()> {
+    let menu = menu::build(&app, &paths)?;
+    app.set_menu(menu)?;
+    Ok(())
+}
+
+/// Whether this process is running from a Linux AppImage. Only AppImage bundles
+/// support the updater's in-place `downloadAndInstall`; `.deb`/`.rpm` installs do
+/// not, so the frontend uses this to decide between the in-app install button and
+/// the "open download page" fallback. AppImage sets the `APPIMAGE` env var to the
+/// mounted image path at launch, which is the canonical way to detect it. Always
+/// false off Linux (macOS/Windows branch on `platform()` in the frontend instead).
+#[tauri::command]
+fn is_appimage() -> bool {
+    cfg!(target_os = "linux") && std::env::var_os("APPIMAGE").is_some()
+}
+
 #[tauri::command]
 fn frontend_ready(app: AppHandle, state: State<PendingOpen>) {
     let mut s = state.0.lock().unwrap_or_else(|e| e.into_inner());
@@ -86,9 +108,17 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         // Opens the homepage link in the About dialog via the default browser.
         .plugin(tauri_plugin_opener::init())
+        // In-app updates: `check()` (all platforms) + `downloadAndInstall`
+        // (Windows/Linux-AppImage). `process` provides `relaunch()` after an
+        // install. Order after single-instance is irrelevant for these.
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .manage(PendingOpen::default())
+        .manage(watcher::WatcherState::default())
         .invoke_handler(tauri::generate_handler![
             frontend_ready,
+            set_recent_files,
+            is_appimage,
             commands::file::open_file,
             commands::file::open_file_as,
             commands::file::save_file,
@@ -96,10 +126,14 @@ pub fn run() {
             commands::session::load_session,
             commands::session::persist_session,
             commands::session::delete_backup,
+            watcher::watch_file,
+            watcher::unwatch_file,
         ])
         .setup(|app| {
             let handle = app.handle();
-            let menu = menu::build(handle)?;
+            // Empty recent list at first build; the frontend calls
+            // set_recent_files once it has read localStorage.
+            let menu = menu::build(handle, &[])?;
             app.set_menu(menu)?;
 
             // Route menu clicks to the frontend as a `menu` event.
