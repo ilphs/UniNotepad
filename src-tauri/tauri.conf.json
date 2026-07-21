@@ -26,6 +26,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "macOS": {
       "signingIdentity": "-"
     },
@@ -43,5 +44,13 @@
         "role": "Editor"
       }
     ]
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IENGQ0Y2OURGNzg2QzgxMEQKUldRTmdXeDQzMm5QenlLdHY1cDNVSlJ1WUZycWg1VVA0TnZ1OUU3aStoS1RqaytKczZSVytxUysK",
+      "endpoints": [
+        "https://github.com/ilphs/UniNotepad/releases/latest/download/latest.json"
+      ]
+    }
   }
 }

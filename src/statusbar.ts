@@ -13,6 +13,29 @@ export function initStatusBar(host: HTMLElement): void {
   el = host;
 }
 
+// ---- Update badge ----------------------------------------------------------
+// A persistent "Update available" chip in the status bar's right group. The bar
+// is fully rebuilt on every store change (refreshStatusBar → replaceChildren),
+// so the badge can't be a stray DOM node — its state lives here and each refresh
+// re-renders it. updater.ts owns the semantics and toggles via this small API,
+// keeping the two modules decoupled (no import cycle).
+let updateBadgeLabel: string | null = null;
+let updateBadgeOnClick: (() => void) | null = null;
+
+/** Show (or update) the status-bar update chip; clicking it runs `onClick`. */
+export function setUpdateBadge(label: string, onClick: () => void): void {
+  updateBadgeLabel = label;
+  updateBadgeOnClick = onClick;
+  refreshStatusBar();
+}
+
+/** Remove the status-bar update chip. */
+export function clearUpdateBadge(): void {
+  updateBadgeLabel = null;
+  updateBadgeOnClick = null;
+  refreshStatusBar();
+}
+
 function eolLabel(eol: string): string {
   return eol === "crlf" ? "CRLF" : "LF";
 }
@@ -140,6 +163,19 @@ export function refreshStatusBar(): void {
     warn.title = health.error ?? "Session backup could not be written. Click to retry.";
     warn.addEventListener("click", () => void flushNow());
     right.prepend(warn);
+  }
+
+  // "Update available" chip, when updater.ts has flagged one. Leads the right
+  // group (before the backup warning) so it is the first thing seen; clicking
+  // opens the update modal.
+  if (updateBadgeLabel) {
+    const badge = document.createElement("span");
+    badge.className = "status-item update-badge";
+    badge.textContent = updateBadgeLabel;
+    badge.title = "Click for details";
+    const onClick = updateBadgeOnClick;
+    badge.addEventListener("click", () => onClick?.());
+    right.prepend(badge);
   }
 
   el.replaceChildren(left, right);

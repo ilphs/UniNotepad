@@ -1,6 +1,6 @@
 import "./styles.css";
 import { store } from "./state";
-import { ipc, onMenu, onOpenPaths, onFileDrop } from "./ipc";
+import { ipc, onMenu, onOpenPaths, onFileDrop, onFileChanged } from "./ipc";
 import { mountEditor, showTab, zoomIn, toggleWordWrap } from "./editor";
 import {
   initTabBar,
@@ -8,6 +8,8 @@ import {
   newUntitled,
   openPaths,
   cycleTab,
+  watchAllTabs,
+  reconcileExternalChange,
 } from "./tabs";
 import { initStatusBar, refreshStatusBar } from "./statusbar";
 import { restoreSession, initSessionTriggers } from "./session";
@@ -18,6 +20,8 @@ import { applyStoredTheme } from "./theme";
 import { mountPreview } from "./preview";
 import { handleZoomShortcut } from "./mermaid-view";
 import { initWindowTitle, refreshWindowTitle } from "./title";
+import { syncRecentMenu } from "./recent";
+import { checkForUpdates } from "./updater";
 
 // Apply the saved theme before first paint (system mode falls back to CSS).
 applyStoredTheme();
@@ -65,6 +69,29 @@ async function bootstrap(): Promise<void> {
   await onFileDrop((paths) => void openPaths(paths));
   initContextMenus(editorHost, tabbar);
   initSessionTriggers();
+
+  // Live external-change detection. Register the listener, then start watching
+  // every restored file-backed tab (tabs opened later watch themselves).
+  await onFileChanged((p) => void reconcileExternalChange(p.path, p.exists, p.mtimeMs));
+  watchAllTabs();
+
+  // Fallback for anything the watcher misses (network drives, missed events):
+  // re-stat every file-backed tab when the window regains focus, throttled so a
+  // rapid focus/blur churn doesn't spam stat calls.
+  let lastFocusCheck = 0;
+  window.addEventListener("focus", () => {
+    const now = Date.now();
+    if (now - lastFocusCheck < 2000) return;
+    lastFocusCheck = now;
+    for (const t of store.state.tabs) {
+      const path = t.path;
+      if (!path) continue;
+      void ipc
+        .statFile(path)
+        .then((st) => reconcileExternalChange(path, st.exists, st.mtimeMs))
+        .catch(() => {});
+    }
+  });
 
   // Zoom-in also on Cmd/Ctrl and "+" (Shift+=). The native menu accelerator
   // only covers Cmd/Ctrl+= (one accelerator per menu item), so cover the Shift
@@ -142,6 +169,7 @@ async function bootstrap(): Promise<void> {
       "+f3": "edit.findNext",
       "S+f3": "edit.findPrev",
       "C+h": "edit.replace",
+      "C+,": "app.preferences",
       "C+=": "view.zoomIn",
       "C+-": "view.zoomOut",
       "C+0": "view.zoomReset",
@@ -173,8 +201,19 @@ async function bootstrap(): Promise<void> {
     });
   }
 
+  // The native menu was built with an empty Open Recent submenu (Rust has no
+  // access to localStorage); push the stored list in once so it reflects
+  // history from previous sessions.
+  syncRecentMenu();
+
   // Tell the backend we are listening so any queued file-opens are delivered.
   await ipc.frontendReady();
+
+  // Background update check, deferred so it never competes with startup work
+  // (session restore, first paint). Silent by design: a found update only lights
+  // the status-bar chip; failures are swallowed. Menu → "Check for Updates…"
+  // triggers the interactive path instead.
+  setTimeout(() => void checkForUpdates(false), 4000);
 }
 
 void bootstrap();
