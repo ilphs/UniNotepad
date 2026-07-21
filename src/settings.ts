@@ -219,7 +219,9 @@ export function setIndentUseTabs(on: boolean): void {
 /** Indent width in columns (1–8, default 4). Also drives the Tab display size. */
 export function indentWidth(): number {
   const v = Number(localStorage.getItem(INDENT_WIDTH_KEY));
-  if (!Number.isInteger(v)) return INDENT_WIDTH_DEFAULT;
+  // Number(null) is 0, so a missing key must fall through to the default
+  // instead of clamping up to the minimum (same guard as previewRatio).
+  if (!Number.isInteger(v) || v <= 0) return INDENT_WIDTH_DEFAULT;
   return Math.max(INDENT_WIDTH_MIN, Math.min(INDENT_WIDTH_MAX, v));
 }
 
@@ -232,7 +234,9 @@ export function setIndentWidth(width: number): void {
  *  survives restarts. Same integer-validate-then-clamp shape as indentWidth. */
 export function editorFontSize(): number {
   const v = Number(localStorage.getItem(FONT_SIZE_KEY));
-  if (!Number.isInteger(v)) return FONT_SIZE_DEFAULT;
+  // Number(null) is 0, so a missing key must fall through to the default
+  // instead of clamping up to the minimum (same guard as previewRatio).
+  if (!Number.isInteger(v) || v <= 0) return FONT_SIZE_DEFAULT;
   return Math.max(FONT_SIZE_MIN, Math.min(FONT_SIZE_MAX, v));
 }
 
