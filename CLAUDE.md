@@ -27,13 +27,16 @@
 | 개발 | `npm install` → `npm run tauri dev` |
 | 빌드 | `npm run tauri build` (release 바이너리 ~3.3MB) |
 | 테스트 | `cd src-tauri && cargo test` (인코딩·세션스토어) · `npm run build` (프론트 타입체크) |
-| 상태 | v1 구현 완료 (M1~M4) · kill-9 세션복원 수동검증 대기 |
+| 상태 | v1 구현 완료 (M1~M4) · 안정성/경량화/UX/업데이터 개선 구현 완료 — 플랫폼별 수동검증·Secrets 등록 대기 |
 
 ### 아키텍처 요점
 
 - **역할 분담** — Rust: 디스크 I/O·인코딩/EOL·원자적 세션 쓰기·OS통합 / JS: 탭 상태·CM6 버퍼·디바운스 스케줄링
 - **세션 지속성** — `app_data_dir()`에 `session.json`(매니페스트) + `backups/<tab-uuid>.txt`. temp→fsync→rename 원자적 쓰기로 크래시 안전. 1.5초 디바운스/탭전환/blur/30초/창닫기에 flush
-- **핵심 파일** — Rust: `src-tauri/src/{lib.rs, encoding.rs, session/store.rs, commands/}` / JS: `src/{session.ts, editor.ts, tabs.ts, state.ts}`
+- **핵심 파일** — Rust: `src-tauri/src/{lib.rs, encoding.rs, watcher.rs, session/store.rs, commands/}` / JS: `src/{session.ts, editor.ts, tabs.ts, state.ts, preferences.ts, updater.ts}`
+- **외부 변경 감시** — `watcher.rs`가 부모 디렉터리를 notify로 감시(파일 직접 감시 금지 — rename-over 시 watch 소멸). 자기 저장은 suppress map(mtime)으로 무시
+- **대용량 가드** — 10MB 경고/100MB 거부는 Rust `read_guarded`가 단일 집행. file-backed 대용량 탭은 세션 백업 제외
+- **업데이터** — 서명 키 `~/.tauri/uninotepad.key`(레포 밖). 릴리즈 전 GitHub Secrets(`TAURI_SIGNING_PRIVATE_KEY`(_PASSWORD)) 등록 필수
 - 상세 설계: `~/.claude/plans/notepad-dynamic-turtle.md`, 실행 안내: `README.md`
 
 ### 문서 구조 (소유권 분리)
@@ -59,4 +62,4 @@
 
 ---
 
-*최종 업데이트: 2026-07-13*
+*최종 업데이트: 2026-07-21*
