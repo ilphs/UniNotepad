@@ -93,6 +93,10 @@
 
       .hero .shot { margin: 2.5rem auto 0; max-width: 56rem; }
       .hero .shot img { width: 100%; border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow); }
+      /* 히어로를 다크/라이트 두 장으로 — 좁은 화면에서는 한 줄씩 쌓인다. */
+      .hero .shot.pair { max-width: 64rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; }
+      .hero .shot.pair figure { border: none; border-radius: 0; background: transparent; overflow: visible; }
+      .hero .shot.pair figcaption { padding: 0.6rem 0 0; text-align: center; }
 
       /* ---- Download cards ------------------------------------------------ */
       .downloads {
@@ -184,6 +188,10 @@
         그리고 <b>Markdown과 Mermaid는 쓰는 즉시 오른쪽에서 그려집니다.</b>
         표도, 코드블록도, 순서도도 인터넷 없이 앱 안에서 바로 렌더됩니다.
       </p>
+      <p class="lead">
+        <b>라이트·다크 테마</b>를 모두 지원합니다 — 시스템 설정을 그대로 따라가게 두거나 원하는 쪽으로 고정하세요.
+        구문 강조 색도, 미리보기도 함께 바뀝니다.
+      </p>
 
       <div class="cta">
         <a class="btn primary" id="heroDownload" href="#download">내려받기</a>
@@ -191,8 +199,15 @@
       </div>
       <p class="sub" id="heroSub"><span data-version>최신 버전</span> · 무료 · 오픈소스</p>
 
-      <div class="shot">
-        <img src="/assets/syntax-markdown.png" alt="UniNotepad의 Markdown 분할 미리보기 화면" />
+      <div class="shot pair">
+        <figure>
+          <img src="/assets/syntax-markdown.png" alt="다크 테마에서 본 UniNotepad의 Markdown 분할 미리보기 화면" />
+          <figcaption><b>다크</b> 테마</figcaption>
+        </figure>
+        <figure>
+          <img src="/assets/syntax-markdown-light.png" alt="라이트 테마에서 본 UniNotepad의 Markdown 분할 미리보기 화면" />
+          <figcaption><b>라이트</b> 테마</figcaption>
+        </figure>
       </div>
     </header>
 
@@ -240,7 +255,7 @@
         <div class="feature"><p class="t">🧜 Mermaid 다이어그램</p><p class="d">```mermaid 코드블록은 물론 .mmd 파일도 통째로 그림으로 — 순서도·시퀀스·간트·클래스 등 Mermaid 11이 그리는 건 다 됩니다. 차트만 따로 확대하고 배경색도 선택.</p></div>
         <div class="feature"><p class="t">🖨️ 미리보기 내보내기</p><p class="d">렌더된 문서를 HTML 한 파일로 저장하거나 그대로 인쇄(PDF) — 다이어그램도 그림째로 담깁니다.</p></div>
         <div class="feature"><p class="t">🎨 구문 강조</p><p class="d">143개 언어를 파일 이름만 보고 자동 판별합니다.</p></div>
-        <div class="feature"><p class="t">🌗 라이트·다크 테마</p><p class="d">시스템 설정을 따르거나 직접 선택 — 미리보기 색도 함께 바뀝니다.</p></div>
+        <div class="feature"><p class="t">🌗 라이트·다크 테마</p><p class="d"><code>View ▸ Theme</code>에서 Light · Dark · System 중 선택. System은 OS의 밝은/어두운 모드를 그대로 따라갑니다. 편집기 · 구문 강조 · Markdown/Mermaid 미리보기 색이 한꺼번에 바뀌고, 고른 테마는 다음에 켤 때도 유지됩니다.</p></div>
         <div class="feature"><p class="t">✂️ 줄 편집 도구</p><p class="d">정렬 · 중복/빈 줄 제거 · 공백 정리 · 대소문자 · 줄 이동.</p></div>
         <div class="feature"><p class="t">⌨️ 다중 커서 · 코드 폴딩</p><p class="d">같은 단어를 한꺼번에 선택해 고치고, 긴 코드는 접어서 봅니다. 공백 문자 표시까지.</p></div>
         <div class="feature"><p class="t">🇰🇷 예전 인코딩 파일</p><p class="d">UTF-8·UTF-16은 물론 EUC-KR/CP949 · Shift-JIS · GBK · Big5도 판별해서 엽니다. 표현할 수 없는 문자는 저장 전에 미리 경고.</p></div>

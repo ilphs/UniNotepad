@@ -15,8 +15,10 @@
 </p>
 
 <p align="center">
-  <a href="https://uninotepad-xi.vercel.app/"><img src="docs/syntax-markdown.png" width="720" alt="UniNotepad의 Markdown 분할 미리보기 화면"></a>
+  <a href="https://uninotepad-xi.vercel.app/"><img src="docs/syntax-markdown.png" width="400" alt="다크 테마에서 본 UniNotepad의 Markdown 분할 미리보기 화면"></a>
+  <a href="https://uninotepad-xi.vercel.app/"><img src="docs/syntax-markdown-light.png" width="400" alt="라이트 테마에서 본 UniNotepad의 Markdown 분할 미리보기 화면"></a>
 </p>
+<p align="center"><sub>같은 화면 — 왼쪽이 <b>다크</b>, 오른쪽이 <b>라이트</b> 테마입니다.</sub></p>
 
 메모장에 뭔가 적어두고 저장하는 걸 깜빡한 채 창을 닫아본 적 있으신가요?
 아니면 컴퓨터가 갑자기 꺼져서 쓰던 내용이 날아간 적은요?
@@ -28,7 +30,11 @@ UniNotepad에서는 그런 일이 생기지 않습니다. 열어둔 탭은 **저
 그리고 **Markdown과 Mermaid는 쓰는 즉시 오른쪽에서 그려집니다.** 표도, 코드블록도,
 순서도도 인터넷 없이 앱 안에서 바로 렌더됩니다 — 위 화면이 실제 분할 미리보기 모습입니다.
 
-**바로가기** — [무엇이 다른가요](#-무엇이-다른가요) · [Markdown · Mermaid 미리보기](#-markdown--mermaid-미리보기) · [화면](#-화면) · [설치](#-설치) · [자주 묻는 질문](#-자주-묻는-질문)
+**화면은 라이트·다크 두 가지 테마로 씁니다.** 시스템 설정을 그대로 따라가게 두거나
+(`View ▸ Theme ▸ System`), 원하는 쪽으로 직접 고정할 수 있고 — 편집기뿐 아니라
+구문 강조 색과 Markdown·Mermaid 미리보기까지 함께 바뀝니다.
+
+**바로가기** — [무엇이 다른가요](#-무엇이-다른가요) · [Markdown · Mermaid 미리보기](#-markdown--mermaid-미리보기) · [테마](#-테마) · [화면](#-화면) · [설치](#-설치) · [자주 묻는 질문](#-자주-묻는-질문)
 
 ## ✨ 무엇이 다른가요
 
@@ -40,7 +46,7 @@ UniNotepad에서는 그런 일이 생기지 않습니다. 열어둔 탭은 **저
 | 🧜 **Mermaid 다이어그램** | ` ```mermaid ` 코드블록은 물론 `.mmd` 파일도 통째로 그림으로 — 순서도·시퀀스·간트·클래스 등 [Mermaid 11](https://mermaid.js.org/)이 그리는 건 다 됩니다. 차트만 따로 확대하고 배경색도 고를 수 있어요 |
 | 🖨️ **미리보기 내보내기** | 렌더된 문서를 HTML 한 파일로 저장하거나 그대로 인쇄(PDF) — 다이어그램도 그림째로 담깁니다 |
 | 🎨 **구문 강조** | 143개 언어를 파일 이름만 보고 자동 판별 |
-| 🌗 **라이트·다크 테마** | 시스템 설정을 따르거나 직접 선택 — 미리보기 색도 함께 바뀝니다 |
+| 🌗 **라이트·다크 테마** | `View ▸ Theme`에서 **Light · Dark · System** 중 선택 — System은 OS의 밝은/어두운 모드를 그대로 따라갑니다. 편집기·구문 강조·미리보기 색이 한꺼번에 바뀌고, 고른 테마는 다음에 켤 때도 유지됩니다 |
 | ✂️ **줄 편집 도구** | 정렬 · 중복/빈 줄 제거 · 공백 정리 · 대소문자 · 줄 이동 (`Edit ▸ Line Operations`) |
 | ⌨️ **다중 커서 · 코드 폴딩** | 같은 단어를 한꺼번에 선택해 고치고(Cmd/Ctrl+D), 긴 코드는 접어서 봅니다 — 공백 문자 표시 토글도 (`View` 메뉴) |
 | 🇰🇷 **옛 인코딩 파일** | UTF-8·UTF-16은 물론 EUC-KR/CP949 · Shift-JIS · GBK · Big5도 판별해서 엽니다 — 표현할 수 없는 문자는 저장 전에 미리 경고 |
@@ -87,6 +93,24 @@ UniNotepad에서는 그런 일이 생기지 않습니다. 열어둔 탭은 **저
 | 종이·PDF로 인쇄 | `Ctrl/Cmd + P` |
 
 > 미리보기 색은 앱 테마(라이트·다크)를 따라갑니다. 인쇄와 HTML 내보내기는 읽기 좋도록 밝은 배경으로 나갑니다.
+
+## 🌗 테마
+
+| |
+|:--|
+| [![라이트 테마와 다크 테마의 Markdown 미리보기 비교](docs/syntax-markdown-light.png)](https://uninotepad-xi.vercel.app/) |
+| 라이트 테마 — 맨 위 화면과 같은 문서를 밝은 테마로 본 모습입니다 |
+
+| 하고 싶은 것 | 방법 |
+|:--|:--|
+| 테마 바꾸기 | `View ▸ Theme ▸ Light / Dark / System` |
+| 설정 화면에서 바꾸기 | `Ctrl/Cmd + ,` ▸ **Theme** |
+| OS 설정 따라가기 | **System** 선택 — 시스템이 밤에 어두워지면 앱도 같이 어두워집니다 |
+
+- 고른 테마는 저장되어 다음에 앱을 열어도 그대로입니다 (기본값은 **System**)
+- 편집기 배경·줄번호·선택 영역은 물론 **143개 언어의 구문 강조 색**이 테마에 맞춰 바뀝니다
+- **Markdown·Mermaid 미리보기도 함께** 바뀝니다 — 다이어그램은 테마가 바뀔 때 다시 그려집니다
+- 다만 **인쇄와 HTML 내보내기는 항상 밝은 배경**으로 나갑니다 (종이·공유 문서에서 읽기 좋도록)
 
 ## 🖼 화면
 
