@@ -319,7 +319,11 @@ body {
 .md-body {
   flex: 1 1 auto;
   min-width: 0;
-  max-width: 72ch; /* cap line length (~66–75 chars) for readability */
+  /* Fill narrow panes, but stop growing at a readable line length on wide ones.
+     The 48ch floor only bites on very narrow panes, where flex shrink still
+     prevents overflow. Note `box-sizing: border-box` — the 64px of horizontal
+     padding counts against these values. */
+  max-width: clamp(48ch, 92%, 100ch);
   margin: 0 auto; /* auto margins center the column in the flex-row pane */
   padding: 28px 32px 48px;
   line-height: 1.7;
@@ -1017,6 +1021,12 @@ body {
     overflow: visible !important;
     background: #fff !important;
     color: #000 !important;
+  }
+
+  /* On paper `.md-body` is no longer a flex item, so the screen rule's `92%`
+     would resolve against the page and print wider than before. Pin the column. */
+  .md-body {
+    max-width: 72ch;
   }
 
   /* Interactive diagram controls are screen-only — never on paper. */
