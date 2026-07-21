@@ -84,6 +84,8 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .plugin(tauri_plugin_dialog::init())
+        // Opens the homepage link in the About dialog via the default browser.
+        .plugin(tauri_plugin_opener::init())
         .manage(PendingOpen::default())
         .invoke_handler(tauri::generate_handler![
             frontend_ready,

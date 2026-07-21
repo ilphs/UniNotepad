@@ -38,8 +38,12 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     {
         let app_menu = Submenu::new(app, "UniNotepad", true)?;
         menu.append(&app_menu)?;
+        // A custom item rather than `PredefinedMenuItem::about`: predefined items
+        // emit no `menu` event, so the frontend could not show its own dialog.
+        // Non-macOS gets the same id under a Help submenu at the bottom.
+        let about = MenuItemBuilder::with_id("help.about", "About UniNotepad").build(app)?;
         app_menu.append_items(&[
-            &PredefinedMenuItem::about(app, None, Some(tauri::menu::AboutMetadata::default()))?,
+            &about,
             &PredefinedMenuItem::separator(app)?,
             &PredefinedMenuItem::hide(app, None)?,
             &PredefinedMenuItem::hide_others(app, None)?,
@@ -318,6 +322,15 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let theme_dark = MenuItemBuilder::with_id("view.themeDark", "Dark").build(app)?;
     let theme_system = MenuItemBuilder::with_id("view.themeSystem", "System").build(app)?;
     theme_menu.append_items(&[&theme_light, &theme_dark, &theme_system])?;
+
+    // Help — macOS already carries About in its application menu.
+    #[cfg(not(target_os = "macos"))]
+    {
+        let help_menu = Submenu::new(app, "Help", true)?;
+        menu.append(&help_menu)?;
+        let about = MenuItemBuilder::with_id("help.about", "About UniNotepad").build(app)?;
+        help_menu.append_items(&[&about])?;
+    }
 
     Ok(menu)
 }

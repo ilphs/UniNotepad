@@ -32,7 +32,7 @@ import {
   setActiveEol,
 } from "./tabs";
 import { store } from "./state";
-import { openSaveOptions, openRecentDialog } from "./dialogs";
+import { openSaveOptions, openRecentDialog, openAbout } from "./dialogs";
 import { setTheme } from "./theme";
 import { togglePreview, exportPreviewHtml, printPreview } from "./preview";
 import { handleZoomShortcut } from "./mermaid-view";
@@ -206,5 +206,6 @@ export function handleMenu(id: string): void {
     case "view.gotoTab9": activateLastTab(); break;
     case "view.nextTab": cycleTab(1); break;
     case "view.prevTab": cycleTab(-1); break;
+    case "help.about": openAbout(); break;
   }
 }

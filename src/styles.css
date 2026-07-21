@@ -827,6 +827,72 @@ body {
   font-size: 14px;
 }
 
+.modal a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.modal a:hover {
+  text-decoration: underline;
+}
+
+/* About — a centered product card: icon, name, version, tagline, homepage. */
+.modal.about {
+  text-align: center;
+  padding: 28px 24px 20px;
+  min-width: 300px;
+  max-width: 340px;
+}
+
+.about-icon {
+  width: 72px;
+  height: 72px;
+  margin-bottom: 14px;
+  border-radius: 16px;
+  /* The icon is opaque and square; soften it against the modal surface. */
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+/* Overrides the shared `.modal p` bottom margin; each row spaces itself above. */
+.modal.about p {
+  margin: 0;
+}
+
+.modal.about .about-name {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.modal.about .about-version {
+  margin-top: 4px;
+  font-size: 12px;
+  opacity: 0.6;
+  font-variant-numeric: tabular-nums;
+}
+
+.modal.about .about-tagline {
+  margin-top: 14px;
+  font-size: 12px;
+  line-height: 1.5;
+  opacity: 0.75;
+}
+
+.modal.about .about-link {
+  margin-top: 12px;
+  font-size: 12px;
+}
+
+.modal.about .modal-actions {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  justify-content: center;
+}
+
+.modal.about .modal-actions button {
+  min-width: 96px;
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;

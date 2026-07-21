@@ -17,17 +17,10 @@ import { isModalOpen } from "./modal";
 import { applyStoredTheme } from "./theme";
 import { mountPreview } from "./preview";
 import { handleZoomShortcut } from "./mermaid-view";
-import { getVersion } from "@tauri-apps/api/app";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { initWindowTitle, refreshWindowTitle } from "./title";
 
 // Apply the saved theme before first paint (system mode falls back to CSS).
 applyStoredTheme();
-
-// Show the app version in the window title (sourced from tauri.conf.json).
-// Best-effort: a failure here must not block editor startup.
-getVersion()
-  .then((v) => getCurrentWindow().setTitle(`UniNotepad v${v}`))
-  .catch(() => {});
 
 async function bootstrap(): Promise<void> {
   const tabbar = document.getElementById("tabbar")!;
@@ -42,6 +35,7 @@ async function bootstrap(): Promise<void> {
   initTabBar(tabbar, banner);
   tabNew.addEventListener("click", () => newUntitled());
   initStatusBar(statusbar);
+  await initWindowTitle(); // caches the app version for the About dialog
   mountEditor(editorHost);
   // Before any showTab() below (it calls updatePreview()).
   mountPreview(split, editorHost, previewHost, divider);
@@ -50,6 +44,7 @@ async function bootstrap(): Promise<void> {
   store.subscribe(() => {
     renderTabBar();
     refreshStatusBar();
+    refreshWindowTitle();
   });
 
   // Restore the previous session (tabs, dirty buffers, untitled docs).
@@ -62,6 +57,7 @@ async function bootstrap(): Promise<void> {
   }
   renderTabBar();
   refreshStatusBar();
+  refreshWindowTitle();
 
   // Wire OS integration.
   await onMenu(handleMenu);
