@@ -1,8 +1,9 @@
 /**
  * Window title and app version.
  *
- * The title tracks the active tab (`● notes.md — UniNotepad`) the way editors
- * conventionally do, so the window is identifiable from the Dock / Alt+Tab.
+ * The title tracks the active tab (`● /Users/me/notes.md — UniNotepad`) the way
+ * editors conventionally do, so the window is identifiable from the Dock /
+ * Alt+Tab — with the full path, which the tab bar has no room to show.
  * The version is fetched once at startup and cached here for the About dialog
  * (dialogs.ts) — it is deliberately no longer part of the title.
  *
@@ -37,7 +38,9 @@ export async function initWindowTitle(): Promise<void> {
 /** Re-render the window title from the active tab. Safe to call on every store change. */
 export function refreshWindowTitle(): void {
   const tab = store.activeTab;
+  // Full path when the tab is backed by a file; untitled tabs only have a label.
   // Same dirty marker as the tab bar (tabs.ts), plus the app-name suffix.
-  const title = tab ? `${tab.dirty ? "● " : ""}${tab.title} — ${APP_NAME}` : APP_NAME;
+  const name = tab ? (tab.path ?? tab.title) : "";
+  const title = tab ? `${tab.dirty ? "● " : ""}${name} — ${APP_NAME}` : APP_NAME;
   void getCurrentWindow().setTitle(title).catch(() => {});
 }
