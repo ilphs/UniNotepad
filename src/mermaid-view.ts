@@ -34,6 +34,7 @@ import {
   setMermaidBgEnabled,
   type MermaidBg,
 } from "./settings";
+import { store } from "./state";
 
 let hostEl: HTMLElement;
 
@@ -66,19 +67,27 @@ const ZOOM_MAX = 4;
 const EXP_MAX = Math.ceil(Math.log(ZOOM_MAX) / Math.log(ZOOM_BASE));
 const EXP_MIN = Math.floor(Math.log(ZOOM_MIN) / Math.log(ZOOM_BASE));
 
-/** Session-scoped, like the editor's own `fontSize` (editor.ts) — not persisted. */
-let zoomExp = 0;
-
-/** The live scale. The clamp applies to the derived value only; the exponent
- *  ladder itself is what guarantees the walk back down hits 1 exactly. */
-function zoomFactor(): number {
-  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, ZOOM_BASE ** zoomExp));
+/** The exponent now lives on the active tab (`previewZoomExp`), so preview zoom
+ *  is per-tab and persisted. This falls back to 0 (100%) when no tab is mounted
+ *  (apply* runs at mount, before any tab exists). */
+function activeZoomExp(): number {
+  return store.activeTab?.previewZoomExp ?? 0;
 }
 
-/** Push the scale to the host. Deliberately badge-free: this also runs at mount,
- *  where a flash would look like a bug. handleZoomShortcut() owns the badge. */
-function applyMermaidZoom(): void {
-  const f = zoomFactor();
+/** The live preview scale. The clamp applies to the derived value only; the
+ *  exponent ladder itself is what guarantees the walk back down hits 1 exactly.
+ *  Exported so preview.ts can size the Markdown text (`--preview-font-size`) with
+ *  the same factor this module applies to Mermaid diagrams. */
+export function previewZoomFactor(): number {
+  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, ZOOM_BASE ** activeZoomExp()));
+}
+
+/** Push the diagram scale to the host. Deliberately badge-free: this also runs
+ *  at mount, where a flash would look like a bug. handleZoomShortcut() owns the
+ *  badge. Exported so preview.ts's applyPreviewZoom() can drive it together with
+ *  the Markdown text size from one place. */
+export function applyMermaidZoom(): void {
+  const f = previewZoomFactor();
   hostEl.style.setProperty("--mmd-zoom", String(f));
   // At exactly 1 the zoom rules come off entirely, restoring the untouched
   // in-flow layout rather than an equivalent-looking reconstruction of it.
@@ -222,9 +231,9 @@ function refreshToolbarState(): void {
 // ---- Zoom badge ------------------------------------------------------------
 
 /**
- * The badge is the *only* feedback for chart zoom: the status bar's % is the
- * editor font ratio (getZoomPercent()), and it stays correct on its own because
- * a chart-targeted shortcut skips zoomIn() entirely.
+ * A transient, centered readout of the preview scale on each zoom press. The
+ * status bar also carries a persistent `Preview N%` (statusbar.ts), but the
+ * badge gives immediate, in-pane feedback right where the user is looking.
  *
  * Mounted on document.body and fixed-positioned, never as a `#preview-host`
  * child: the first ensureMdBody() calls previewHost.replaceChildren(), which
@@ -257,44 +266,59 @@ function flashBadge(text: string): void {
 /** Whether the preview pane is the click-selected pane. Tracking this as state
  *  is safe where tracking hover was not: it is set by clicks on `#preview-host`
  *  itself (static markup), not on the diagram nodes the 200ms re-render
- *  rebuilds. Session-scoped like `zoomExp`; preview.ts owns the wiring and
- *  resets it when the pane hides. */
+ *  rebuilds. preview.ts owns the wiring and resets it when the pane hides. */
 let previewSelected = false;
 
 export function setPreviewSelected(sel: boolean): void {
   previewSelected = sel;
 }
 
-/** Whether a zoom command should drive the chart instead of the editor font:
- *  the pane is click-selected, or the mouse is over it. Hover alone can't carry
- *  the menu path — clicking a menu item parks the mouse on the menu, so `:hover`
- *  is always false there — which is why selection is checked first. Hover is
- *  still queried at action time rather than tracked with listeners: the diagram
- *  DOM is rebuilt every 200ms while typing, so cached state could disagree with
- *  it, and the codebase has no hover-listener precedent (hover is CSS everywhere). */
-function targetsChart(): boolean {
+/** Set by preview.ts (mountPreview) to size the Markdown text alongside the
+ *  Mermaid scale. Kept as a callback rather than an import so mermaid-view stays
+ *  free of a preview.ts dependency (preview → mermaid-view is the one direction). */
+let onPreviewZoom: (() => void) | null = null;
+
+export function setPreviewZoomHandler(fn: () => void): void {
+  onPreviewZoom = fn;
+}
+
+/** Whether a zoom command should drive the preview instead of the editor font:
+ *  the pane is visible AND either click-selected or hovered. Hover alone can't
+ *  carry the menu path — clicking a menu item parks the mouse on the menu, so
+ *  `:hover` is always false there — which is why selection is checked first.
+ *  Hover is still queried at action time rather than tracked with listeners, as
+ *  the codebase has no hover-listener precedent (hover is CSS everywhere).
+ *
+ *  Note: unlike before, this no longer requires a rendered diagram — preview zoom
+ *  now also scales Markdown text, so it applies to a diagram-free document too. */
+function targetsPreview(): boolean {
   if (!hostEl || hostEl.hidden) return false;
-  if (!previewSelected && !hostEl.matches(":hover")) return false;
-  return hostEl.querySelector(".mermaid-diagram svg") !== null;
+  return previewSelected || hostEl.matches(":hover");
 }
 
 /**
- * Route a zoom command to the chart. Returns true if it was handled, so the
+ * Route a zoom command to the preview. Returns true if it was handled, so the
  * caller can fall back to the editor-font zoom.
  *
- * The true/false answer depends *only* on whether a chart is targeted — never on
- * whether the scale actually changed. Returning false at the clamp would quietly
- * hand a "+" at 400% to the editor font instead, growing the editor behind the
- * user's back. Same reason the badge re-flashes even when the value is unchanged:
- * the command was consumed, so it must look consumed.
+ * The true/false answer depends *only* on whether the preview is targeted — never
+ * on whether the scale actually changed. Returning false at the clamp would
+ * quietly hand a "+" at 400% to the editor font instead, growing the editor
+ * behind the user's back. Same reason the badge re-flashes even when the value is
+ * unchanged: the command was consumed, so it must look consumed.
  *
  * @param dir 1 = in, -1 = out, 0 = reset to 100%.
  */
 export function handleZoomShortcut(dir: 1 | -1 | 0): boolean {
-  if (!targetsChart()) return false;
-  zoomExp = dir === 0 ? 0 : Math.max(EXP_MIN, Math.min(EXP_MAX, zoomExp + dir));
+  if (!targetsPreview()) return false;
+  const tab = store.activeTab;
+  if (tab) {
+    tab.previewZoomExp =
+      dir === 0 ? 0 : Math.max(EXP_MIN, Math.min(EXP_MAX, tab.previewZoomExp + dir));
+  }
+  // Scale both the diagrams and the Markdown text from the tab's new exponent.
   applyMermaidZoom();
-  flashBadge(`${Math.round(zoomFactor() * 100)}%`);
+  onPreviewZoom?.();
+  flashBadge(`${Math.round(previewZoomFactor() * 100)}%`);
   return true;
 }
 

@@ -70,8 +70,25 @@ let hostEl: HTMLElement;
 const MIN_FONT = 8;
 const MAX_FONT = 40;
 const BASE_FONT = 14;
-// Restore the last zoom level (px) from settings; defaults to BASE_FONT.
-let fontSize = editorFontSize();
+
+/** The active tab's editor font size, or the global default when no tab is
+ *  mounted yet (applyZoom runs at mount, before any tab exists). */
+function getActiveFontSize(): number {
+  return store.activeTab?.editorFontSize ?? editorFontSize();
+}
+
+function clampFont(px: number): number {
+  return Math.max(MIN_FONT, Math.min(MAX_FONT, Math.round(px)));
+}
+
+/** Set the active tab's editor font size (per-tab zoom) and re-apply. A no-op on
+ *  the CSS var when there is no active tab (nothing is mounted to zoom). */
+function setActiveFontSize(px: number): void {
+  const tab = store.activeTab;
+  if (tab) tab.editorFontSize = clampFont(px);
+  applyZoom();
+  refreshStatusBar();
+}
 
 /**
  * Build a fresh EditorState for one tab. The updateListener closes over this
@@ -340,7 +357,7 @@ function fontFamilyValue(): string {
 /** Push the current font size + family into the CSS variables .cm-scroller
  *  reads. Called by the zoom commands and by Preferences. */
 function applyZoom(): void {
-  hostEl.style.setProperty("--editor-font-size", `${fontSize}px`);
+  hostEl.style.setProperty("--editor-font-size", `${getActiveFontSize()}px`);
   hostEl.style.setProperty("--editor-font-family", fontFamilyValue());
 }
 
@@ -349,38 +366,29 @@ export function applyFontFamily(): void {
   applyZoom();
 }
 
-/** Set an absolute editor font size in px (Preferences number input). Reuses the
- *  same clamp + persistence the zoom commands use, then refreshes the CSS var. */
+/** Set an absolute editor font size in px (Preferences number input). This is a
+ *  preference, so it updates the global default (the seed for new tabs) *and*
+ *  the active tab, so the change is visible immediately. */
 export function setEditorFontSizePx(px: number): void {
-  fontSize = Math.max(MIN_FONT, Math.min(MAX_FONT, Math.round(px)));
-  setEditorFontSize(fontSize);
-  applyZoom();
-  refreshStatusBar();
+  const clamped = clampFont(px);
+  setEditorFontSize(clamped); // global "new tab default"
+  setActiveFontSize(clamped); // reflect on the current tab now
 }
 
 export function zoomIn(): void {
-  fontSize = Math.min(MAX_FONT, fontSize + 1);
-  setEditorFontSize(fontSize);
-  applyZoom();
-  refreshStatusBar();
+  setActiveFontSize(getActiveFontSize() + 1);
 }
 
 export function zoomOut(): void {
-  fontSize = Math.max(MIN_FONT, fontSize - 1);
-  setEditorFontSize(fontSize);
-  applyZoom();
-  refreshStatusBar();
+  setActiveFontSize(getActiveFontSize() - 1);
 }
 
 export function zoomReset(): void {
-  fontSize = BASE_FONT;
-  setEditorFontSize(fontSize);
-  applyZoom();
-  refreshStatusBar();
+  setActiveFontSize(BASE_FONT);
 }
 
 export function getZoomPercent(): number {
-  return Math.round((fontSize / BASE_FONT) * 100);
+  return Math.round((getActiveFontSize() / BASE_FONT) * 100);
 }
 
 export function getView(): EditorView {
@@ -394,7 +402,8 @@ export function showTab(tab: Tab): void {
   requestAnimationFrame(() => {
     view.scrollDOM.scrollTop = tab.scrollTop;
   });
-  updatePreview(); // show/hide + render for the newly active tab
+  applyZoom(); // re-apply this tab's editor font size (per-tab zoom)
+  updatePreview(); // show/hide + render for the newly active tab (ratio + preview zoom)
   void applyLanguage(tab); // resolve + install highlighting for the shown tab
 }
 

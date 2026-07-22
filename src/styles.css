@@ -327,7 +327,9 @@ body {
   margin: 0 auto; /* auto margins center the column in the flex-row pane */
   padding: 28px 32px 48px;
   line-height: 1.7;
-  font-size: 15px;
+  /* Per-tab preview zoom sets --preview-font-size on #preview-host (preview.ts);
+     the 15px fallback is the 100% base used before any zoom is applied. */
+  font-size: var(--preview-font-size, 15px);
   overflow-wrap: break-word; /* keep long URLs/words from overflowing */
 }
 .md-body > :first-child { margin-top: 0; }

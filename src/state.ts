@@ -54,6 +54,15 @@ export interface Tab {
   state: EditorState;
   /** Scroll position (not part of EditorState — captured on switch/flush). */
   scrollTop: number;
+  /** Editor:preview split — the editor's share (0.2–0.8). Per-tab, seeded from
+   *  the global default at creation, then diverges freely (divider drag). */
+  previewRatio: number;
+  /** Editor font size in px (8–40). Per-tab zoom, seeded from the global
+   *  default; the zoom commands mutate this tab's value only. */
+  editorFontSize: number;
+  /** Preview zoom exponent (base 1.25, default 0 = 100%). Drives both the
+   *  Markdown text size and the Mermaid diagram scale for this tab. */
+  previewZoomExp: number;
   /** Non-blocking notice to show in this tab (conflict/deletion). */
   notice: TabNotice | null;
 }

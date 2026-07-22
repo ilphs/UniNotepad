@@ -1,5 +1,6 @@
 import { store, type EncodingId, type EolId, type FileTypeId } from "./state";
 import { getView, getZoomPercent } from "./editor";
+import { getPreviewZoomPercent, isPreviewVisible } from "./preview";
 import { setActiveEncoding, setActiveEol, setActiveFileType } from "./tabs";
 import { effectiveFileType } from "./language";
 import { sessionHealth, flushNow } from "./session";
@@ -137,8 +138,10 @@ export function refreshStatusBar(): void {
 
   const right = document.createElement("span");
   right.className = "status-right";
-  const zoom = document.createElement("span");
-  zoom.textContent = `${getZoomPercent()}%`;
+  // Editor zoom (always) + preview zoom (only while the preview pane is shown),
+  // labelled so the two independent scales are unambiguous.
+  const editorZoom = document.createElement("span");
+  editorZoom.textContent = `Editor ${getZoomPercent()}%`;
   // Labelled by the effective type, so a .md file reads "Markdown" before any
   // explicit pick is made.
   const ft = effectiveFileType(tab);
@@ -151,7 +154,13 @@ export function refreshStatusBar(): void {
   const encBtn = pickerItem(encLabel(tab.encoding), (a) =>
     openPicker(a, ENC_OPTIONS, tab.encoding, (id) => void setActiveEncoding(id as EncodingId)),
   );
-  right.append(zoom, typeBtn, eolBtn, encBtn);
+  right.append(editorZoom);
+  if (isPreviewVisible()) {
+    const previewZoom = document.createElement("span");
+    previewZoom.textContent = `Preview ${getPreviewZoomPercent()}%`;
+    right.append(previewZoom);
+  }
+  right.append(typeBtn, eolBtn, encBtn);
 
   // Backup-persistence failure indicator (leads the right group so it stands
   // out). Clicking it retries the flush immediately.

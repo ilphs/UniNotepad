@@ -142,7 +142,9 @@ export function setPreviewEnabled(on: boolean): void {
   writeBool(PREVIEW_KEY, on);
 }
 
-/** Editor's share of the split (0.2–0.8); the preview takes the remainder. */
+/** Editor's share of the split (0.2–0.8); the preview takes the remainder. Now
+ *  the *seed* for a new tab's per-tab `previewRatio` (state.ts) and the restore
+ *  fallback for older manifests — the live value lives on the active tab. */
 export function previewRatio(): number {
   const v = Number(localStorage.getItem(RATIO_KEY));
   if (!Number.isFinite(v) || v <= 0) return RATIO_DEFAULT;
@@ -230,8 +232,11 @@ export function setIndentWidth(width: number): void {
   localStorage.setItem(INDENT_WIDTH_KEY, String(clamped));
 }
 
-/** Editor font size in px (8–40, default 14). Persists the zoom level so it
- *  survives restarts. Same integer-validate-then-clamp shape as indentWidth. */
+/** Editor font size in px (8–40, default 14). Now the *seed* for a new tab's
+ *  per-tab `editorFontSize` (state.ts) and the restore fallback for older
+ *  manifests; also updated by Preferences as the new-tab default. The live zoom
+ *  level lives on the active tab. Same integer-validate-then-clamp shape as
+ *  indentWidth. */
 export function editorFontSize(): number {
   const v = Number(localStorage.getItem(FONT_SIZE_KEY));
   // Number(null) is 0, so a missing key must fall through to the default

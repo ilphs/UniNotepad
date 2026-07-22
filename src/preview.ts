@@ -26,13 +26,11 @@ import {
   setSoloMode,
   closeMermaidPopover,
   setPreviewSelected,
+  applyMermaidZoom,
+  previewZoomFactor,
+  setPreviewZoomHandler,
 } from "./mermaid-view";
-import {
-  isPreviewEnabled,
-  setPreviewEnabled,
-  previewRatio,
-  setPreviewRatio,
-} from "./settings";
+import { isPreviewEnabled, setPreviewEnabled, previewRatio } from "./settings";
 
 let splitEl: HTMLElement;
 let editorHost: HTMLElement;
@@ -297,6 +295,7 @@ export function updatePreview(): void {
   // silently target an invisible chart); re-showing starts from the editor too.
   setSelectedPane(false);
   applyRatio();
+  applyPreviewZoom(); // re-apply this tab's preview zoom (text + diagrams)
   if (show) void renderNow();
 }
 
@@ -410,14 +409,45 @@ export function printPreview(): void {
 
 // ---- Split ratio / divider drag --------------------------------------------
 
+/** Editor:preview split bounds — keeps either pane from collapsing (mirrors
+ *  settings.ts RATIO_MIN/MAX, applied per-tab here). */
+const RATIO_MIN = 0.2;
+const RATIO_MAX = 0.8;
+
+/** The base Markdown text size (px) at 100%; scaled by the preview zoom factor. */
+const PREVIEW_BASE_FONT = 15;
+
 function applyRatio(): void {
   if (previewHost.hidden) {
     editorHost.style.flexGrow = ""; // back to CSS default → full width
     return;
   }
-  const r = previewRatio();
+  // Per-tab ratio, falling back to the global default (new-tab seed) before any
+  // tab is mounted.
+  const r = store.activeTab?.previewRatio ?? previewRatio();
   editorHost.style.flexGrow = String(r);
   previewHost.style.flexGrow = String(1 - r);
+}
+
+/** Push the active tab's preview zoom to both the Markdown text
+ *  (`--preview-font-size`) and the Mermaid diagrams (`--mmd-zoom`, via
+ *  mermaid-view). Registered as mermaid-view's zoom handler so a shortcut press
+ *  routes back here for the text half. */
+function applyPreviewZoom(): void {
+  if (!previewHost) return;
+  const factor = previewZoomFactor();
+  previewHost.style.setProperty("--preview-font-size", `${PREVIEW_BASE_FONT * factor}px`);
+  applyMermaidZoom();
+}
+
+/** The active tab's preview scale as a percentage, for the status bar. */
+export function getPreviewZoomPercent(): number {
+  return Math.round(previewZoomFactor() * 100);
+}
+
+/** Whether the preview pane is currently shown (drives the status-bar Preview %). */
+export function isPreviewVisible(): boolean {
+  return !!previewHost && !previewHost.hidden;
 }
 
 let dragging = false;
@@ -434,7 +464,10 @@ function onDividerMove(e: PointerEvent): void {
   if (!dragging) return;
   const rect = splitEl.getBoundingClientRect();
   if (rect.width === 0) return;
-  setPreviewRatio((e.clientX - rect.left) / rect.width); // clamps 0.2–0.8
+  const tab = store.activeTab;
+  if (!tab) return;
+  const raw = (e.clientX - rect.left) / rect.width;
+  tab.previewRatio = Math.max(RATIO_MIN, Math.min(RATIO_MAX, raw)); // per-tab ratio
   applyRatio();
 }
 
@@ -466,6 +499,15 @@ export function mountPreview(
   // Diagram backdrop/zoom/pan. Delegated to the host, so it survives the
   // re-renders that rebuild every chart node.
   mountMermaidView(preview);
+  // A preview-zoom shortcut updates the tab exponent in mermaid-view; route it
+  // back here so the Markdown text size follows the diagram scale. It also
+  // mutates the tab field directly (no store emit), so refresh the status bar's
+  // "Preview N%" by hand — applyPreviewZoom stays emit-free for the mount/switch
+  // callers that already refresh.
+  setPreviewZoomHandler(() => {
+    applyPreviewZoom();
+    refreshStatusBar();
+  });
 
   // Pane selection for zoom routing. Clicks pick a pane; `focusin` also covers
   // the editor because CM6 takes focus through code paths (tab switch, find)

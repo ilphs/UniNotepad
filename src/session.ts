@@ -2,6 +2,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { store, FILE_TYPE_IDS, type Tab, type EncodingId, type EolId, type FileTypeId } from "./state";
 import { ipc, type SessionManifest, type TabEntry } from "./ipc";
 import { makeState, syncTabFromView } from "./editor";
+import { previewRatio, editorFontSize } from "./settings";
 
 const DEBOUNCE_MS = 1500;
 const SAFETY_INTERVAL_MS = 30_000;
@@ -81,6 +82,9 @@ function buildManifest(): SessionManifest {
     largeFile: t.largeFile,
     cursor: t.state.selection.main.head,
     scrollTop: t.scrollTop,
+    previewRatio: t.previewRatio,
+    editorFontSize: t.editorFontSize,
+    previewZoomExp: t.previewZoomExp,
   }));
   return { version: MANIFEST_VERSION, activeTabId, nextUntitled, tabs: entries };
 }
@@ -160,6 +164,10 @@ function tabFromEntry(entry: TabEntry, doc: string): Tab {
     largeFile,
     state: makeState(doc, entry.id, entry.cursor ?? undefined, entry.path, fileType, largeFile),
     scrollTop: entry.scrollTop ?? 0,
+    // Older manifests lack these — fall back to the current global defaults.
+    previewRatio: entry.previewRatio ?? previewRatio(),
+    editorFontSize: entry.editorFontSize ?? editorFontSize(),
+    previewZoomExp: entry.previewZoomExp ?? 0,
     notice: null,
   };
 }

@@ -4,7 +4,7 @@ import { ipc } from "./ipc";
 import { makeState, showTab, syncTabFromView, reconfigureLanguage } from "./editor";
 import { flushNow, dropPending, markBackupDirty, basename } from "./session";
 import { recordRecent } from "./recent";
-import { applySaveOptions, setPreviewEnabled } from "./settings";
+import { applySaveOptions, setPreviewEnabled, previewRatio, editorFontSize } from "./settings";
 import { openModal, button, type ModalHandle } from "./modal";
 
 function platformEol(): EolId {
@@ -41,6 +41,9 @@ export function newUntitled(): void {
     largeFile: false,
     state: makeState("", id),
     scrollTop: 0,
+    previewRatio: previewRatio(),
+    editorFontSize: editorFontSize(),
+    previewZoomExp: 0,
     notice: null,
   };
   store.state.tabs.push(tab);
@@ -85,6 +88,9 @@ export async function openPath(path: string, fileType: FileTypeId | null = null)
       largeFile: opened.large,
       state: makeState(opened.content, id, undefined, path, fileType, opened.large),
       scrollTop: 0,
+      previewRatio: previewRatio(),
+      editorFontSize: editorFontSize(),
+      previewZoomExp: 0,
       notice: opened.lossy ? lossyNotice() : null,
     };
     store.state.tabs.push(tab);
@@ -359,6 +365,9 @@ export async function reopenClosed(): Promise<void> {
     largeFile: snap.largeFile,
     state: makeState(snap.doc, id, snap.cursor, snap.path, snap.fileType, snap.largeFile),
     scrollTop: snap.scrollTop,
+    previewRatio: previewRatio(),
+    editorFontSize: editorFontSize(),
+    previewZoomExp: 0,
     notice: null,
   };
   store.state.tabs.push(tab);
