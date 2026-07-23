@@ -22,14 +22,16 @@
 
     <style>
       :root {
-        --bg: #ffffff;
-        --fg: #1c1c22;
+        --bg: #fdfcf7;
+        --fg: #16161d;
         --muted: #5c5c6b;
-        --card: #f4f4f7;
-        --border: #dcdce4;
+        --card: #ffffff;
+        --border: #16161d;
         --accent: #7c5cff;
         --accent-fg: #ffffff;
-        --shadow: 0 6px 24px rgb(0 0 0 / 12%);
+        --radius: 0;
+        --shadow: 4px 4px 0 var(--border);
+        --shadow-lg: 6px 6px 0 var(--border);
       }
       @media (prefers-color-scheme: dark) {
         :root {
@@ -37,10 +39,9 @@
           --fg: #e6e6ef;
           --muted: #9a9aae;
           --card: #1e1e28;
-          --border: #2e2e3c;
+          --border: #e6e6ef;
           --accent: #9d86ff;
           --accent-fg: #14141a;
-          --shadow: 0 6px 24px rgb(0 0 0 / 50%);
         }
       }
 
@@ -57,14 +58,21 @@
         color: var(--fg);
       }
 
-      a { color: var(--accent); }
+      a { color: var(--accent); font-weight: 600; text-decoration-thickness: 2px; text-underline-offset: 2px; }
 
       section { max-width: 60rem; margin: 0 auto; }
       h2 {
-        max-width: 60rem;
+        width: fit-content;
         margin: 4rem auto 1.5rem;
         font-size: 1.5rem;
+        font-weight: 900;
+        letter-spacing: -0.01em;
         text-align: center;
+        background: var(--accent);
+        color: var(--accent-fg);
+        padding: 0.4rem 1rem;
+        border: 3px solid var(--border);
+        box-shadow: var(--shadow);
       }
 
       /* ---- Hero ---------------------------------------------------------- */
@@ -75,28 +83,30 @@
         text-align: center;
       }
       .hero img.icon { width: 96px; height: 96px; }
-      .hero h1 { margin: 1rem 0 0.25rem; font-size: 2.25rem; letter-spacing: -0.02em; }
+      .hero h1 { margin: 1rem 0 0.25rem; font-size: 2.5rem; font-weight: 900; letter-spacing: -0.03em; }
       .hero .tagline { margin: 0; font-size: 1.25rem; color: var(--fg); font-weight: 600; }
       .hero .lead { margin: 1.25rem auto 0; max-width: 40rem; color: var(--muted); }
 
       .cta { margin: 2rem 0 0.75rem; display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
       .btn {
         display: inline-flex; align-items: center; gap: 0.5rem;
-        padding: 0.8rem 1.5rem; border-radius: 10px;
-        font-size: 1rem; font-weight: 600; text-decoration: none;
-        border: 1px solid var(--border); background: var(--card); color: var(--fg);
-        transition: transform 0.06s ease, box-shadow 0.15s ease;
+        padding: 0.8rem 1.5rem; border-radius: var(--radius);
+        font-size: 1rem; font-weight: 700; text-decoration: none;
+        border: 3px solid var(--border); background: var(--card); color: var(--fg);
+        box-shadow: var(--shadow);
+        transition: transform 0.06s ease, box-shadow 0.06s ease;
       }
-      .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
-      .btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+      .btn:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--border); }
+      .btn:active { transform: translate(4px, 4px); box-shadow: none; }
+      .btn.primary { background: var(--accent); color: var(--accent-fg); }
       .hero .sub { margin: 0.5rem 0 0; font-size: 0.9rem; color: var(--muted); min-height: 1.2em; }
 
       .hero .shot { margin: 2.5rem auto 0; max-width: 56rem; }
-      .hero .shot img { width: 100%; border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow); }
+      .hero .shot img { width: 100%; border-radius: var(--radius); border: 3px solid var(--border); box-shadow: var(--shadow-lg); }
       /* 히어로는 다크/라이트를 위아래로 — 한 장씩 크게 보여 준다. */
       .hero .shot.pair { max-width: 64rem; display: grid; grid-template-columns: 1fr; gap: 2rem; }
       .hero .shot.pair figure { border: none; border-radius: 0; background: transparent; overflow: visible; }
-      .hero .shot.pair figcaption { padding: 0.6rem 0 0; text-align: center; }
+      .hero .shot.pair figcaption { padding: 0.6rem 0 0; text-align: center; border-top: none; }
 
       /* ---- Download cards ------------------------------------------------ */
       .downloads {
@@ -105,38 +115,39 @@
         gap: 1rem;
       }
       .dl-card {
-        border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem;
-        background: var(--card);
+        border: 3px solid var(--border); border-radius: var(--radius); padding: 1.25rem;
+        background: var(--card); box-shadow: var(--shadow);
       }
-      .dl-card.recommended { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-      .dl-card h3 { margin: 0 0 0.75rem; font-size: 1.1rem; display: flex; align-items: center; gap: 0.4rem; }
+      .dl-card.recommended { box-shadow: 6px 6px 0 var(--accent); }
+      .dl-card h3 { margin: 0 0 0.75rem; font-size: 1.1rem; font-weight: 800; display: flex; align-items: center; gap: 0.4rem; }
       .dl-card .tag {
-        font-size: 0.7rem; font-weight: 700; color: var(--accent-fg); background: var(--accent);
-        padding: 0.1rem 0.45rem; border-radius: 999px; margin-left: auto;
+        font-size: 0.7rem; font-weight: 800; color: var(--accent-fg); background: var(--accent);
+        padding: 0.15rem 0.5rem; border-radius: var(--radius); border: 2px solid var(--border); margin-left: auto;
       }
       .dl-card ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
       .dl-card a.dl {
-        display: block; padding: 0.55rem 0.8rem; border-radius: 8px;
-        border: 1px solid var(--border); text-decoration: none; color: var(--fg);
-        font-size: 0.95rem; font-weight: 500;
+        display: block; padding: 0.55rem 0.8rem; border-radius: var(--radius);
+        border: 2px solid var(--border); text-decoration: none; color: var(--fg);
+        font-size: 0.95rem; font-weight: 600;
+        transition: transform 0.06s ease, box-shadow 0.06s ease, background 0.06s ease;
       }
-      .dl-card a.dl:hover { border-color: var(--accent); color: var(--accent); }
+      .dl-card a.dl:hover { background: var(--accent); color: var(--accent-fg); box-shadow: var(--shadow); transform: translate(-2px, -2px); }
       .dl-note { max-width: 60rem; margin: 1rem auto 0; font-size: 0.85rem; color: var(--muted); text-align: center; }
-      .dl-note code { background: var(--card); padding: 0.1rem 0.35rem; border-radius: 4px; }
+      .dl-note code { background: var(--card); border: 2px solid var(--border); padding: 0.1rem 0.35rem; border-radius: var(--radius); }
 
       /* ---- Feature grid -------------------------------------------------- */
       .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
-      .feature { border: 1px solid var(--border); border-radius: 12px; padding: 1.1rem 1.25rem; background: var(--card); }
-      .feature .t { font-weight: 700; margin: 0 0 0.35rem; }
+      .feature { border: 3px solid var(--border); border-radius: var(--radius); padding: 1.1rem 1.25rem; background: var(--card); box-shadow: var(--shadow); }
+      .feature .t { font-weight: 800; margin: 0 0 0.35rem; }
       .feature .d { margin: 0; color: var(--muted); font-size: 0.95rem; }
-      .feature .d code { background: var(--bg); border: 1px solid var(--border); padding: 0.05rem 0.3rem; border-radius: 4px; font-size: 0.85em; white-space: nowrap; }
+      .feature .d code { background: var(--bg); border: 2px solid var(--border); padding: 0.05rem 0.3rem; border-radius: var(--radius); font-size: 0.85em; white-space: nowrap; }
 
       /* ---- Screenshots --------------------------------------------------- */
-      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.25rem; }
-      figure { margin: 0; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--card); }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+      figure { margin: 0; border: 3px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--card); box-shadow: var(--shadow); }
       figure img { display: block; width: 100%; }
-      figcaption { padding: 0.75rem 1rem; font-size: 0.9rem; color: var(--muted); }
-      figcaption b { color: var(--fg); }
+      figcaption { padding: 0.75rem 1rem; font-size: 0.9rem; color: var(--muted); border-top: 3px solid var(--border); }
+      figcaption b { color: var(--fg); font-weight: 800; }
 
       /* ---- Lightbox ------------------------------------------------------ */
       .grid figure img, .hero .shot img { cursor: zoom-in; }
@@ -144,21 +155,21 @@
       .lightbox::backdrop { background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px); }
       .lightbox figure { margin: 0; border: none; border-radius: 0; background: transparent; overflow: visible; }
       /* 썸네일이 아닌 본 이미지에만 적용되도록 ID로 한정. */
-      #lightboxImg { display: block; margin: 0 auto; max-width: 100%; max-height: 68vh; border-radius: 10px; box-shadow: var(--shadow); cursor: zoom-out; }
+      #lightboxImg { display: block; margin: 0 auto; max-width: 100%; max-height: 68vh; border: 3px solid #fff; border-radius: 0; cursor: zoom-out; }
       .lightbox figcaption { text-align: center; color: #eee; padding: 0.6rem 0 0; font-size: 0.9rem; }
       .lightbox figcaption b { color: #fff; }
       .lb-stage { position: relative; display: flex; align-items: center; justify-content: center; }
       /* 화살표는 이미지가 아니라 무대(stage)에 고정 — 이미지 비율이 달라도 위치가 흔들리지 않는다. */
-      .lb-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 50%; background: rgb(0 0 0 / 50%); color: #fff; font-size: 1.7rem; line-height: 1; cursor: pointer; }
-      .lb-nav:hover { background: rgb(0 0 0 / 78%); }
+      .lb-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 3px solid #fff; border-radius: 0; background: rgb(0 0 0 / 65%); color: #fff; font-size: 1.7rem; line-height: 1; cursor: pointer; }
+      .lb-nav:hover { background: var(--accent); }
       .lb-prev { left: 0.5rem; }
       .lb-next { right: 0.5rem; }
       .lb-count { text-align: center; color: #bbb; font-size: 0.8rem; margin: 0.35rem 0 0; }
       .lb-thumbs { display: flex; gap: 0.5rem; justify-content: center; overflow-x: auto; padding: 0.7rem 0.2rem 0.2rem; }
-      .lb-thumbs button { flex: 0 0 auto; padding: 0; line-height: 0; border: 2px solid transparent; border-radius: 6px; background: none; cursor: pointer; opacity: 0.5; transition: opacity 0.15s, border-color 0.15s; }
+      .lb-thumbs button { flex: 0 0 auto; padding: 0; line-height: 0; border: 3px solid transparent; border-radius: 0; background: none; cursor: pointer; opacity: 0.5; transition: opacity 0.15s, border-color 0.15s; }
       .lb-thumbs button:hover { opacity: 0.85; }
       .lb-thumbs button[aria-current="true"] { opacity: 1; border-color: var(--accent); }
-      .lb-thumbs img { display: block; width: 96px; height: 60px; object-fit: cover; border-radius: 4px; }
+      .lb-thumbs img { display: block; width: 96px; height: 60px; object-fit: cover; border-radius: 0; }
       @media (max-width: 560px) {
         .lb-nav { width: 36px; height: 36px; font-size: 1.4rem; }
         .lb-thumbs img { width: 64px; height: 42px; }
@@ -166,11 +177,11 @@
 
       /* ---- FAQ ----------------------------------------------------------- */
       .faq { max-width: 48rem; }
-      details { border: 1px solid var(--border); border-radius: 10px; padding: 0.5rem 1rem; margin: 0.6rem 0; background: var(--card); }
-      details summary { cursor: pointer; font-weight: 600; padding: 0.4rem 0; }
+      details { border: 3px solid var(--border); border-radius: var(--radius); padding: 0.5rem 1rem; margin: 0.8rem 0; background: var(--card); box-shadow: var(--shadow); }
+      details summary { cursor: pointer; font-weight: 700; padding: 0.4rem 0; }
       details p { color: var(--muted); }
 
-      footer { max-width: 60rem; margin: 4rem auto 0; padding-top: 2rem; border-top: 1px solid var(--border); text-align: center; color: var(--muted); font-size: 0.9rem; }
+      footer { max-width: 60rem; margin: 4rem auto 0; padding-top: 2rem; border-top: 3px solid var(--border); text-align: center; color: var(--muted); font-size: 0.9rem; }
     </style>
   </head>
   <body>
