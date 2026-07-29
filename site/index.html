@@ -52,11 +52,21 @@
       body {
         margin: 0;
         padding: 0 1.5rem 5rem;
-        font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI",
+        font: 16px/1.75 -apple-system, BlinkMacSystemFont, "Segoe UI",
           "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
         background: var(--bg);
         color: var(--fg);
+        /* 한글은 기본값이면 글자 단위로 끊긴다 — 어절을 유지하고,
+           넘칠 위험이 있는 긴 영문/URL만 break-word로 처리한다.
+           anywhere가 아닌 break-word인 이유: anywhere는 grid 아이템의 min-content
+           폭까지 줄여 auto-fit 열 폭이 흔들린다. */
+        word-break: keep-all;
+        overflow-wrap: break-word;
       }
+
+      /* 끝줄에 한 단어만 남는 고아 줄 방지. */
+      h1, h2, .tagline, figcaption, .dl-card h3, .feature .t { text-wrap: balance; }
+      p { text-wrap: pretty; }
 
       a { color: var(--accent); font-weight: 600; text-decoration-thickness: 2px; text-underline-offset: 2px; }
 
@@ -85,7 +95,9 @@
       .hero img.icon { width: 96px; height: 96px; }
       .hero h1 { margin: 1rem 0 0.25rem; font-size: 2.5rem; font-weight: 900; letter-spacing: -0.03em; }
       .hero .tagline { margin: 0; font-size: 1.25rem; color: var(--fg); font-weight: 600; }
-      .hero .lead { margin: 1.25rem auto 0; max-width: 40rem; color: var(--muted); }
+      /* 여러 줄짜리 본문은 중앙 정렬하면 줄마다 시작점이 달라진다 — 본문만 좌측으로.
+         좌측 정렬은 폭을 좁히는 것과 짝 (한 줄 40자 안쪽). */
+      .hero .lead { margin: 1.5rem auto 0; max-width: 34rem; color: var(--muted); text-align: left; }
 
       .cta { margin: 2rem 0 0.75rem; display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
       .btn {
@@ -132,8 +144,11 @@
         transition: transform 0.06s ease, box-shadow 0.06s ease, background 0.06s ease;
       }
       .dl-card a.dl:hover { background: var(--accent); color: var(--accent-fg); box-shadow: var(--shadow); transform: translate(-2px, -2px); }
-      .dl-note { max-width: 60rem; margin: 1rem auto 0; font-size: 0.85rem; color: var(--muted); text-align: center; }
+      .dl-note { max-width: 46rem; margin: 1.25rem auto 0; font-size: 0.85rem; color: var(--muted); text-align: left; }
       .dl-note code { background: var(--card); border: 2px solid var(--border); padding: 0.1rem 0.35rem; border-radius: var(--radius); }
+
+      /* 섹션 도입부 — 각주(.dl-note)보다 크고, 본문처럼 읽히는 폭. */
+      .section-lead { max-width: 44rem; margin: 0 auto; font-size: 1.05rem; color: var(--muted); text-align: left; }
 
       /* ---- Feature grid -------------------------------------------------- */
       .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
@@ -141,6 +156,10 @@
       .feature .t { font-weight: 800; margin: 0 0 0.35rem; }
       .feature .d { margin: 0; color: var(--muted); font-size: 0.95rem; }
       .feature .d code { background: var(--bg); border: 2px solid var(--border); padding: 0.05rem 0.3rem; border-radius: var(--radius); font-size: 0.85em; white-space: nowrap; }
+      /* 항목이 여럿인 설명은 문장으로 이어 붙이지 않고 목록으로 — 훑어보기 쉽게. */
+      .feature .keys { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
+      .feature .keys li { padding-left: 0.9rem; text-indent: -0.9rem; }
+      .feature .keys li::before { content: "· "; color: var(--accent); font-weight: 800; }
 
       /* ---- Screenshots --------------------------------------------------- */
       .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
@@ -179,7 +198,8 @@
       .faq { max-width: 48rem; }
       details { border: 3px solid var(--border); border-radius: var(--radius); padding: 0.5rem 1rem; margin: 0.8rem 0; background: var(--card); box-shadow: var(--shadow); }
       details summary { cursor: pointer; font-weight: 700; padding: 0.4rem 0; }
-      details p { color: var(--muted); }
+      details p { color: var(--muted); margin: 0.6rem 0; }
+      details p + p { margin-top: 0.8rem; }
 
       footer { max-width: 60rem; margin: 4rem auto 0; padding-top: 2rem; border-top: 3px solid var(--border); text-align: center; color: var(--muted); font-size: 0.9rem; }
     </style>
@@ -194,14 +214,6 @@
         저장하는 걸 깜빡한 채 창을 닫아도, 컴퓨터가 갑자기 꺼져도 괜찮습니다.
         열어둔 탭은 <b>저장하지 않은 내용까지</b> 그대로 남아 있다가 다음에 앱을 열면
         떠날 때 모습 그대로 돌아옵니다. Windows · macOS · Linux, 설치 파일 3MB 안팎.
-      </p>
-      <p class="lead">
-        그리고 <b>Markdown과 Mermaid는 쓰는 즉시 오른쪽에서 그려집니다.</b>
-        표도, 코드블록도, 순서도도 인터넷 없이 앱 안에서 바로 렌더됩니다.
-      </p>
-      <p class="lead">
-        <b>라이트·다크 테마</b>를 모두 지원합니다 — 시스템 설정을 그대로 따라가게 두거나 원하는 쪽으로 고정하세요.
-        구문 강조 색도, 미리보기도 함께 바뀝니다.
       </p>
 
       <div class="cta">
@@ -264,7 +276,7 @@
         <div class="feature"><p class="t">🗂️ 탭 · 세션 복원</p><p class="d">껐다 켜도, 갑자기 꺼져도 열어둔 탭이 미저장 메모까지 그대로 — 탭바 + 버튼, Ctrl+Tab 순환, 우클릭으로 한꺼번에 닫기.</p></div>
         <div class="feature"><p class="t">📝 Markdown 실시간 미리보기</p><p class="d">타이핑하는 대로 오른쪽에 렌더 — GFM 표 · 체크박스 · 코드블록 색칠 · 스크롤 따라가기. Ctrl/Cmd+Shift+M으로 열고 닫고, 가운데 경계선을 끌어 비율 조절 — 비율·확대율은 탭마다 기억.</p></div>
         <div class="feature"><p class="t">🪟 편집 창 · 미리보기 창 따로 여닫기</p><p class="d">두 창을 탭마다 각각 켜고 끕니다 — 이 탭은 미리보기만 크게, 저 탭은 편집만. 창 오른쪽 위에 마우스를 올리면 × 버튼이 나타나고, 다시 열 때는 상태 표시줄의 Editor · Preview를 누르면 됩니다. 창 구성도 탭마다 기억됩니다.</p></div>
-        <div class="feature"><p class="t">🧜 Mermaid 다이어그램</p><p class="d">```mermaid 코드블록은 물론 .mmd 파일도 통째로 그림으로 — 순서도·시퀀스·간트·클래스 등 Mermaid 11이 그리는 건 다 됩니다. 차트만 따로 확대하고 배경색도 선택.</p></div>
+        <div class="feature"><p class="t">🧜 Mermaid 다이어그램</p><p class="d"><code>```mermaid</code> 코드블록은 물론 <code>.mmd</code> 파일도 통째로 그림으로 — 순서도·시퀀스·간트·클래스 등 Mermaid 11이 그리는 건 다 됩니다. 차트만 따로 확대하고 배경색도 선택.</p></div>
         <div class="feature"><p class="t">🖨️ 미리보기 내보내기</p><p class="d">렌더된 문서를 HTML 한 파일로 저장하거나 그대로 인쇄(PDF) — 다이어그램도 그림째로 담깁니다.</p></div>
         <div class="feature"><p class="t">🎨 구문 강조</p><p class="d">143개 언어를 파일 이름만 보고 자동 판별합니다.</p></div>
         <div class="feature"><p class="t">🌗 라이트·다크 테마</p><p class="d"><code>View ▸ Theme</code>에서 Light · Dark · System 중 선택. System은 OS의 밝은/어두운 모드를 그대로 따라갑니다. 편집기 · 구문 강조 · Markdown/Mermaid 미리보기 색이 한꺼번에 바뀌고, 고른 테마는 다음에 켤 때도 유지됩니다.</p></div>
@@ -282,7 +294,7 @@
     <!-- ==================== Preview spotlight ==================== -->
     <h2 id="preview">📄 Markdown · Mermaid 미리보기</h2>
     <section>
-      <p class="dl-note">
+      <p class="section-lead">
         글을 쓰는 화면 오른쪽에서 결과가 바로 그려집니다. 브라우저를 따로 띄우거나 플러그인을 깔 필요가 없고,
         <b>인터넷 없이도 전부 앱 안에서 렌더</b>되므로 문서 내용이 밖으로 나가지 않습니다.
       </p>
@@ -307,13 +319,17 @@
         </div>
         <div class="feature">
           <p class="t">⌨️ 쓰는 법</p>
-          <p class="d">
-            열고 닫기 <code>Ctrl/Cmd+Shift+M</code>(탭마다 따로) · 가운데 경계선을 끌어 좌우 비율 조절(탭마다 따로 기억) ·
-            창 오른쪽 위 <b>×</b>로 한쪽만 남기고, 상태 표시줄의 <code>Editor</code> · <code>Preview</code>로 다시 열기 ·
-            편집기·미리보기 각각 확대 <code>Ctrl/Cmd</code> + <code>=</code> <code>-</code> <code>0</code>(탭마다 유지) ·
-            HTML로 내보내기 <code>File ▸ Export Preview as HTML…</code> · 인쇄(PDF) <code>Ctrl/Cmd+P</code>.
-            저장하지 않은 새 글은 상태 표시줄에서 파일 타입만 골라 주면 바로 열립니다.
-          </p>
+          <div class="d">
+            <ul class="keys">
+              <li>열고 닫기 <code>Ctrl/Cmd+Shift+M</code>(탭마다 따로)</li>
+              <li>가운데 경계선을 끌어 좌우 비율 조절(탭마다 따로 기억)</li>
+              <li>창 오른쪽 위 <b>×</b>로 한쪽만 남기고, 상태 표시줄의 <code>Editor</code> · <code>Preview</code>로 다시 열기</li>
+              <li>편집기·미리보기 각각 확대 <code>Ctrl/Cmd</code> + <code>=</code> <code>-</code> <code>0</code>(탭마다 유지)</li>
+              <li>HTML로 내보내기 <code>File ▸ Export Preview as HTML…</code></li>
+              <li>인쇄(PDF) <code>Ctrl/Cmd+P</code></li>
+              <li>저장하지 않은 새 글은 상태 표시줄에서 파일 타입만 골라 주면 바로 열립니다</li>
+            </ul>
+          </div>
         </div>
       </div>
     </section>
@@ -354,7 +370,9 @@
       </details>
       <details>
         <summary>한글이 깨지지 않나요?</summary>
-        <p>UTF-8 파일은 (BOM이 있든 없든) 그대로 잘 열립니다. 예전 윈도우 메모장에서 "ANSI"로 저장한 한글 파일(EUC-KR/CP949)도 알아서 판별해 제대로 엽니다. 혹시 잘못 인식되면 상태 표시줄에서 EUC-KR을 직접 골라 다시 읽어올 수 있습니다. 일본어(Shift-JIS)·중국어 간체(GBK)·번체(Big5)로 저장된 옛 문서도 같은 방식으로 자동 판별해 열고, 상태 표시줄에서 직접 골라 다시 읽을 수도 있습니다. UTF-16(LE/BE) 파일도 마찬가지로 열고 저장할 수 있으며, 지금 고른 인코딩으로 표현할 수 없는 문자가 있으면 저장 전에 미리 알려줍니다.</p>
+        <p>UTF-8 파일은 (BOM이 있든 없든) 그대로 잘 열립니다. 예전 윈도우 메모장에서 "ANSI"로 저장한 한글 파일(EUC-KR/CP949)도 알아서 판별해 제대로 엽니다. 혹시 잘못 인식되면 상태 표시줄에서 EUC-KR을 직접 골라 다시 읽어올 수 있습니다.</p>
+        <p>일본어(Shift-JIS)·중국어 간체(GBK)·번체(Big5)로 저장된 옛 문서도 같은 방식으로 자동 판별해 열고, 상태 표시줄에서 직접 골라 다시 읽을 수도 있습니다.</p>
+        <p>UTF-16(LE/BE) 파일도 마찬가지로 열고 저장할 수 있으며, 지금 고른 인코딩으로 표현할 수 없는 문자가 있으면 저장 전에 미리 알려줍니다.</p>
       </details>
       <details>
         <summary>작업하던 파일을 다른 프로그램에서 고치면요?</summary>
@@ -436,9 +454,16 @@
         var lbCap = document.getElementById("lightboxCaption");
         var lbCount = document.getElementById("lbCount");
         var lbThumbs = document.getElementById("lbThumbs");
-        var shots = Array.prototype.slice.call(
+        var all = Array.prototype.slice.call(
           document.querySelectorAll(".grid figure img, .hero .shot img")
         );
+        // 히어로와 미리보기 섹션에 같은 스크린샷이 겹쳐 있다 — 넘겨볼 목록에서는 한 번만.
+        var seen = {};
+        var shots = all.filter(function (img) {
+          if (seen[img.src]) return false;
+          seen[img.src] = true;
+          return true;
+        });
         if (!shots.length) return;
         var current = 0;
 
@@ -478,8 +503,13 @@
           preload((current - 1 + n) % n);
         }
 
-        shots.forEach(function (img, i) {
+        // 클릭은 중복 포함 모든 이미지가 받고, 목록에서는 같은 화면의 첫 항목으로 연다.
+        all.forEach(function (img) {
           img.addEventListener("click", function () {
+            var i = 0;
+            for (var j = 0; j < shots.length; j++) {
+              if (shots[j].src === img.src) { i = j; break; }
+            }
             show(i);
             lightbox.showModal();
           });
