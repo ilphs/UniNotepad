@@ -5,6 +5,10 @@
 #
 # 사용법:  ./scripts/install-macos.sh
 #
+
+export TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/uninotepad.key)"
+export TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""
+
 set -euo pipefail
 
 # 프로젝트 루트로 이동 (이 스크립트가 scripts/ 하위에 있다고 가정)
