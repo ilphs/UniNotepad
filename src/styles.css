@@ -260,17 +260,25 @@ body {
 }
 
 /* ---- Editor / preview split ---- */
+/* `position: relative` anchors #preview-close, which is a child of #split (not
+   of the preview pane) so it neither scrolls with the rendered Markdown nor
+   gets wiped by the replaceChildren() in preview.ts's ensureMdBody(). */
 #split {
   flex: 1;
   display: flex;
   flex-direction: row;
   min-height: 0;
+  position: relative;
 }
 
+/* No `display` here on purpose: the UA `[hidden]{display:none}` rule is what
+   hides this pane, and any display declaration would outrank it (see the
+   explicit #preview-host[hidden] fix below, which exists for that reason). */
 #editor-host {
   flex: 1 1 0;
   min-width: 0;
   overflow: hidden;
+  position: relative;
 }
 
 .cm-editor {
@@ -315,6 +323,47 @@ body {
   outline-offset: -1px;
 }
 
+/* ---- Pane close buttons ---- */
+/* One per pane, top-right, revealed on hover (same restraint as .mmd-toolbar).
+   Only shown while both panes are up — closing the last one is not offered. */
+.pane-close {
+  position: absolute;
+  top: 6px;
+  z-index: 3; /* over .mmd-toolbar (2), whose position it can coincide with */
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--chrome-bg);
+  color: var(--chrome-fg);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 7px;
+  opacity: 0;
+  transition: opacity 0.12s ease-in-out;
+}
+.pane-close:hover {
+  background: color-mix(in srgb, var(--accent) 22%, var(--chrome-bg));
+}
+
+/* The editor's × clears CodeMirror's own search-panel × (top-right, right:4px)
+   and outranks the panel's z-index of 300 so it stays clickable while open. */
+#editor-close {
+  right: 28px;
+  z-index: 301;
+}
+/* #preview-close is a sibling of the pane, and the preview is always the
+   right-hand pane, so `right` lands on its top-right corner regardless of the
+   split ratio. The sibling combinator is what makes hover on the pane reach it. */
+#preview-close {
+  right: 6px;
+}
+#editor-host:hover .pane-close,
+#preview-host:hover ~ .pane-close,
+.pane-close:hover,
+.pane-close:focus-visible {
+  opacity: 1;
+}
+
 /* ---- Rendered Markdown ---- */
 .md-body {
   flex: 1 1 auto;
@@ -332,6 +381,17 @@ body {
   font-size: var(--preview-font-size, 15px);
   overflow-wrap: break-word; /* keep long URLs/words from overflowing */
 }
+/* Preview is the only pane (the editor was closed for this tab). The column cap
+   above is there to keep line length readable *beside the editor*; given the
+   whole window it just parks the text in the middle with the scrollbar stranded
+   far to the right. Fill the pane instead — the padding still keeps the text off
+   the edge. Same specificity as the .mmd-solo rules below, but those set these
+   two properties to the same values, so source order between them is moot. */
+#preview-host.pane-only .md-body {
+  max-width: none;
+  margin: 0;
+}
+
 .md-body > :first-child { margin-top: 0; }
 .md-body > :last-child { margin-bottom: 0; }
 .md-body h1,
@@ -490,6 +550,11 @@ body {
 .mermaid-frame:hover .mmd-toolbar,
 .mmd-toolbar:focus-within {
   opacity: 1;
+}
+/* In solo mode the frame fills the whole pane, so its top-right corner is the
+   pane's — exactly where #preview-close sits. Slide the toolbar clear of it. */
+#preview-host.mmd-solo .mmd-toolbar {
+  right: 34px;
 }
 .mmd-bg-btn {
   font: inherit;
@@ -696,6 +761,13 @@ body {
 }
 .status-item:hover {
   background: color-mix(in srgb, var(--fg) 15%, transparent);
+}
+
+/* A closed pane's chip. Dimmed so the split's live state reads at a glance,
+   but still legible — it is the only way to reopen that pane. */
+.pane-off {
+  opacity: 0.55;
+  font-style: italic;
 }
 
 /* Pop-up list anchored above a status-bar item. */
@@ -1026,12 +1098,18 @@ body {
   }
 
   /* On paper `.md-body` is no longer a flex item, so the screen rule's `92%`
-     would resolve against the page and print wider than before. Pin the column. */
-  .md-body {
+     would resolve against the page and print wider than before. Pin the column.
+     The `.pane-only` selector has to be repeated at its own specificity: paper
+     has no split to widen for, so an editor closed on screen must not leak a
+     full-bleed column onto the page. */
+  .md-body,
+  #preview-host.pane-only .md-body {
     max-width: 72ch;
+    margin: 0 auto;
   }
 
-  /* Interactive diagram controls are screen-only — never on paper. */
+  /* Interactive chrome is screen-only — never on paper. */
+  .pane-close,
   .mmd-toolbar,
   .mmd-badge,
   .mmd-popover {

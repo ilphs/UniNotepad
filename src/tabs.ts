@@ -4,7 +4,13 @@ import { ipc } from "./ipc";
 import { makeState, showTab, syncTabFromView, reconfigureLanguage } from "./editor";
 import { flushNow, dropPending, markBackupDirty, basename } from "./session";
 import { recordRecent } from "./recent";
-import { applySaveOptions, setPreviewEnabled, previewRatio, editorFontSize } from "./settings";
+import {
+  applySaveOptions,
+  isPreviewEnabled,
+  setPreviewEnabled,
+  previewRatio,
+  editorFontSize,
+} from "./settings";
 import { openModal, button, type ModalHandle } from "./modal";
 
 function platformEol(): EolId {
@@ -44,6 +50,8 @@ export function newUntitled(): void {
     previewRatio: previewRatio(),
     editorFontSize: editorFontSize(),
     previewZoomExp: 0,
+    editorVisible: true,
+    previewVisible: isPreviewEnabled(),
     notice: null,
   };
   store.state.tabs.push(tab);
@@ -91,6 +99,8 @@ export async function openPath(path: string, fileType: FileTypeId | null = null)
       previewRatio: previewRatio(),
       editorFontSize: editorFontSize(),
       previewZoomExp: 0,
+      editorVisible: true,
+      previewVisible: isPreviewEnabled(),
       notice: opened.lossy ? lossyNotice() : null,
     };
     store.state.tabs.push(tab);
@@ -284,10 +294,14 @@ export function setActiveFileType(ft: FileTypeId): void {
   const t = store.activeTab;
   if (!t || t.fileType === ft) return;
   t.fileType = ft;
-  // An explicit pick beats a stale global toggle; otherwise picking Markdown
-  // while the preview is switched off makes the picker look broken.
-  if (ft === "markdown" || ft === "mermaid") setPreviewEnabled(true);
-  reconfigureLanguage(t); // re-highlights and calls updatePreview()
+  // An explicit pick beats a stale closed pane; otherwise picking Markdown on a
+  // tab whose preview is switched off makes the picker look broken. The global
+  // flag is only the seed for *new* tabs now, so this tab needs setting too.
+  if (ft === "markdown" || ft === "mermaid") {
+    t.previewVisible = true;
+    setPreviewEnabled(true);
+  }
+  reconfigureLanguage(t); // re-highlights and calls updatePanes()
   store.emit();
   // Untitled tabs never schedule a flush on their own, so persist the pick now.
   void flushNow();
@@ -368,6 +382,8 @@ export async function reopenClosed(): Promise<void> {
     previewRatio: previewRatio(),
     editorFontSize: editorFontSize(),
     previewZoomExp: 0,
+    editorVisible: true,
+    previewVisible: isPreviewEnabled(),
     notice: null,
   };
   store.state.tabs.push(tab);

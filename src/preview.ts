@@ -4,10 +4,13 @@
  * `.md-body` div, with ```mermaid fenced blocks rendered as diagrams. A
  * standalone `.mmd`/`.mermaid` file is rendered whole as a single diagram.
  *
- * The pane shows when the toggle is ON (default) AND the active tab's effective
- * type is Markdown or Mermaid — from its extension, or from an explicit pick in
- * the status bar. `marked`/`DOMPurify` and `mermaid` load lazily on
- * first use so app start and non-preview use pay nothing (see plan: 무게 검토).
+ * The pane shows when the active tab's effective type is Markdown or Mermaid —
+ * from its extension, or from an explicit pick in the status bar — AND that
+ * tab's preview pane is open. Both panes are per-tab and either can be closed
+ * (never both: `paneVisibility()` guarantees one survives), so a tab can be
+ * preview-only or editor-only while its neighbours are split.
+ * `marked`/`DOMPurify` and `mermaid` load lazily on first use so app start and
+ * non-preview use pay nothing (see plan: 무게 검토).
  */
 import { save, message } from "@tauri-apps/plugin-dialog";
 import { LanguageDescription, type LanguageSupport } from "@codemirror/language";
@@ -30,12 +33,18 @@ import {
   previewZoomFactor,
   setPreviewZoomHandler,
 } from "./mermaid-view";
-import { isPreviewEnabled, setPreviewEnabled, previewRatio } from "./settings";
+import { setPreviewEnabled, previewRatio } from "./settings";
 
 let splitEl: HTMLElement;
 let editorHost: HTMLElement;
 let previewHost: HTMLElement;
 let dividerEl: HTMLElement;
+/** The two pane × buttons. The preview's lives outside `#preview-host` (a
+ *  sibling in `#split`) so it escapes both that pane's scrolling and the
+ *  `replaceChildren()` in ensureMdBody(); the editor's sits inside its host,
+ *  which never has its children swapped and clips its own overflow. */
+let editorCloseEl: HTMLElement;
+let previewCloseEl: HTMLElement;
 
 // ---- Lazy renderer modules (marked + DOMPurify) ----------------------------
 
@@ -157,15 +166,37 @@ function effectiveDark(): boolean {
 
 // ---- Visibility / render ---------------------------------------------------
 
-/** Preview shows when enabled and the active tab is previewable: a Markdown
- *  document or a standalone Mermaid diagram — by extension, or by an explicit
- *  pick in the status-bar type picker. */
-function shouldShow(): boolean {
+/** Whether the active tab *can* show a preview at all: a Markdown document or a
+ *  standalone Mermaid diagram — by extension, or by an explicit pick in the
+ *  status-bar type picker. Independent of whether the pane is currently open, so
+ *  the status bar can offer a "Preview off" chip to turn it back on. */
+export function isPreviewCapable(): boolean {
   // Large files run in reduced mode with no highlighting; rendering a multi-MB
   // Markdown/Mermaid preview would defeat that, so suppress it entirely.
   if (store.activeTab?.largeFile) return false;
   const ft = effectiveFileType(store.activeTab);
-  return isPreviewEnabled() && (ft === "markdown" || ft === "mermaid");
+  return ft === "markdown" || ft === "mermaid";
+}
+
+/**
+ * The real visibility of both panes. The tab's `editorVisible`/`previewVisible`
+ * are advisory; this derives the answer and guarantees at least one pane is up.
+ *
+ * The editor comes back automatically whenever the preview can't be shown — a
+ * type change away from Markdown, a reload into large-file mode — without
+ * clearing `editorVisible`, so switching back restores what the user asked for.
+ */
+function paneVisibility(): { editor: boolean; preview: boolean } {
+  const tab = store.activeTab;
+  const preview = isPreviewCapable() && tab?.previewVisible !== false;
+  return { editor: preview ? tab?.editorVisible !== false : true, preview };
+}
+
+/** Whether the editor pane is currently shown. Editor-only commands (find,
+ *  replace, go-to-line) consult this before opening a panel that lives inside
+ *  the editor's DOM. */
+export function isEditorPaneVisible(): boolean {
+  return !!editorHost && !editorHost.hidden;
 }
 
 /** The `.md-body` child that holds rendered Markdown (created on first use). */
@@ -280,23 +311,54 @@ async function renderMermaid(mdBody: HTMLElement, myRun: number): Promise<void> 
  */
 function setSelectedPane(preview: boolean): void {
   setPreviewSelected(preview);
-  const both = !previewHost.hidden;
+  const both = !previewHost.hidden && !editorHost.hidden;
   previewHost.classList.toggle("pane-selected", both && preview);
   editorHost.classList.toggle("pane-selected", both && !preview);
 }
 
-/** Show/hide the pane per the current tab + toggle, and render if visible.
- *  Call on tab switch, toggle, and Save As (extension may change md status). */
-export function updatePreview(): void {
-  const show = shouldShow();
-  previewHost.hidden = !show;
-  dividerEl.hidden = !show;
+/** Show/hide both panes per the current tab, and render the preview if visible.
+ *  Call on tab switch, pane toggle, and Save As (extension may change md status). */
+export function updatePanes(): void {
+  const { editor, preview } = paneVisibility();
+  const revealingEditor = editorHost.hidden && editor;
+
+  previewHost.hidden = !preview;
+  editorHost.hidden = !editor;
+  // Preview with the whole window to itself: CSS drops the readable-column cap
+  // so the text reaches the scrollbar instead of stranding it an empty half-pane
+  // away. Alongside the editor the cap still earns its keep.
+  previewHost.classList.toggle("pane-only", preview && !editor);
+  // The divider only means anything when there is something on both sides of it;
+  // left alone it would be a 6px col-resize strip that drags to no visible effect.
+  dividerEl.hidden = !(editor && preview);
+  // Close buttons only when there is a second pane to fall back to — the last
+  // remaining pane can't be closed, so offering an × there would be a dead end.
+  editorCloseEl.hidden = !(editor && preview);
+  previewCloseEl.hidden = !(editor && preview);
+
   // A hidden pane can't stay selected (its outline is gone and menu zoom would
-  // silently target an invisible chart); re-showing starts from the editor too.
-  setSelectedPane(false);
+  // silently target an invisible chart). With the editor closed the preview is
+  // the only zoom target, so it has to start out selected — hover alone can't
+  // answer for the menu path, where the pointer sits on the menu.
+  setSelectedPane(!editor);
   applyRatio();
   applyPreviewZoom(); // re-apply this tab's preview zoom (text + diagrams)
-  if (show) void renderNow();
+  if (preview) void renderNow();
+
+  if (revealingEditor) {
+    // CodeMirror measures nothing while display:none, and the ResizeObserver
+    // that would eventually notice is both debounced and gated on a 75ms
+    // last-update guard. Measure explicitly, then restore the scroll position
+    // that showTab's rAF couldn't apply to a hidden scroller.
+    const view = getView();
+    view.requestMeasure();
+    const top = store.activeTab?.scrollTop ?? 0;
+    requestAnimationFrame(() => {
+      view.scrollDOM.scrollTop = top;
+    });
+  }
+
+  refreshStatusBar(); // the pane chips double as the way to reopen a closed pane
 }
 
 let renderTimer: number | null = null;
@@ -311,11 +373,42 @@ export function schedulePreviewRender(): void {
   }, 200);
 }
 
-/** Flip the app-wide preview toggle (View menu / Cmd+Shift+M). */
+/** Flip the active tab's preview pane (View ▸ Toggle Preview / Cmd+Shift+M,
+ *  the × on the pane, the status-bar chip). The global setting follows along as
+ *  the seed for tabs opened afterwards. No-op on a tab that can't preview. */
 export function togglePreview(): void {
-  setPreviewEnabled(!isPreviewEnabled());
-  updatePreview();
-  refreshStatusBar();
+  const tab = store.activeTab;
+  if (!tab || !isPreviewCapable()) return;
+  tab.previewVisible = !tab.previewVisible;
+  // Closing the preview leaves the editor as the only pane; make sure the flag
+  // agrees, or reopening the preview would come back to an empty split.
+  if (!tab.previewVisible) tab.editorVisible = true;
+  setPreviewEnabled(tab.previewVisible);
+  updatePanes();
+}
+
+/**
+ * Bring the editor pane back if the user closed it. Editor-only commands (find,
+ * replace, go-to-line, find next/prev) mount their panels inside the editor's
+ * own DOM, so running them against a hidden editor silently does nothing —
+ * worse for Replace, whose focus/retry dance can never succeed. Call this first.
+ */
+export function revealEditorPane(): void {
+  const tab = store.activeTab;
+  if (!tab || isEditorPaneVisible()) return;
+  tab.editorVisible = true;
+  updatePanes();
+}
+
+/** Flip the active tab's editor pane. Only possible while the preview is up —
+ *  otherwise this would close the last pane and leave an empty window. */
+export function toggleEditorPane(): void {
+  const tab = store.activeTab;
+  if (!tab) return;
+  const { editor, preview } = paneVisibility();
+  if (!preview) return; // nothing to fall back to
+  tab.editorVisible = !editor;
+  updatePanes();
 }
 
 // ---- Editor → preview scroll sync ------------------------------------------
@@ -418,8 +511,15 @@ const RATIO_MAX = 0.8;
 const PREVIEW_BASE_FONT = 15;
 
 function applyRatio(): void {
-  if (previewHost.hidden) {
-    editorHost.style.flexGrow = ""; // back to CSS default → full width
+  // The split ratio only means anything with both panes up. A lone pane must
+  // drop it entirely: flex-grow factors that sum to *less than 1* hand out only
+  // that fraction of the free space, so a solo pane left carrying e.g. 0.5 fills
+  // half the window and strands the rest — the ratio would silently become a
+  // width cap. Clearing the inline value restores the stylesheet's `flex: 1 1 0`
+  // (grow 1), which fills, and puts the scrollbar back at the window edge.
+  if (previewHost.hidden || editorHost.hidden) {
+    editorHost.style.flexGrow = "";
+    previewHost.style.flexGrow = "";
     return;
   }
   // Per-tab ratio, falling back to the global default (new-tab seed) before any
@@ -487,11 +587,17 @@ export function mountPreview(
   editor: HTMLElement,
   preview: HTMLElement,
   divider: HTMLElement,
+  editorClose: HTMLElement,
+  previewClose: HTMLElement,
 ): void {
   splitEl = split;
   editorHost = editor;
   previewHost = preview;
   dividerEl = divider;
+  editorCloseEl = editorClose;
+  previewCloseEl = previewClose;
+  editorClose.addEventListener("click", toggleEditorPane);
+  previewClose.addEventListener("click", togglePreview);
   divider.addEventListener("pointerdown", onDividerDown);
   divider.addEventListener("pointermove", onDividerMove);
   divider.addEventListener("pointerup", onDividerUp);

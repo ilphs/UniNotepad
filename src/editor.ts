@@ -62,7 +62,7 @@ import {
   setEditorFontSize,
   editorFontFamily,
 } from "./settings";
-import { updatePreview, schedulePreviewRender } from "./preview";
+import { updatePanes, revealEditorPane, schedulePreviewRender } from "./preview";
 
 let view: EditorView;
 let hostEl: HTMLElement;
@@ -219,7 +219,7 @@ export function reconfigureLanguage(tab: Tab): void {
   if (effectiveFileType(tab) === "normal") {
     view.dispatch({ effects: language.reconfigure([]) });
   }
-  updatePreview(); // the effective type may have changed the tab's preview status
+  updatePanes(); // the effective type may have changed the tab's preview status
   void applyLanguage(tab);
 }
 
@@ -264,6 +264,7 @@ async function applyLanguage(tab: Tab): Promise<void> {
 
 /** Open CodeMirror's "go to line" panel for the active view. */
 export function openGotoLine(): void {
+  revealEditorPane(); // the panel mounts inside the editor's DOM
   gotoLine(view);
 }
 
@@ -398,19 +399,30 @@ export function getView(): EditorView {
 /** Swap the given tab's state into the view and restore its scroll position. */
 export function showTab(tab: Tab): void {
   view.setState(tab.state);
-  view.focus();
-  requestAnimationFrame(() => {
-    view.scrollDOM.scrollTop = tab.scrollTop;
-  });
   applyZoom(); // re-apply this tab's editor font size (per-tab zoom)
-  updatePreview(); // show/hide + render for the newly active tab (ratio + preview zoom)
+  // Before the focus test below, not after: until this runs, `hostEl.hidden`
+  // still describes the tab we are leaving, not the one we are showing.
+  updatePanes(); // show/hide both panes for the newly active tab (ratio + preview zoom)
+  // Focusing a display:none editor is a no-op that still drags CodeMirror
+  // through a selection update on unrendered nodes, and a hidden scroller
+  // ignores the assignment — skip both on a preview-only tab.
+  if (!hostEl.hidden) {
+    view.focus();
+    requestAnimationFrame(() => {
+      view.scrollDOM.scrollTop = tab.scrollTop;
+    });
+  }
   void applyLanguage(tab); // resolve + install highlighting for the shown tab
 }
 
 /** Persist the live view (doc, selection, undo history, scroll) back into a tab. */
 export function syncTabFromView(tab: Tab): void {
   tab.state = view.state;
-  tab.scrollTop = view.scrollDOM.scrollTop;
+  // A hidden scroller always reports 0. Without this guard the next session
+  // flush — which fires on a 1.5s debounce, every 30s, on blur and on close —
+  // would overwrite a real scroll position with 0 and persist it, silently
+  // sending the tab back to the top once the editor is reopened.
+  if (!hostEl.hidden) tab.scrollTop = view.scrollDOM.scrollTop;
 }
 
 export function currentDoc(): string {
@@ -426,6 +438,7 @@ export function doRedo(): void {
 }
 
 export function openFind(): void {
+  revealEditorPane(); // the panel mounts inside the editor's DOM
   openSearchPanel(view);
 }
 
@@ -436,6 +449,9 @@ export function openFind(): void {
  * for a writable document; focus stays on the search field otherwise.
  */
 export function openReplace(): void {
+  // Must precede the panel: focusing a field inside a hidden pane never takes,
+  // so the retry below would fail too and the command would do nothing at all.
+  revealEditorPane();
   openSearchPanel(view);
   // Scoped to input: the "replace" button carries the same name attribute.
   const focusReplace = (): boolean => {
@@ -450,11 +466,15 @@ export function openReplace(): void {
   if (!focusReplace()) requestAnimationFrame(() => void focusReplace());
 }
 
-/** Move to the next/previous match. Opens the search panel when no query is set yet. */
+/** Move to the next/previous match. Opens the search panel when no query is set yet.
+ *  Reveals the editor first: scrolling a match into view is skipped outright
+ *  while the pane has no measured height. */
 export function findNextMatch(): void {
+  revealEditorPane();
   findNext(view);
 }
 
 export function findPrevMatch(): void {
+  revealEditorPane();
   findPrevious(view);
 }

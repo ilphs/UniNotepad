@@ -13,9 +13,16 @@
       </div>
       <div id="banner"></div>
       <div id="split">
-        <div id="editor-host"></div>
+        <div id="editor-host">
+          <button id="editor-close" class="pane-close" type="button" hidden
+                  title="Close Editor" aria-label="Close Editor">&times;</button>
+        </div>
         <div id="divider" hidden></div>
         <div id="preview-host" hidden></div>
+        <!-- Outside #preview-host on purpose: that pane scrolls, and its
+             children are replaced wholesale on the first render. -->
+        <button id="preview-close" class="pane-close" type="button" hidden
+                title="Close Preview" aria-label="Close Preview">&times;</button>
       </div>
       <div id="statusbar"></div>
     </div>

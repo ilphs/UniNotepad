@@ -35,14 +35,16 @@ async function bootstrap(): Promise<void> {
   const split = document.getElementById("split")!;
   const previewHost = document.getElementById("preview-host")!;
   const divider = document.getElementById("divider")!;
+  const editorClose = document.getElementById("editor-close")!;
+  const previewClose = document.getElementById("preview-close")!;
 
   initTabBar(tabbar, banner);
   tabNew.addEventListener("click", () => newUntitled());
   initStatusBar(statusbar);
   await initWindowTitle(); // caches the app version for the About dialog
   mountEditor(editorHost);
-  // Before any showTab() below (it calls updatePreview()).
-  mountPreview(split, editorHost, previewHost, divider);
+  // Before any showTab() below (it calls updatePanes()).
+  mountPreview(split, editorHost, previewHost, divider, editorClose, previewClose);
 
   // Re-render chrome whenever app state changes.
   store.subscribe(() => {

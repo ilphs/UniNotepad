@@ -63,6 +63,16 @@ export interface Tab {
   /** Preview zoom exponent (base 1.25, default 0 = 100%). Drives both the
    *  Markdown text size and the Mermaid diagram scale for this tab. */
   previewZoomExp: number;
+  /** Whether the user wants the editor pane shown for this tab. *Advisory*:
+   *  `paneVisibility()` in preview.ts derives the real answer and forces the
+   *  editor back on whenever the preview cannot be shown (non-Markdown type,
+   *  large-file mode, preview toggled off) — never both panes hidden. The flag
+   *  survives such a detour, so flipping the type back restores the intent. */
+  editorVisible: boolean;
+  /** Whether the user wants the preview pane shown for this tab. Advisory in
+   *  the same way: only Markdown/Mermaid tabs that aren't in large-file mode
+   *  can actually show it. Seeded from the global default at creation. */
+  previewVisible: boolean;
   /** Non-blocking notice to show in this tab (conflict/deletion). */
   notice: TabNotice | null;
 }

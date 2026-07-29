@@ -57,11 +57,15 @@ export interface TabEntry {
   largeFile: boolean;
   cursor: number | null;
   scrollTop: number | null;
-  /** Per-tab layout/zoom (absent in older manifests → fall back to the global
-   *  defaults on restore). Rust round-trips these untyped, like the fields above. */
+  /** Per-tab layout/zoom + pane visibility (absent in older manifests → fall
+   *  back to the global defaults on restore). These are modelled explicitly in
+   *  Rust's `TabEntry`; anything not named there is dropped on the way back out
+   *  of `load_session`, so adding a field here means adding it there too. */
   previewRatio?: number | null;
   editorFontSize?: number | null;
   previewZoomExp?: number | null;
+  editorVisible?: boolean | null;
+  previewVisible?: boolean | null;
 }
 
 export interface SessionManifest {

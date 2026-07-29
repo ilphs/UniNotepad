@@ -2,7 +2,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { store, FILE_TYPE_IDS, type Tab, type EncodingId, type EolId, type FileTypeId } from "./state";
 import { ipc, type SessionManifest, type TabEntry } from "./ipc";
 import { makeState, syncTabFromView } from "./editor";
-import { previewRatio, editorFontSize } from "./settings";
+import { previewRatio, editorFontSize, isPreviewEnabled } from "./settings";
 
 const DEBOUNCE_MS = 1500;
 const SAFETY_INTERVAL_MS = 30_000;
@@ -85,6 +85,8 @@ function buildManifest(): SessionManifest {
     previewRatio: t.previewRatio,
     editorFontSize: t.editorFontSize,
     previewZoomExp: t.previewZoomExp,
+    editorVisible: t.editorVisible,
+    previewVisible: t.previewVisible,
   }));
   return { version: MANIFEST_VERSION, activeTabId, nextUntitled, tabs: entries };
 }
@@ -168,6 +170,10 @@ function tabFromEntry(entry: TabEntry, doc: string): Tab {
     previewRatio: entry.previewRatio ?? previewRatio(),
     editorFontSize: entry.editorFontSize ?? editorFontSize(),
     previewZoomExp: entry.previewZoomExp ?? 0,
+    // `??` (not `||`): a stored `false` is a deliberate "keep this pane closed"
+    // and must not spring back to the default on restart.
+    editorVisible: entry.editorVisible ?? true,
+    previewVisible: entry.previewVisible ?? isPreviewEnabled(),
     notice: null,
   };
 }

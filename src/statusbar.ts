@@ -1,6 +1,13 @@
 import { store, type EncodingId, type EolId, type FileTypeId } from "./state";
 import { getView, getZoomPercent } from "./editor";
-import { getPreviewZoomPercent, isPreviewVisible } from "./preview";
+import {
+  getPreviewZoomPercent,
+  isPreviewVisible,
+  isPreviewCapable,
+  isEditorPaneVisible,
+  togglePreview,
+  toggleEditorPane,
+} from "./preview";
 import { setActiveEncoding, setActiveEol, setActiveFileType } from "./tabs";
 import { effectiveFileType } from "./language";
 import { sessionHealth, flushNow } from "./session";
@@ -138,10 +145,17 @@ export function refreshStatusBar(): void {
 
   const right = document.createElement("span");
   right.className = "status-right";
-  // Editor zoom (always) + preview zoom (only while the preview pane is shown),
-  // labelled so the two independent scales are unambiguous.
-  const editorZoom = document.createElement("span");
-  editorZoom.textContent = `Editor ${getZoomPercent()}%`;
+  // Editor + preview chips: zoom readout while the pane is open, "off" while it
+  // is closed. Labelled so the two independent scales are unambiguous, and
+  // clickable so a pane closed with its × has a way back — the × itself is gone
+  // once the pane is hidden.
+  const editorZoom = paneChip(
+    isEditorPaneVisible() ? `Editor ${getZoomPercent()}%` : "Editor off",
+    isEditorPaneVisible(),
+    // Only meaningful while the preview is up: that is both what the editor
+    // falls back to when closed, and the only state it can be closed from.
+    isPreviewVisible() ? toggleEditorPane : null,
+  );
   // Labelled by the effective type, so a .md file reads "Markdown" before any
   // explicit pick is made.
   const ft = effectiveFileType(tab);
@@ -155,10 +169,13 @@ export function refreshStatusBar(): void {
     openPicker(a, ENC_OPTIONS, tab.encoding, (id) => void setActiveEncoding(id as EncodingId)),
   );
   right.append(editorZoom);
-  if (isPreviewVisible()) {
-    const previewZoom = document.createElement("span");
-    previewZoom.textContent = `Preview ${getPreviewZoomPercent()}%`;
-    right.append(previewZoom);
+  // Gated on "can this tab preview at all", not "is it showing": a closed pane
+  // still needs its chip, or there would be no way to bring it back.
+  if (isPreviewCapable()) {
+    const shown = isPreviewVisible();
+    right.append(
+      paneChip(shown ? `Preview ${getPreviewZoomPercent()}%` : "Preview off", shown, togglePreview),
+    );
   }
   right.append(typeBtn, eolBtn, encBtn);
 
@@ -219,6 +236,21 @@ const FILETYPE_OPTIONS: PickerOption[] = Object.entries(FILE_TYPE_LABELS).map(([
   id,
   label,
 }));
+
+/** A pane chip: zoom readout when the pane is open, dimmed "off" when closed.
+ *  `onToggle` null means the chip is inert — the pane is the only one left, so
+ *  closing it would leave an empty window. */
+function paneChip(label: string, shown: boolean, onToggle: (() => void) | null): HTMLElement {
+  const span = document.createElement("span");
+  span.textContent = label;
+  if (!shown) span.classList.add("pane-off");
+  if (onToggle) {
+    span.classList.add("status-item");
+    span.title = shown ? "Click to close this pane" : "Click to reopen this pane";
+    span.addEventListener("click", onToggle);
+  }
+  return span;
+}
 
 function pickerItem(label: string, onOpen: (anchor: HTMLElement) => void): HTMLElement {
   const span = document.createElement("span");
