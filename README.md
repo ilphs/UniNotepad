@@ -16,9 +16,9 @@
 
 <p align="center">
   <a href="https://uninotepad-xi.vercel.app/"><img src="docs/syntax-markdown.png" width="400" alt="다크 테마에서 본 UniNotepad의 Markdown 분할 미리보기 화면"></a>
-  <a href="https://uninotepad-xi.vercel.app/"><img src="docs/syntax-markdown-light.png" width="400" alt="라이트 테마에서 본 UniNotepad의 Markdown 분할 미리보기 화면"></a>
+  <a href="https://uninotepad-xi.vercel.app/"><img src="docs/syntax-markdown-light.png" width="400" alt="라이트 테마에서 편집 창을 닫고 미리보기만 켠 UniNotepad 화면"></a>
 </p>
-<p align="center"><sub>같은 화면 — 왼쪽이 <b>다크</b>, 오른쪽이 <b>라이트</b> 테마입니다.</sub></p>
+<p align="center"><sub>같은 문서 — 왼쪽은 <b>다크</b> 테마의 편집·미리보기 분할, 오른쪽은 <b>라이트</b> 테마에서 <b>편집 창을 닫고 미리보기만</b> 켠 모습입니다.</sub></p>
 
 메모장에 뭔가 적어두고 저장하는 걸 깜빡한 채 창을 닫아본 적 있으신가요?
 아니면 컴퓨터가 갑자기 꺼져서 쓰던 내용이 날아간 적은요?
@@ -102,8 +102,8 @@ UniNotepad에서는 그런 일이 생기지 않습니다. 열어둔 탭은 **저
 
 | |
 |:--|
-| [![라이트 테마와 다크 테마의 Markdown 미리보기 비교](docs/syntax-markdown-light.png)](https://uninotepad-xi.vercel.app/) |
-| 라이트 테마 — 맨 위 화면과 같은 문서를 밝은 테마로 본 모습입니다 |
+| [![라이트 테마에서 편집 창을 닫고 미리보기만 켠 화면](docs/syntax-markdown-light.png)](https://uninotepad-xi.vercel.app/) |
+| 라이트 테마 — 맨 위와 같은 문서를 밝은 테마로 본 모습입니다. 여기서는 **편집 창을 닫아** 미리보기가 창 전체 폭을 쓰고 있습니다 (상태 표시줄의 `Editor`가 `off`) |
 
 | 하고 싶은 것 | 방법 |
 |:--|:--|
