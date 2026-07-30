@@ -14,20 +14,25 @@ Vercel로 배포하는 정적 랜딩 페이지 + 다운로드 리다이렉트 �
 
 지원 OS 키: `mac-arm` · `mac-intel` · `windows` · `windows-exe` · `linux-deb` · `linux-rpm` · `linux-appimage`
 
-## 배포 (둘 중 하나)
+## 배포 — Vercel CLI 수동 실행
 
-### A. Vercel 대시보드 (권장, 클릭 몇 번)
-1. [vercel.com](https://vercel.com)에 GitHub으로 로그인 → **Add New… → Project** → 이 저장소 import.
-2. **Root Directory**를 `site/`로 지정. Framework Preset은 **Other**(정적)로 자동 인식됨.
-3. Deploy. 이후 `main` push마다 자동 배포되고 PR마다 프리뷰가 생깁니다.
+**GitHub↔Vercel Git 연동은 해제되어 있습니다. `main`에 push해도 사이트는 바뀌지 않습니다.**
+`site/`를 고쳤다면 아래를 직접 실행해야 반영됩니다.
 
-### B. Vercel CLI
 ```bash
-npm i -g vercel
+npm i -g vercel   # 최초 1회
 cd site
-vercel            # 최초: 로그인 + 프로젝트 연결 (프리뷰 배포)
-vercel --prod     # 프로덕션 배포
+vercel --prod     # 프로덕션 배포 (https://uninotepad-xi.vercel.app/)
 ```
+
+`vercel`(플래그 없이)은 프리뷰 배포이며, 최초 실행 시 로그인·프로젝트 연결을 물어봅니다.
+
+<details>
+<summary>참고: Git 연동을 다시 켜려면</summary>
+
+Vercel 대시보드에서 프로젝트 **Settings → Git**으로 저장소를 연결하고 **Root Directory**를 `site/`로
+지정하면(Framework Preset은 **Other**), 이후 `main` push마다 자동 배포되고 PR마다 프리뷰가 생깁니다.
+</details>
 
 ## 선택: GitHub API 레이트리밋 완화
 다운로드 함수는 미인증 GitHub API(IP당 60회/시)를 쓰고, 응답을 엣지에서 1시간 캐시합니다.
