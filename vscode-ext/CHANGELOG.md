@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2 — 2026-07-31
+
+- The preview tab now shows UniNotepad's `<>` diamond instead of VS Code's default
+  webview icon, matching the title-bar button. Set on every panel including ones
+  restored after a window reload, since the icon is not serialized with the panel.
+
 ## 0.1.1 — 2026-07-31
 
 - The editor title-bar button now carries UniNotepad's own `<>` diamond instead of

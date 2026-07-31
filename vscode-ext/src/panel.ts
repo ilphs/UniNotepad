@@ -164,6 +164,12 @@ export class PreviewPanel {
     private doc: vscode.TextDocument,
     extensionUri: vscode.Uri,
   ) {
+    // Tab icon. Not serialized across a window reload, so it is set here — the
+    // constructor is the one path both `show` and `restore` go through.
+    this.panel.iconPath = {
+      light: vscode.Uri.joinPath(extensionUri, "media", "toolbar-icon-light.svg"),
+      dark: vscode.Uri.joinPath(extensionUri, "media", "toolbar-icon-dark.svg"),
+    };
     this.panel.webview.html = this.html(extensionUri);
 
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
