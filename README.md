@@ -35,7 +35,7 @@ UniNotepad에서는 그런 일이 생기지 않습니다. 열어둔 탭은 **저
 (`View ▸ Theme ▸ System`), 원하는 쪽으로 직접 고정할 수 있고 — 편집기뿐 아니라
 구문 강조 색과 Markdown·Mermaid 미리보기까지 함께 바뀝니다.
 
-**바로가기** — [무엇이 다른가요](#-무엇이-다른가요) · [Markdown · Mermaid 미리보기](#-markdown--mermaid-미리보기) · [테마](#-테마) · [화면](#-화면) · [설치](#-설치) · [자주 묻는 질문](#-자주-묻는-질문)
+**바로가기** — [무엇이 다른가요](#-무엇이-다른가요) · [Markdown · Mermaid 미리보기](#-markdown--mermaid-미리보기) · [VS Code 확장](#-vs-code-확장) · [테마](#-테마) · [화면](#-화면) · [설치](#-설치) · [자주 묻는 질문](#-자주-묻는-질문)
 
 ## ✨ 무엇이 다른가요
 
@@ -47,6 +47,7 @@ UniNotepad에서는 그런 일이 생기지 않습니다. 열어둔 탭은 **저
 | 🪟 **편집 창 · 미리보기 창 따로 여닫기** | 두 창을 **탭마다 각각** 켜고 끕니다 — 이 탭은 미리보기만 크게, 저 탭은 편집만. 창 오른쪽 위에 마우스를 올리면 **×** 버튼이 나타나고, 다시 열 때는 상태 표시줄의 `Editor` · `Preview`를 누르면 됩니다. 창 구성도 **탭마다** 기억됩니다 |
 | 🧜 **Mermaid 다이어그램** | ` ```mermaid ` 코드블록은 물론 `.mmd` 파일도 통째로 그림으로 — 순서도·시퀀스·간트·클래스 등 [Mermaid 11](https://mermaid.js.org/)이 그리는 건 다 됩니다. 차트만 따로 확대하고 배경색도 고를 수 있어요 |
 | 🖨️ **미리보기 내보내기** | 렌더된 문서를 HTML 한 파일로 저장하거나 그대로 인쇄(PDF) — 다이어그램도 그림째로 담깁니다 |
+| 🧩 **VS Code 확장** | 같은 Mermaid 미리보기를 VS Code 안에서도 — [UniNotepad Markdown Preview](https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview). 기본 미리보기를 대체하지 않고 나란히 놓입니다 |
 | 🎨 **구문 강조** | 143개 언어를 파일 이름만 보고 자동 판별 |
 | 🌗 **라이트·다크 테마** | `View ▸ Theme`에서 **Light · Dark · System** 중 선택 — System은 OS의 밝은/어두운 모드를 그대로 따라갑니다. 편집기·구문 강조·미리보기 색이 한꺼번에 바뀌고, 고른 테마는 다음에 켤 때도 유지됩니다 |
 | ✂️ **줄 편집 도구** | 정렬 · 중복/빈 줄 제거 · 공백 정리 · 대소문자 · 줄 이동 (`Edit ▸ Line Operations`) |
@@ -99,19 +100,48 @@ UniNotepad에서는 그런 일이 생기지 않습니다. 열어둔 탭은 **저
 
 > 미리보기 색은 앱 테마(라이트·다크)를 따라갑니다. 인쇄와 HTML 내보내기는 읽기 좋도록 밝은 배경으로 나갑니다.
 
-### 🧩 VS Code에서도 쓰기
+## 🧩 VS Code 확장
 
-이 Mermaid 미리보기는 VS Code 확장으로도 나와 있습니다 —
+앱의 Mermaid 미리보기를 그대로 옮긴 VS Code 확장이 따로 나와 있습니다 —
 [**UniNotepad Markdown Preview**](https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview).
 다이어그램 확대, 드래그로 밀어보기, 배경 투명/색 지정이 앱과 같은 방식으로 동작합니다.
 
-```bash
-code --install-extension ilphs.uninotepad-markdown-preview
-```
+VS Code 기본 Markdown 미리보기를 **대체하는 게 아니라 나란히** 놓입니다 — Markdown 파일
+제목줄에 버튼이 하나 더 생기는데, 기본 미리보기는 원래 아이콘 그대로이고 이 확장 것은
+앱의 `<>` 마름모입니다 (그 툴바에서 유일하게 색이 들어간 아이콘이라 헷갈리지 않습니다).
 
-VS Code 기본 Markdown 미리보기를 대체하는 게 아니라 나란히 놓입니다 —
-Markdown 파일 제목줄에 버튼이 하나 더 생기고, `Cmd/Ctrl+K Shift+M`으로 엽니다.
-확장 쪽 문서와 알려진 한계는 [`vscode-ext/README.md`](vscode-ext/README.md)에 있습니다.
+**설치**
+
+| 방법 | |
+|:--|:--|
+| Marketplace 페이지 | [UniNotepad Markdown Preview](https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview) |
+| VS Code 안에서 | 확장 뷰(`Cmd/Ctrl+Shift+X`)에서 **UniNotepad Markdown Preview** 검색 |
+| 터미널에서 | `code --install-extension ilphs.uninotepad-markdown-preview` |
+
+**쓰는 법**
+
+| 하고 싶은 것 | 방법 |
+|:--|:--|
+| 미리보기 열기 | `Cmd/Ctrl+K Shift+M`, 또는 편집기 제목줄의 `<>` 마름모 아이콘 |
+| 확대 · 축소 · 원래대로 | `Cmd/Ctrl` + `=` `-` `0` (미리보기 패널에 포커스가 있을 때) — 글자와 다이어그램이 함께 커집니다 |
+| 확대한 다이어그램 밀어보기 | 다이어그램 안에서 클릭한 채 끌기 |
+| 다이어그램 배경 바꾸기 | 다이어그램에 마우스를 올리면 나오는 **Transparent** · **Backdrop** |
+| HTML로 내보내기 | 명령 팔레트 ▸ **UniNotepad: Export Preview as HTML** |
+
+- `.md`는 물론 `.mmd` · `.mermaid` 파일도 열립니다 — 앱과 마찬가지로 문서 전체가 하나의 큰 다이어그램이 됩니다
+- 미리보기 패널은 하나이고 **활성 편집기를 따라갑니다**. 다른 Markdown 파일로 옮기면 미리보기도 따라 바뀌고, 렌더할 수 없는 편집기(`.ts` 파일 등)로 옮겨도 화면을 비우지 않고 마지막 렌더를 그대로 둡니다
+- 다이어그램 배경과 스크롤 동기화는 VS Code 설정의 `uninotepadPreview.*` 세 항목으로도 조정할 수 있습니다
+
+**앱과 다른 점**
+
+확장은 VS Code 웹뷰 안에서 돌아가기 때문에 앱에서 되는 몇 가지가 빠져 있습니다 — 버그가 아니라 이 버전의 한계입니다.
+
+- **코드블록에 구문 강조가 없습니다** — 앱은 언어별 문법을 그때그때 불러오는데, 웹뷰의 보안 정책(CSP)이 그 방식을 막습니다
+- **인쇄가 안 됩니다** — 웹뷰에서는 인쇄 창을 띄울 수 없습니다. HTML로 내보낸 뒤 브라우저에서 인쇄하세요 (내보내기 명령이 그 파일을 열어 줄지 물어봅니다)
+- **`#앵커` 링크는 대부분 동작하지 않습니다** — 제목에 붙는 id가 만들어지지 않아 이동할 자리가 없습니다
+- 스크롤 동기화는 **편집기 → 미리보기 한 방향**입니다 (앱과 같습니다)
+
+확장 쪽 문서와 개발 안내는 [`vscode-ext/README.md`](vscode-ext/README.md)에 있습니다.
 
 ## 🌗 테마
 
