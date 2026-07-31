@@ -150,6 +150,11 @@ const settle = () => new Promise((r) => setTimeout(r, 150));
   send(w, { type: "content", fileType: "markdown", text: "[out](https://example.com/x) and [rel](./a.md)" });
   await settle();
   posted.length = 0;
+  // VS Code's preload binds its own link handler to `window`; if a click reaches
+  // it the host opens the link a second time, ignoring the trust prompt. Stand in
+  // for that listener and assert nothing arrives.
+  let reachedWindow = 0;
+  w.addEventListener("click", () => reachedWindow++);
   const anchors = host.querySelectorAll(".md-body a[href]");
   for (const a of anchors) {
     a.dispatchEvent(new w.MouseEvent("click", { bubbles: true, cancelable: true }));
@@ -160,6 +165,8 @@ const settle = () => new Promise((r) => setTimeout(r, 150));
     "link clicks not forwarded: " + JSON.stringify(posted),
   );
   ok("link clicks forwarded to the host, absolute and relative alike");
+  assert.strictEqual(reachedWindow, 0, "link click bubbled to window — VS Code would open it twice");
+  ok("link clicks stop before window (no double-open past the trust prompt)");
 
   // ---- zoom ladder ----
   posted.length = 0;

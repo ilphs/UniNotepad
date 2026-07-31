@@ -66,7 +66,7 @@ These are real limitations of this version, not oversights:
 ```bash
 npm install
 npm run typecheck   # both bundles: extension host and webview
-npm run test        # build, then 49 assertions across both runtimes
+npm run test        # build, then 50 assertions across both runtimes
 npm run build       # dist/extension.js + dist/webview.js
 npm run watch
 ```

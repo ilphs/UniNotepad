@@ -252,6 +252,14 @@ function onHostClick(e: MouseEvent): void {
   const href = a.getAttribute("href") ?? "";
   if (!href) return;
   e.preventDefault();
+  // VS Code's own webview preload listens for clicks on `window` and never checks
+  // `defaultPrevented`, so a link left to bubble is opened a *second* time by the
+  // host — past the trusted-domain prompt this extension's openExternal raises,
+  // which made Cancel look like it was ignored. Stopping here keeps exactly one
+  // path alive. Only propagation is stopped, not the other listeners on this
+  // element: mermaid-view's popover and pan handlers are mousedown/pointer, so
+  // they never see this event anyway.
+  e.stopPropagation();
   if (href.startsWith("#")) {
     const target = previewHost.querySelector(`[id="${CSS.escape(href.slice(1))}"]`);
     target?.scrollIntoView({ block: "start" });

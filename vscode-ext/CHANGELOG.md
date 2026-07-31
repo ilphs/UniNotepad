@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.3 — 2026-07-31
+
+- **Fixed: clicking a link in the preview opened it twice, so the "Do you want Code
+  to open the external website?" prompt appeared to be ignored — the browser opened
+  whichever button you pressed, Cancel included.** The webview's link handler
+  cancelled the default action but let the click keep bubbling, and VS Code's own
+  preload listens on `window` without checking `defaultPrevented`, so it opened the
+  link a second time on its own. The click now stops at the preview host.
+
 ## 0.1.2 — 2026-07-31
 
 - The preview tab now shows UniNotepad's `<>` diamond instead of VS Code's default
