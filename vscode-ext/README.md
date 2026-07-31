@@ -81,8 +81,9 @@ covers is Mermaid's SVG output — mermaid measures text with `getBBox`, which j
 does not implement, so a diagram deliberately lands in the error path there. Verify
 diagrams by eye via `F5`.
 
-`npm run package` builds a `.vsix`. It requires a registered `publisher` in
-`package.json` — the current value is a placeholder.
+`npm run package` builds a `.vsix`. The `publisher` in `package.json` is `ilphs`,
+which must stay in sync with the Marketplace publisher the `.vsix` is uploaded
+under — a mismatch is rejected at upload time.
 
 ### Layout
 
