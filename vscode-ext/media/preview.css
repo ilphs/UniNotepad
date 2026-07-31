@@ -1,0 +1,328 @@
+/*
+ * Preview styles, ported from UniNotepad's src/styles.css.
+ *
+ * The port is deliberately shallow: the app's own palette variables are
+ * re-declared once here in terms of `--vscode-*` theme variables, and every rule
+ * below is then the app's rule verbatim. That keeps the two stylesheets diffable —
+ * a fix to a Mermaid layout rule can be applied to both by eye — instead of
+ * scattering `var(--vscode-…)` through 300 lines and losing the correspondence.
+ *
+ * Heading colors are the one place the mapping is not one-to-one: the app tinted
+ * heading levels with its CodeMirror syntax palette (`--cm-function`, `--cm-type`,
+ * …), which has no VS Code equivalent. The `--vscode-charts-*` family is the
+ * closest theme-aware substitute and is what the levels use here.
+ */
+
+:root {
+  --bg: var(--vscode-editor-background);
+  --fg: var(--vscode-editor-foreground, var(--vscode-foreground));
+  --border: var(--vscode-panel-border, var(--vscode-widget-border, rgba(128, 128, 128, 0.35)));
+  --gutter-bg: var(--vscode-textCodeBlock-background, rgba(128, 128, 128, 0.1));
+  --gutter-fg: var(--vscode-descriptionForeground, var(--vscode-foreground));
+  --accent: var(--vscode-textLink-foreground);
+  --chrome-bg: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  --chrome-fg: var(--vscode-editorWidget-foreground, var(--vscode-foreground));
+  --error-fg: var(--vscode-errorForeground, #f14c4c);
+
+  /* Heading-level tints. --vscode-charts-* is present in every built-in theme and
+     follows light/dark; the fallbacks cover a third-party theme that omits them. */
+  --level-2: var(--vscode-charts-blue, var(--accent));
+  --level-3: var(--vscode-charts-green, var(--accent));
+  --level-4: var(--vscode-charts-orange, var(--accent));
+  --level-5: var(--vscode-charts-purple, var(--accent));
+}
+
+/* The webview owns the whole document, so the app's `#preview-host` pane geometry
+   becomes the page geometry. VS Code's default webview stylesheet applies body
+   padding; the scrolling container has to be #preview-host rather than the body,
+   because mermaid-view's zoom/pan rules and the solo layout are all written
+   against it. */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+#preview-host {
+  height: 100%;
+  overflow: auto;
+  display: flex;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--vscode-font-family);
+}
+
+/* ---- Rendered Markdown ---- */
+.md-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  /* Fill narrow panes, but stop growing at a readable line length on wide ones.
+     The 48ch floor only bites on very narrow panes, where flex shrink still
+     prevents overflow. Note `box-sizing: border-box` — the horizontal padding
+     counts against these values. */
+  box-sizing: border-box;
+  max-width: clamp(48ch, 92%, 100ch);
+  margin: 0 auto; /* auto margins center the column in the flex-row pane */
+  padding: 28px 32px 48px;
+  line-height: 1.7;
+  /* Preview zoom sets --preview-font-size on #preview-host (preview.ts); the 15px
+     fallback is the 100% base used before any zoom is applied. */
+  font-size: var(--preview-font-size, 15px);
+  overflow-wrap: break-word; /* keep long URLs/words from overflowing */
+}
+
+.md-body > :first-child { margin-top: 0; }
+.md-body > :last-child { margin-bottom: 0; }
+.md-body h1,
+.md-body h2,
+.md-body h3,
+.md-body h4,
+.md-body h5,
+.md-body h6 {
+  margin: 1.6em 0 0.6em;
+  line-height: 1.25;
+  font-weight: 600;
+}
+/* Color headings by level (#-depth), softened toward the theme's mid-gray
+   (--gutter-fg) so they read as tinted rather than as links. Where color-mix is
+   unsupported the levels gracefully fall back to --fg. */
+.md-body h1 { font-size: 1.7em; color: color-mix(in srgb, var(--accent) 65%, var(--gutter-fg)); border-bottom: 1px solid var(--border); padding-bottom: 0.3em; }
+.md-body h2 { font-size: 1.45em; color: color-mix(in srgb, var(--level-2) 60%, var(--gutter-fg)); border-bottom: 1px solid var(--border); padding-bottom: 0.25em; }
+.md-body h3 { font-size: 1.25em; color: color-mix(in srgb, var(--level-3) 60%, var(--gutter-fg)); }
+.md-body h4 { color: color-mix(in srgb, var(--level-4) 60%, var(--gutter-fg)); }
+.md-body h5 { color: color-mix(in srgb, var(--level-5) 60%, var(--gutter-fg)); }
+.md-body h6 { color: var(--gutter-fg); }
+.md-body p { margin: 0.85em 0; }
+.md-body a { color: var(--accent); text-decoration: none; }
+.md-body a:hover { text-decoration: underline; }
+.md-body ul,
+.md-body ol { margin: 0.6em 0; padding-left: 1.6em; }
+.md-body li { margin: 0.2em 0; }
+.md-body blockquote {
+  margin: 0.8em 0;
+  padding: 0 1em;
+  color: var(--gutter-fg);
+  border-left: 3px solid var(--border);
+}
+.md-body code {
+  font-family: var(--vscode-editor-font-family, "SFMono-Regular", "Consolas", "Menlo", monospace);
+  font-size: 0.9em;
+  background: var(--gutter-bg);
+  padding: 0.15em 0.35em;
+  border-radius: 3px;
+}
+.md-body pre {
+  margin: 0.8em 0;
+  padding: 12px;
+  background: var(--gutter-bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow-x: auto;
+}
+.md-body pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.88em;
+}
+
+/* Mermaid: rendered diagram centered; SVG scales to the pane width.
+   `.mermaid-frame` wraps the diagram and owns the 1em flow margin the diagram
+   would otherwise carry. It exists to anchor the toolbar outside the scroll
+   container zoom turns `.mermaid-diagram` into — see mermaid-view.ts. All
+   zoom/backdrop state comes from `#preview-host` because the render pipeline
+   rebuilds these nodes on every keystroke. */
+.md-body .mermaid-frame { position: relative; margin: 1em 0; }
+.md-body .mermaid-diagram { display: flex; justify-content: center; margin: 0; }
+.md-body .mermaid-diagram svg {
+  max-width: 100%;
+  height: auto;
+  background: var(--mmd-bg, transparent);
+}
+
+/* ---- Mermaid: zoomed (scale !== 1) ---- */
+#preview-host.mmd-zoomed .mermaid-diagram {
+  max-height: 70vh;
+  overflow: auto;
+  cursor: grab;
+  /* `safe center` keeps the chart centered until it overflows, then behaves as
+     flex-start. Plain `center` would split the overflow across both sides, and
+     since scrollLeft can't go negative, the left half of a wide chart would be
+     permanently unreachable. First line is the fallback for engines without
+     `safe`; both must stay. */
+  justify-content: flex-start;
+  justify-content: safe center;
+}
+#preview-host.mmd-zoomed .mermaid-diagram.mmd-panning { cursor: grabbing; }
+/* `.mmd-sized` gates this rule: mermaid-view.ts adds it only to charts whose
+   natural size it resolved. Without the gate, a chart missing --mmd-nw makes the
+   calc() invalid-at-computed-value-time → width falls back to `auto` and zoom is
+   silently ignored; and the "safe-looking" `var(--mmd-nw, 0)` fallback is worse
+   still — width computes to exactly 0 and the chart disappears. */
+#preview-host.mmd-zoomed .mermaid-diagram.mmd-sized svg {
+  /* mermaid writes `style="max-width:Npx"` as an inline declaration, and only an
+     important author declaration outranks inline. (Its sibling `width="100%"` is
+     a presentation attribute — specificity 0 — so a normal rule already beats
+     that one; the !important here is purely for the inline max-width.) */
+  max-width: none !important;
+  width: calc(var(--mmd-nw) * 1px * var(--mmd-zoom, 1));
+  height: calc(var(--mmd-nh) * 1px * var(--mmd-zoom, 1));
+  flex: 0 0 auto;
+}
+
+/* ---- Mermaid: solo (the document is one diagram) ---- */
+/* MUST stay after the .mmd-zoomed block: both selectors are (1,2,0), so source
+   order is the only tiebreak, and if solo came first the zoom rule's
+   `max-height:70vh` would win and shrink the full-bleed panel back into a 70vh
+   box. That looks fine at 100%, where the zoom rules don't apply at all. */
+#preview-host.mmd-solo { overflow: hidden; }
+#preview-host.mmd-solo .md-body {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  display: flex;
+}
+#preview-host.mmd-solo .mermaid-frame { flex: 1 1 auto; min-width: 0; margin: 0; }
+#preview-host.mmd-solo .mermaid-diagram {
+  height: 100%;
+  max-height: none;
+  overflow: auto;
+  cursor: grab;
+  justify-content: flex-start;
+  justify-content: safe center;
+  /* align-items must be explicit: the flex default `stretch` would stretch the
+     `height:auto` svg to fill this `height:100%` box, at which point
+     preserveAspectRatio letterboxes the drawing — and with the overflow gone, a
+     tall chart loses its scrollbar entirely. */
+  align-items: flex-start;
+  align-items: safe center;
+}
+/* A standalone .mmd re-renders on every keystroke, so a half-typed diagram sits
+   in this error state most of the time — it can't be left flush against the edge
+   of the padding-less solo panel, nor stretched full-height by the `.md-body`
+   flex default. (It stays outside `.mermaid-frame`: no toolbar or zoom applies to
+   an error.) */
+#preview-host.mmd-solo .mermaid-error {
+  margin: 12px;
+  align-self: flex-start;
+}
+
+/* ---- Mermaid chrome: toolbar / badge / backdrop popover ---- */
+/* Toolbar is a sibling of the scroller, not a child — inside `.mermaid-diagram`
+   it would scroll away with the content once zoom made that node a scroll
+   container, and closest(".mermaid-diagram") would start a pan on every click. */
+.mmd-toolbar {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.12s ease-in-out;
+}
+.mermaid-frame:hover .mmd-toolbar,
+.mmd-toolbar:focus-within {
+  opacity: 1;
+}
+.mmd-bg-btn {
+  font: inherit;
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: pointer;
+  color: var(--chrome-fg);
+  background: var(--chrome-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.mmd-bg-btn:hover {
+  background: color-mix(in srgb, var(--accent) 22%, var(--chrome-bg));
+}
+/* The pair is a two-way choice, so the live mode has to be visible; without it
+   both buttons read as commands and nothing says which one is in effect. */
+.mmd-bg-btn.mmd-active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 34%, var(--chrome-bg));
+}
+
+/* Zoom badge. Lives on document.body (mermaid-view.ts explains why it can't be a
+   #preview-host child) and never takes pointer events — it floats over the chart,
+   so a click must always reach the diagram underneath. */
+.mmd-badge {
+  position: fixed;
+  z-index: 210;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  background: var(--chrome-bg);
+  color: var(--chrome-fg);
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease-in-out;
+}
+.mmd-badge.visible { opacity: 1; }
+
+/* Backdrop popover. */
+.mmd-popover {
+  position: fixed;
+  z-index: 200;
+  padding: 8px;
+  background: var(--chrome-bg);
+  color: var(--chrome-fg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  font-size: 12px;
+}
+.mmd-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+  white-space: nowrap;
+}
+.mmd-row-label { width: 4.5em; }
+.mmd-row-value {
+  width: 2.8em;
+  text-align: right;
+  font-variant-numeric: tabular-nums; /* keep the row from twitching on drag */
+}
+.mmd-row input[type="range"] { width: 130px; }
+/* Checkerboard under the color layer, so a low opacity reads as see-through
+   rather than as a flat grey the user might mistake for the color itself. */
+.mmd-swatch {
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 6px;
+  background-image: linear-gradient(var(--mmd-swatch, transparent), var(--mmd-swatch, transparent)),
+    conic-gradient(#bbb 0 25%, #fff 0 50%, #bbb 0 75%, #fff 0);
+  background-size: auto, 10px 10px;
+}
+
+.md-body .mermaid-error {
+  color: var(--error-fg);
+  background: var(--gutter-bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 12px;
+  white-space: pre-wrap;
+}
+.md-body img { max-width: 100%; }
+.md-body hr { border: none; border-top: 1px solid var(--border); margin: 1.2em 0; }
+.md-body table {
+  border-collapse: collapse;
+  margin: 0.8em 0;
+  display: block;
+  overflow-x: auto;
+}
+.md-body th,
+.md-body td {
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+}

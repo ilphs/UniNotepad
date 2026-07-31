@@ -1,0 +1,157 @@
+{
+  "name": "uninotepad-markdown-preview",
+  "displayName": "UniNotepad Markdown Preview",
+  "description": "Markdown preview with interactive Mermaid diagrams — pan, zoom, and a transparent/solid diagram backdrop. Ported from the UniNotepad editor.",
+  "version": "0.1.0",
+  "publisher": "ilphs",
+  "license": "MIT",
+  "private": true,
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ilphs/UniNotepad.git",
+    "directory": "vscode-ext"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Visualization"
+  ],
+  "keywords": [
+    "markdown",
+    "preview",
+    "mermaid",
+    "diagram",
+    "zoom"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onWebviewPanel:uninotepad.markdownPreview"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "uninotepadPreview.open",
+        "title": "Open Mermaid Preview to the Side",
+        "category": "UniNotepad",
+        "icon": "$(type-hierarchy)"
+      },
+      {
+        "command": "uninotepadPreview.zoomIn",
+        "title": "Zoom In",
+        "category": "UniNotepad"
+      },
+      {
+        "command": "uninotepadPreview.zoomOut",
+        "title": "Zoom Out",
+        "category": "UniNotepad"
+      },
+      {
+        "command": "uninotepadPreview.zoomReset",
+        "title": "Reset Zoom",
+        "category": "UniNotepad"
+      },
+      {
+        "command": "uninotepadPreview.exportHtml",
+        "title": "Export Preview as HTML",
+        "category": "UniNotepad"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "uninotepadPreview.open",
+        "key": "ctrl+k shift+m",
+        "mac": "cmd+k shift+m",
+        "when": "editorLangId == markdown || resourceExtname == .mmd || resourceExtname == .mermaid"
+      },
+      {
+        "command": "uninotepadPreview.zoomIn",
+        "key": "ctrl+=",
+        "mac": "cmd+=",
+        "when": "activeWebviewPanelId == 'uninotepad.markdownPreview'"
+      },
+      {
+        "command": "uninotepadPreview.zoomOut",
+        "key": "ctrl+-",
+        "mac": "cmd+-",
+        "when": "activeWebviewPanelId == 'uninotepad.markdownPreview'"
+      },
+      {
+        "command": "uninotepadPreview.zoomReset",
+        "key": "ctrl+0",
+        "mac": "cmd+0",
+        "when": "activeWebviewPanelId == 'uninotepad.markdownPreview'"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "uninotepadPreview.open",
+          "when": "editorLangId == markdown || resourceExtname == .mmd || resourceExtname == .mermaid",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "uninotepadPreview.zoomIn",
+          "when": "activeWebviewPanelId == 'uninotepad.markdownPreview'"
+        },
+        {
+          "command": "uninotepadPreview.zoomOut",
+          "when": "activeWebviewPanelId == 'uninotepad.markdownPreview'"
+        },
+        {
+          "command": "uninotepadPreview.zoomReset",
+          "when": "activeWebviewPanelId == 'uninotepad.markdownPreview'"
+        },
+        {
+          "command": "uninotepadPreview.exportHtml",
+          "when": "activeWebviewPanelId == 'uninotepad.markdownPreview'"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "UniNotepad Markdown Preview",
+      "properties": {
+        "uninotepadPreview.mermaidBackgroundEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Paint a solid backdrop behind rendered Mermaid diagrams. Off means the diagram is see-through, matching the preview background."
+        },
+        "uninotepadPreview.mermaidBackground": {
+          "type": "string",
+          "default": "255,255,255,1",
+          "pattern": "^\\s*\\d{1,3}\\s*,\\s*\\d{1,3}\\s*,\\s*\\d{1,3}\\s*,\\s*(0|1|0?\\.\\d+)\\s*$",
+          "description": "Mermaid diagram backdrop as \"r,g,b,a\" — 0-255 channels and a 0-1 opacity. Edited by the in-diagram backdrop popover."
+        },
+        "uninotepadPreview.scrollEditorWithPreview": {
+          "type": "boolean",
+          "default": true,
+          "description": "Sync the preview scroll position to the editor's (one-way, editor to preview)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p webview/tsconfig.json --noEmit",
+    "test": "npm run build && node test/extension-host.test.cjs && node test/webview.test.cjs",
+    "package": "npm run test && node build.mjs --production && vsce package --baseContentUrl https://github.com/ilphs/UniNotepad/raw/main/vscode-ext/ --baseImagesUrl https://github.com/ilphs/UniNotepad/raw/main/vscode-ext/"
+  },
+  "dependencies": {
+    "dompurify": "^3.4.12",
+    "marked": "^14.1.4",
+    "mermaid": "^11.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.75.0",
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.28.1",
+    "jsdom": "^26.0.0",
+    "typescript": "^5.5.0"
+  }
+}

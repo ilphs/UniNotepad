@@ -7,3 +7,6 @@ build
 *.log
 .DS_Store
 src-tauri/target
+# The VS Code extension is a separate deliverable and has no place in the site
+# deploy, which is run from the repository root (see site/README.md).
+vscode-ext

@@ -1,0 +1,11 @@
+graph LR
+  subgraph Extension host
+    C[commands] --> P[PreviewPanel]
+    P --> S[document sync]
+  end
+  subgraph Webview
+    M[main.ts] --> R[preview.ts]
+    R --> V[mermaid-view.ts]
+  end
+  P -- content / zoom / settings --> M
+  M -- ready / setSetting / html --> P

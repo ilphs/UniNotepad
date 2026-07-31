@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2021",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "lib": ["ES2021", "DOM", "DOM.Iterable"],
+    // No "vscode" here, on purpose: webview code cannot call the extension API,
+    // and leaving the types out makes an accidental `import * as vscode` a
+    // typecheck failure instead of a runtime one.
+    "types": []
+  },
+  "include": [".", "../shared"]
+}

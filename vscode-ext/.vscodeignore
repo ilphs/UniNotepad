@@ -1,0 +1,14 @@
+.vscode/**
+.gitignore
+local-test.md
+build.mjs
+tsconfig.json
+webview/**
+src/**
+shared/**
+test/**
+sample/**
+*.vsix
+node_modules/**
+**/*.map
+**/*.ts
