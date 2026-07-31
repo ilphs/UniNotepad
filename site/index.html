@@ -113,6 +113,16 @@
       .btn.primary { background: var(--accent); color: var(--accent-fg); }
       .hero .sub { margin: 0.5rem 0 0; font-size: 0.9rem; color: var(--muted); min-height: 1.2em; }
 
+      /* VS Code 확장 한 줄 안내 — 히어로의 다운로드 동선을 가리지 않도록 버튼이 아니라
+         본문 폭의 좁은 카드로. .mac-guide와 같은 왼쪽 강조선 어법을 쓰되 한 줄 분량. */
+      .hero .ext-strip {
+        max-width: 40rem; margin: 1.75rem auto 0; padding: 0.7rem 0.95rem;
+        border: 3px solid var(--border); border-left: 10px solid var(--accent);
+        border-radius: var(--radius); background: var(--card); box-shadow: var(--shadow);
+        font-size: 0.9rem; color: var(--muted); text-align: left;
+      }
+      .hero .ext-strip b { color: var(--fg); font-weight: 800; }
+
       .hero .shot { margin: 2.5rem auto 0; max-width: 56rem; }
       .hero .shot img { width: 100%; border-radius: var(--radius); border: 3px solid var(--border); box-shadow: var(--shadow-lg); }
       /* 히어로는 다크/라이트를 위아래로 — 한 장씩 크게 보여 준다. */
@@ -274,6 +284,13 @@
       <!-- macOS 방문자에게만 노출 — 받기 전에 첫 실행 절차를 알고 가도록. -->
       <p class="sub" id="macHint" hidden>
         🍎 macOS는 첫 실행 전 <a href="#macos-first-run">터미널 한 줄</a>이 필요합니다
+      </p>
+
+      <p class="ext-strip">
+        🧩 VS Code를 쓰신다면 —
+        <a href="https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview" target="_blank" rel="noopener"><b>UniNotepad Markdown Preview</b></a>
+        확장으로 같은 Mermaid 미리보기(확대 · 드래그 · 배경 지정)를 편집기 안에서 그대로 쓸 수 있습니다.
+        <a href="#preview">자세히</a>
       </p>
 
       <div class="shot pair">
