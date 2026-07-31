@@ -37,6 +37,8 @@ UniNotepad에서는 그런 일이 생기지 않습니다. 열어둔 탭은 **저
 
 **바로가기** — [무엇이 다른가요](#-무엇이-다른가요) · [Markdown · Mermaid 미리보기](#-markdown--mermaid-미리보기) · [VS Code 확장](#-vs-code-확장) · [테마](#-테마) · [화면](#-화면) · [설치](#-설치) · [자주 묻는 질문](#-자주-묻는-질문)
 
+<sub>이 문서의 링크는 GitHub 정책상 항상 같은 탭에서 열립니다. 읽던 자리를 두고 싶으면 `Cmd`(macOS) 또는 `Ctrl`(Windows·Linux)을 누른 채 클릭하거나 가운데 버튼으로 누르세요 — 새 탭에서 열립니다.</sub>
+
 ## ✨ 무엇이 다른가요
 
 | 기능 | 설명 |
@@ -102,8 +104,8 @@ UniNotepad에서는 그런 일이 생기지 않습니다. 열어둔 탭은 **저
 
 ## 🧩 VS Code 확장
 
-앱의 Mermaid 미리보기를 그대로 옮긴 VS Code 확장이 따로 나와 있습니다 —
-[**UniNotepad Markdown Preview**](https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview).
+앱의 Mermaid 미리보기를 그대로 옮긴 VS Code 확장이 따로 나와 있습니다 — VS Code
+Marketplace의 [**UniNotepad Markdown Preview**](https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview).
 다이어그램 확대, 드래그로 밀어보기, 배경 투명/색 지정이 앱과 같은 방식으로 동작합니다.
 
 VS Code 기본 Markdown 미리보기를 **대체하는 게 아니라 나란히** 놓입니다 — Markdown 파일
