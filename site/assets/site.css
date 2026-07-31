@@ -110,8 +110,11 @@ h2 {
 }
 
 /* ---- Hero ---------------------------------------------------------- */
+/* 폭은 section과 같은 60rem — 히어로 갤러리가 아래 다운로드 3단 카드와 같은
+   좌우 선에 떨어진다. 본문(.lead 34rem)과 안내 카드(.ext-strip 40rem)는 저마다
+   더 좁은 max-width를 갖고 있어 이 폭이 넓어져도 읽는 폭은 그대로다. */
 .hero {
-  max-width: 52rem;
+  max-width: 60rem;
   margin: 0 auto;
   padding: 4rem 0 1rem;
   text-align: center;
@@ -168,7 +171,9 @@ h2 {
 /* 히어로 갤러리 — 주인공(다크 테마)은 폭을 다 쓰고, 보조 두 장(라이트 테마 · VS Code
    확장)은 나란히. 세 장을 모두 전폭으로 쌓으면 히어로만 2,000px을 넘어 다운로드
    섹션이 스크롤 한참 뒤로 밀린다. */
-.hero .shot.gallery { max-width: 64rem; display: grid; grid-template-columns: 1fr 1fr; gap: 2rem 1.5rem; }
+/* max-width: none — .hero(60rem)를 그대로 다 쓴다. 여기에 값을 두면 .hero .shot의
+   56rem을 덮어쓰기만 하고 결국 다시 좁아진다. */
+.hero .shot.gallery { max-width: none; display: grid; grid-template-columns: 1fr 1fr; gap: 2rem 1.5rem; }
 .hero .shot.gallery .lead-shot { grid-column: 1 / -1; }
 .hero .shot.gallery figure { border: none; border-radius: 0; background: transparent; overflow: visible; }
 .hero .shot.gallery figcaption { padding: 0.6rem 0 0; text-align: center; border-top: none; }
