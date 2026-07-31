@@ -11,6 +11,7 @@
   <a href="https://github.com/ilphs/UniNotepad/releases/latest"><img src="https://img.shields.io/github/v/release/ilphs/UniNotepad?style=flat-square" alt="최신 릴리스"></a>
   <img src="https://img.shields.io/badge/platform-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-4c8bf5?style=flat-square" alt="지원 OS">
   <a href="https://github.com/ilphs/UniNotepad/releases"><img src="https://img.shields.io/github/downloads/ilphs/UniNotepad/total?style=flat-square" alt="다운로드 수"></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview"><img src="https://img.shields.io/badge/VS%20Code%20확장-Marketplace-007ACC?style=flat-square" alt="VS Code 확장"></a>
   <img src="https://img.shields.io/badge/built%20with-Tauri%202-24C8DB?style=flat-square" alt="Tauri 2로 제작">
 </p>
 
@@ -97,6 +98,20 @@ UniNotepad에서는 그런 일이 생기지 않습니다. 열어둔 탭은 **저
 | 종이·PDF로 인쇄 | `Ctrl/Cmd + P` |
 
 > 미리보기 색은 앱 테마(라이트·다크)를 따라갑니다. 인쇄와 HTML 내보내기는 읽기 좋도록 밝은 배경으로 나갑니다.
+
+### 🧩 VS Code에서도 쓰기
+
+이 Mermaid 미리보기는 VS Code 확장으로도 나와 있습니다 —
+[**UniNotepad Markdown Preview**](https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview).
+다이어그램 확대, 드래그로 밀어보기, 배경 투명/색 지정이 앱과 같은 방식으로 동작합니다.
+
+```bash
+code --install-extension ilphs.uninotepad-markdown-preview
+```
+
+VS Code 기본 Markdown 미리보기를 대체하는 게 아니라 나란히 놓입니다 —
+Markdown 파일 제목줄에 버튼이 하나 더 생기고, `Cmd/Ctrl+K Shift+M`으로 엽니다.
+확장 쪽 문서와 알려진 한계는 [`vscode-ext/README.md`](vscode-ext/README.md)에 있습니다.
 
 ## 🌗 테마
 
