@@ -32,8 +32,9 @@ blanking the pane.
 
 This sits alongside VS Code's built-in Markdown preview rather than replacing it,
 so a `.md` file's title bar carries both buttons. The built-in one keeps the
-`open-preview` icon; this extension's is the `type-hierarchy` glyph, and its
-tooltip reads *Open Mermaid Preview to the Side*.
+`open-preview` icon; this extension's is the app's own `<>` diamond — the only
+coloured glyph in that toolbar — and its tooltip reads *Open Mermaid Preview to
+the Side*.
 
 ## Settings
 
@@ -91,13 +92,21 @@ under — a mismatch is rejected at upload time.
 src/        extension host — commands, panel lifecycle, document sync
 webview/    the preview itself — render core + Mermaid interaction layer
 shared/     the message contract both sides import
-media/      preview.css, and icon.png — the extension's gallery icon
+media/      preview.css, icon.png (gallery icon), toolbar-icon-{light,dark}.svg
 ```
 
 `media/icon.png` is a copy of the app's own icon (`src-tauri/icons/128x128@2x.png`,
 256×256) so the extension is recognisable as part of UniNotepad. It is a copy for
 the same reason `site/assets/app-icon.png` is: each deliverable packages
 independently. Re-copy it if the app icon changes.
+
+The two `toolbar-icon-*.svg` files are that same icon redrawn for a **16×16**
+title-bar slot: the black rounded square is dropped (at 16px it swallowed the
+whole glyph — invisible against a dark toolbar, a heavy black block against a
+light one) and only the `<>` diamond survives, keeping the app's cyan `#51D7FF`
+→ violet `#AE59EF` gradient and its mirrored direction on the two strokes. The
+light variant is the same two hues at lower lightness, because the cyan end
+washes out on white. Re-derive them if the app icon's palette changes.
 
 `webview/mermaid-view.ts` and `webview/preview.ts` are ports of the same files in
 UniNotepad's `src/`. They are **copies, not a shared module**: the app keys its

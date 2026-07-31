@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1 — 2026-07-31
+
+- The editor title-bar button now carries UniNotepad's own `<>` diamond instead of
+  the generic `type-hierarchy` codicon, with separate light and dark variants so the
+  cyan end of the gradient stays legible on a white toolbar.
+
 ## 0.1.0 — 2026-07-31
 
 First release. The Mermaid handling from the [UniNotepad](https://github.com/ilphs/UniNotepad)
