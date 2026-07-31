@@ -13,6 +13,7 @@
  * non-preview use pay nothing (see plan: 무게 검토).
  */
 import { save, message } from "@tauri-apps/plugin-dialog";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { LanguageDescription, type LanguageSupport } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
 import { highlightCode } from "@lezer/highlight";
@@ -426,6 +427,52 @@ function syncPreviewScroll(): void {
   previewHost.scrollTop = frac * pvRange;
 }
 
+// ---- Links -----------------------------------------------------------------
+
+/** Schemes handed to the OS. `mailto:` is here because a document that lists an
+ *  address expects the mail client, not silence. */
+const OPENABLE_SCHEME = /^(?:https?|mailto):/i;
+
+/**
+ * Clicks on links inside the rendered document. Delegated to the host so the
+ * handler survives the re-renders that rebuild `.md-body`.
+ *
+ * Every link click is cancelled first, and that is the point: an uncancelled
+ * `<a href="https://…">` navigates *this* webview, so the app UI is replaced by
+ * the site with no back button and no way home — the session survives on disk,
+ * but the window is gone until it is restarted. Nothing may reach the default
+ * action.
+ *
+ * What happens instead depends on the href:
+ *  - `#anchor` → scroll within this DOM. marked emits no heading ids by default,
+ *    so most of these find nothing today; that is a miss, not a navigation.
+ *  - http(s)/mailto → the OS default app, which is the "open elsewhere" a
+ *    webview cannot offer on its own. Matches the VS Code extension, which
+ *    routes the same click through its host (`vscode-ext/webview/preview.ts`).
+ *  - anything else, including the relative paths a document uses to point at its
+ *    neighbours → dropped. The webview's origin is the app bundle, so resolving
+ *    a relative path here would produce an app-internal URL that means nothing
+ *    to the browser. Resolving those against the tab's own file (and opening
+ *    them as tabs) would be a real feature; guessing is worse than doing nothing.
+ */
+function onPreviewLinkClick(e: MouseEvent): void {
+  // Element, not HTMLAnchorElement: mermaid diagrams can carry SVG <a> nodes.
+  const a = (e.target as Element | null)?.closest("a[href]");
+  if (!a) return;
+  e.preventDefault();
+  const href = a.getAttribute("href") ?? "";
+  if (href.startsWith("#")) {
+    previewHost
+      .querySelector(`[id="${CSS.escape(href.slice(1))}"]`)
+      ?.scrollIntoView({ block: "start" });
+    return;
+  }
+  if (!OPENABLE_SCHEME.test(href)) return;
+  // Surface failures: a scope rejection is otherwise indistinguishable from a
+  // dead link, since nothing visible happens either way.
+  void openUrl(href).catch((err) => console.error("openUrl failed", err));
+}
+
 // ---- Export / print --------------------------------------------------------
 
 /** The rendered preview HTML for the active tab, or null if nothing is shown. */
@@ -621,6 +668,10 @@ export function mountPreview(
   preview.addEventListener("pointerdown", () => setSelectedPane(true));
   editor.addEventListener("pointerdown", () => setSelectedPane(false));
   editor.addEventListener("focusin", () => setSelectedPane(false));
+
+  // Document links. Bound here rather than per render: `.md-body` is rebuilt on
+  // every keystroke-debounced render, and a handler on it would die with it.
+  preview.addEventListener("click", onPreviewLinkClick);
 
   // Editor → preview scroll sync (one-way, proportional). Bound once to the
   // single shared editor scroller; no-op while the pane is hidden. One-way only

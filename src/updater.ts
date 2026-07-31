@@ -23,8 +23,10 @@ import { openModal } from "./modal";
 import { setUpdateBadge, clearUpdateBadge } from "./statusbar";
 import { version } from "./title";
 
-/** GitHub releases page — the manual-download fallback target. Scoped in
- *  src-tauri/capabilities/default.json (opener allowlist); keep both in sync. */
+/** GitHub releases page — the manual-download fallback target. Covered by the
+ *  `https://*` entry in src-tauri/capabilities/default.json; that scope is wide
+ *  because the Markdown preview opens whatever links a user's document carries
+ *  (see preview.ts, onPreviewLinkClick), not because this URL needed it. */
 const RELEASES_URL = "https://github.com/ilphs/UniNotepad/releases/latest";
 
 /** Guards against overlapping checks (e.g. the startup check racing a manual

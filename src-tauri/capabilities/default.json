@@ -16,9 +16,9 @@
     {
       "identifier": "opener:allow-open-url",
       "allow": [
-        { "url": "https://uninotepad-xi.vercel.app" },
-        { "url": "https://uninotepad-xi.vercel.app/*" },
-        { "url": "https://github.com/ilphs/UniNotepad/*" }
+        { "url": "https://*" },
+        { "url": "http://*" },
+        { "url": "mailto:*" }
       ]
     }
   ]
