@@ -1,0 +1,286 @@
+/* UniNotepad 랜딩 페이지 공용 스타일.
+   index.html(영어)과 ko.html(한국어)이 이 파일 하나를 공유한다.
+   고칠 때는 두 HTML의 ?v= 숫자를 함께 올릴 것 — Vercel 엣지가 자산을 캐시한다. */
+
+:root {
+  --bg: #fdfcf7;
+  --fg: #16161d;
+  --muted: #5c5c6b;
+  --card: #ffffff;
+  --border: #16161d;
+  --accent: #7c5cff;
+  --accent-fg: #ffffff;
+  --radius: 0;
+  --shadow: 4px 4px 0 var(--border);
+  --shadow-lg: 6px 6px 0 var(--border);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14141a;
+    --fg: #e6e6ef;
+    --muted: #9a9aae;
+    --card: #1e1e28;
+    --border: #e6e6ef;
+    --accent: #9d86ff;
+    --accent-fg: #14141a;
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  padding: 0 1.5rem 5rem;
+  font: 16px/1.75 -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  overflow-wrap: break-word;
+}
+
+/* 한글은 기본값이면 글자 단위로 끊긴다 — 어절을 유지하고,
+   넘칠 위험이 있는 긴 영문/URL만 위의 break-word로 처리한다.
+   anywhere가 아닌 break-word인 이유: anywhere는 grid 아이템의 min-content
+   폭까지 줄여 auto-fit 열 폭이 흔들린다.
+   CJK에만 의미가 있는 규칙이라 한국어 페이지로 한정한다. */
+html[lang="ko"] body { word-break: keep-all; }
+
+/* display를 지정한 요소(.lang-nudge)가 hidden 속성을 이겨 버리지 않도록. */
+[hidden] { display: none !important; }
+
+/* 끝줄에 한 단어만 남는 고아 줄 방지. */
+h1, h2, .tagline, figcaption, .dl-card h3, .feature .t { text-wrap: balance; }
+p { text-wrap: pretty; }
+
+a { color: var(--accent); font-weight: 600; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+
+section { max-width: 60rem; margin: 0 auto; }
+h2 {
+  width: fit-content;
+  margin: 4rem auto 1.5rem;
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  text-align: center;
+  background: var(--accent);
+  color: var(--accent-fg);
+  padding: 0.4rem 1rem;
+  border: 3px solid var(--border);
+  box-shadow: var(--shadow);
+}
+
+/* ---- Language switcher ---------------------------------------------- */
+/* 어느 위치에서 읽고 있든 전환할 수 있도록 화면에 고정. 히어로 상단 여백이
+   4rem이라 최상단에서도 앱 아이콘과 겹치지 않는다. */
+.lang-switch {
+  position: fixed; top: 0.75rem; right: 0.75rem; z-index: 20;
+  display: flex;
+  border: 3px solid var(--border); border-radius: var(--radius);
+  background: var(--card); box-shadow: var(--shadow);
+}
+.lang-switch a {
+  padding: 0.3rem 0.65rem;
+  font-size: 0.8rem; font-weight: 800; line-height: 1.4;
+  color: var(--fg); text-decoration: none;
+}
+.lang-switch a + a { border-left: 3px solid var(--border); }
+.lang-switch a[aria-current="page"] { background: var(--accent); color: var(--accent-fg); }
+.lang-switch a:not([aria-current="page"]):hover { background: var(--bg); }
+
+/* 한국어 브라우저 방문자에게만 노출되는 한 줄 안내 (영어 페이지 전용).
+   .ext-strip과 같은 왼쪽 강조선 어법. 위 여백은 고정된 스위처를 피하기 위한 것. */
+.lang-nudge {
+  display: block; max-width: 60rem; margin: 3.25rem auto 0;
+  padding: 0.55rem 0.9rem;
+  border: 3px solid var(--border); border-left: 10px solid var(--accent);
+  border-radius: var(--radius); background: var(--card); box-shadow: var(--shadow);
+  font-size: 0.9rem; font-weight: 700; color: var(--fg); text-decoration: none;
+}
+.lang-nudge:hover { background: var(--accent); color: var(--accent-fg); }
+
+@media (max-width: 560px) {
+  .lang-switch { top: 0.5rem; right: 0.5rem; border-width: 2px; box-shadow: 2px 2px 0 var(--border); }
+  .lang-switch a { padding: 0.25rem 0.5rem; font-size: 0.72rem; }
+  .lang-switch a + a { border-left-width: 2px; }
+  .lang-nudge { margin-top: 2.75rem; font-size: 0.85rem; }
+}
+
+/* ---- Hero ---------------------------------------------------------- */
+.hero {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 4rem 0 1rem;
+  text-align: center;
+}
+.hero img.icon { width: 96px; height: 96px; }
+.hero h1 { margin: 1rem 0 0.25rem; font-size: 2.5rem; font-weight: 900; letter-spacing: -0.03em; }
+.hero .tagline { margin: 0; font-size: 1.25rem; color: var(--fg); font-weight: 600; }
+/* 여러 줄짜리 본문은 중앙 정렬하면 줄마다 시작점이 달라진다 — 본문만 좌측으로.
+   좌측 정렬은 폭을 좁히는 것과 짝 (한 줄 40자 안쪽). */
+.hero .lead { margin: 1.5rem auto 0; max-width: 34rem; color: var(--muted); text-align: left; }
+
+.cta { margin: 2rem 0 0.75rem; display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.8rem 1.5rem; border-radius: var(--radius);
+  font-size: 1rem; font-weight: 700; text-decoration: none;
+  border: 3px solid var(--border); background: var(--card); color: var(--fg);
+  box-shadow: var(--shadow);
+  transition: transform 0.06s ease, box-shadow 0.06s ease;
+}
+.btn:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--border); }
+.btn:active { transform: translate(4px, 4px); box-shadow: none; }
+.btn.primary { background: var(--accent); color: var(--accent-fg); }
+.hero .sub { margin: 0.5rem 0 0; font-size: 0.9rem; color: var(--muted); min-height: 1.2em; }
+
+/* VS Code 확장 한 줄 안내 — 히어로의 다운로드 동선을 가리지 않도록 버튼이 아니라
+   본문 폭의 좁은 카드로. .mac-guide와 같은 왼쪽 강조선 어법을 쓰되 한 줄 분량. */
+.hero .ext-strip {
+  max-width: 40rem; margin: 1.75rem auto 0; padding: 0.7rem 0.95rem;
+  border: 3px solid var(--border); border-left: 10px solid var(--accent);
+  border-radius: var(--radius); background: var(--card); box-shadow: var(--shadow);
+  font-size: 0.9rem; color: var(--muted); text-align: left;
+}
+.hero .ext-strip b { color: var(--fg); font-weight: 800; }
+
+.hero .shot { margin: 2.5rem auto 0; max-width: 56rem; }
+.hero .shot img { width: 100%; border-radius: var(--radius); border: 3px solid var(--border); box-shadow: var(--shadow-lg); }
+/* 히어로는 다크/라이트를 위아래로 — 한 장씩 크게 보여 준다. */
+.hero .shot.pair { max-width: 64rem; display: grid; grid-template-columns: 1fr; gap: 2rem; }
+.hero .shot.pair figure { border: none; border-radius: 0; background: transparent; overflow: visible; }
+.hero .shot.pair figcaption { padding: 0.6rem 0 0; text-align: center; border-top: none; }
+
+/* ---- Download cards ------------------------------------------------ */
+.downloads {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+.dl-card {
+  border: 3px solid var(--border); border-radius: var(--radius); padding: 1.25rem;
+  background: var(--card); box-shadow: var(--shadow);
+}
+.dl-card.recommended { box-shadow: 6px 6px 0 var(--accent); }
+.dl-card h3 { margin: 0 0 0.75rem; font-size: 1.1rem; font-weight: 800; display: flex; align-items: center; gap: 0.4rem; }
+.dl-card .tag {
+  font-size: 0.7rem; font-weight: 800; color: var(--accent-fg); background: var(--accent);
+  padding: 0.15rem 0.5rem; border-radius: var(--radius); border: 2px solid var(--border); margin-left: auto;
+}
+.dl-card ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.dl-card a.dl {
+  display: block; padding: 0.55rem 0.8rem; border-radius: var(--radius);
+  border: 2px solid var(--border); text-decoration: none; color: var(--fg);
+  font-size: 0.95rem; font-weight: 600;
+  transition: transform 0.06s ease, box-shadow 0.06s ease, background 0.06s ease;
+}
+.dl-card a.dl:hover { background: var(--accent); color: var(--accent-fg); box-shadow: var(--shadow); transform: translate(-2px, -2px); }
+.dl-note { max-width: 46rem; margin: 1.25rem auto 0; font-size: 0.85rem; color: var(--muted); text-align: left; }
+.dl-note code { background: var(--card); border: 2px solid var(--border); padding: 0.1rem 0.35rem; border-radius: var(--radius); }
+/* macOS 카드 안의 경고 줄 — 카드에서 안내로 시선을 넘긴다. */
+.dl-card .warn {
+  margin: 0.75rem 0 0; padding: 0.4rem 0.55rem; font-size: 0.82rem; font-weight: 700;
+  border: 2px solid var(--border); background: var(--accent); color: var(--accent-fg);
+}
+.dl-card .warn a { color: inherit; }
+
+/* ---- macOS 첫 실행 안내 -------------------------------------------- */
+/* 공증되지 않은 앱이라 macOS가 "손상됨"이라며 막는다 — 이 한 줄을 놓치면 앱을
+   아예 못 여니, 각주(.dl-note)가 아니라 건너뛸 수 없는 카드로 세운다. */
+.mac-guide {
+  max-width: 46rem; margin: 1.5rem auto 0; padding: 1.1rem 1.25rem;
+  border: 3px solid var(--border); border-left: 10px solid var(--accent);
+  border-radius: var(--radius); background: var(--card); box-shadow: var(--shadow);
+  scroll-margin-top: 1.5rem;
+}
+/* 방문 OS가 macOS일 때만 강조 — 다른 OS 사용자에게는 조용히 남아 있다. */
+.mac-guide.for-you { box-shadow: 6px 6px 0 var(--accent); }
+.mac-guide .t { margin: 0; font-size: 1.05rem; font-weight: 800; }
+.mac-guide .why { margin: 0.6rem 0 0; font-size: 0.9rem; color: var(--muted); }
+.mac-guide ol { margin: 0.9rem 0 0; padding-left: 1.4rem; display: grid; gap: 0.6rem; font-size: 0.95rem; }
+/* grid 아이템의 자동 최소 크기는 min-content — 안에 든 nowrap 명령줄이 좁은 화면에서
+   카드를 밀어낸다. 0으로 낮춰 명령줄 자신이 가로 스크롤되게 한다. */
+.mac-guide ol li { min-width: 0; }
+.mac-guide ol b { font-weight: 800; }
+.mac-guide .after { margin: 0.9rem 0 0; font-size: 0.85rem; color: var(--muted); }
+/* 본문 속 짧은 코드 조각. .cmd code(복사용 한 줄)와 겹치지 않도록 li의 직계만 잡는다. */
+.mac-guide li > code, .mac-guide .why code, .mac-guide .after code, details p code {
+  background: var(--bg); border: 2px solid var(--border); border-radius: var(--radius);
+  padding: 0.05rem 0.3rem; font-size: 0.85em; white-space: nowrap;
+}
+.cmd { display: flex; gap: 0.5rem; align-items: stretch; margin: 0.5rem 0 0; }
+.cmd code {
+  flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap;
+  padding: 0.5rem 0.6rem; font-size: 0.9rem;
+  background: var(--bg); border: 2px solid var(--border); border-radius: var(--radius);
+}
+.copy-btn {
+  flex: 0 0 auto; padding: 0.45rem 0.7rem; font: inherit; font-size: 0.85rem; font-weight: 700;
+  border: 2px solid var(--border); border-radius: var(--radius);
+  background: var(--card); color: var(--fg); cursor: pointer; box-shadow: 2px 2px 0 var(--border);
+  transition: transform 0.06s ease, box-shadow 0.06s ease, background 0.06s ease;
+}
+.copy-btn:hover { background: var(--accent); color: var(--accent-fg); }
+.copy-btn:active { transform: translate(2px, 2px); box-shadow: none; }
+/* 좁은 화면에서는 명령을 가로 스크롤 뒤에 숨기지 말고 두 줄로 펼친다. */
+@media (max-width: 560px) {
+  .cmd { flex-wrap: wrap; }
+  .cmd code { flex: 1 1 100%; white-space: normal; overflow-wrap: anywhere; }
+}
+
+/* 섹션 도입부 — 각주(.dl-note)보다 크고, 본문처럼 읽히는 폭. */
+.section-lead { max-width: 44rem; margin: 0 auto; font-size: 1.05rem; color: var(--muted); text-align: left; }
+
+/* ---- Feature grid -------------------------------------------------- */
+.features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
+.feature { border: 3px solid var(--border); border-radius: var(--radius); padding: 1.1rem 1.25rem; background: var(--card); box-shadow: var(--shadow); }
+.feature .t { font-weight: 800; margin: 0 0 0.35rem; }
+.feature .d { margin: 0; color: var(--muted); font-size: 0.95rem; }
+.feature .d code { background: var(--bg); border: 2px solid var(--border); padding: 0.05rem 0.3rem; border-radius: var(--radius); font-size: 0.85em; white-space: nowrap; }
+/* 항목이 여럿인 설명은 문장으로 이어 붙이지 않고 목록으로 — 훑어보기 쉽게. */
+.feature .keys { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
+.feature .keys li { padding-left: 0.9rem; text-indent: -0.9rem; }
+.feature .keys li::before { content: "· "; color: var(--accent); font-weight: 800; }
+
+/* ---- Screenshots --------------------------------------------------- */
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+figure { margin: 0; border: 3px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--card); box-shadow: var(--shadow); }
+figure img { display: block; width: 100%; }
+figcaption { padding: 0.75rem 1rem; font-size: 0.9rem; color: var(--muted); border-top: 3px solid var(--border); }
+figcaption b { color: var(--fg); font-weight: 800; }
+
+/* ---- Lightbox ------------------------------------------------------ */
+.grid figure img, .hero .shot img { cursor: zoom-in; }
+.lightbox { border: none; outline: none; padding: 0; background: transparent; max-width: min(96vw, 1400px); max-height: 92vh; }
+.lightbox::backdrop { background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px); }
+.lightbox figure { margin: 0; border: none; border-radius: 0; background: transparent; overflow: visible; }
+/* 썸네일이 아닌 본 이미지에만 적용되도록 ID로 한정. */
+#lightboxImg { display: block; margin: 0 auto; max-width: 100%; max-height: 68vh; border: 3px solid #fff; border-radius: 0; cursor: zoom-out; }
+.lightbox figcaption { text-align: center; color: #eee; padding: 0.6rem 0 0; font-size: 0.9rem; }
+.lightbox figcaption b { color: #fff; }
+.lb-stage { position: relative; display: flex; align-items: center; justify-content: center; }
+/* 화살표는 이미지가 아니라 무대(stage)에 고정 — 이미지 비율이 달라도 위치가 흔들리지 않는다. */
+.lb-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 3px solid #fff; border-radius: 0; background: rgb(0 0 0 / 65%); color: #fff; font-size: 1.7rem; line-height: 1; cursor: pointer; }
+.lb-nav:hover { background: var(--accent); }
+.lb-prev { left: 0.5rem; }
+.lb-next { right: 0.5rem; }
+.lb-count { text-align: center; color: #bbb; font-size: 0.8rem; margin: 0.35rem 0 0; }
+.lb-thumbs { display: flex; gap: 0.5rem; justify-content: center; overflow-x: auto; padding: 0.7rem 0.2rem 0.2rem; }
+.lb-thumbs button { flex: 0 0 auto; padding: 0; line-height: 0; border: 3px solid transparent; border-radius: 0; background: none; cursor: pointer; opacity: 0.5; transition: opacity 0.15s, border-color 0.15s; }
+.lb-thumbs button:hover { opacity: 0.85; }
+.lb-thumbs button[aria-current="true"] { opacity: 1; border-color: var(--accent); }
+.lb-thumbs img { display: block; width: 96px; height: 60px; object-fit: cover; border-radius: 0; }
+@media (max-width: 560px) {
+  .lb-nav { width: 36px; height: 36px; font-size: 1.4rem; }
+  .lb-thumbs img { width: 64px; height: 42px; }
+}
+
+/* ---- FAQ ----------------------------------------------------------- */
+.faq { max-width: 48rem; }
+details { border: 3px solid var(--border); border-radius: var(--radius); padding: 0.5rem 1rem; margin: 0.8rem 0; background: var(--card); box-shadow: var(--shadow); }
+details summary { cursor: pointer; font-weight: 700; padding: 0.4rem 0; }
+details p { color: var(--muted); margin: 0.6rem 0; }
+details p + p { margin-top: 0.8rem; }
+
+footer { max-width: 60rem; margin: 4rem auto 0; padding-top: 2rem; border-top: 3px solid var(--border); text-align: center; color: var(--muted); font-size: 0.9rem; }

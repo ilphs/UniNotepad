@@ -1,327 +1,120 @@
 <!doctype html>
-<html lang="ko">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>UniNotepad — 껐다 켜도 그대로인 메모장</title>
+    <title>UniNotepad — Your tabs, exactly where you left them</title>
     <meta
       name="description"
-      content="저장하지 않아도 열어둔 탭이 그대로 복원되는 경량 크로스플랫폼 메모장. Markdown·Mermaid 실시간 미리보기 내장. Windows · macOS · Linux, 설치 파일 3MB 안팎."
+      content="A lightweight cross-platform plain-text editor that brings back every open tab — unsaved ones included — after a quit, a crash, or a reboot. Live Markdown and Mermaid preview built in. Windows, macOS, Linux; around 3 MB to install."
     />
     <link rel="icon" href="/assets/favicon.png" />
 
+    <!-- 언어별 정식 URL. 기본(x-default)은 이 영어 페이지. -->
+    <link rel="canonical" href="https://uninotepad-xi.vercel.app/" />
+    <link rel="alternate" hreflang="en" href="https://uninotepad-xi.vercel.app/" />
+    <link rel="alternate" hreflang="ko" href="https://uninotepad-xi.vercel.app/ko" />
+    <link rel="alternate" hreflang="x-default" href="https://uninotepad-xi.vercel.app/" />
+
     <!-- Open Graph / 링크 미리보기 -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="UniNotepad — 껐다 켜도 그대로인 메모장" />
+    <meta property="og:url" content="https://uninotepad-xi.vercel.app/" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="ko_KR" />
+    <meta property="og:title" content="UniNotepad — Your tabs, exactly where you left them" />
     <meta
       property="og:description"
-      content="저장하지 않아도 열어둔 탭이 그대로 복원되는 경량 메모장. Markdown·Mermaid 실시간 미리보기 내장. Windows · macOS · Linux."
+      content="A lightweight editor that brings back every open tab — unsaved ones included. Live Markdown and Mermaid preview built in. Windows, macOS, Linux."
     />
-    <meta property="og:image" content="/assets/syntax-markdown.png" />
+    <meta property="og:image" content="https://uninotepad-xi.vercel.app/assets/syntax-markdown.png" />
     <meta name="twitter:card" content="summary_large_image" />
 
-    <style>
-      :root {
-        --bg: #fdfcf7;
-        --fg: #16161d;
-        --muted: #5c5c6b;
-        --card: #ffffff;
-        --border: #16161d;
-        --accent: #7c5cff;
-        --accent-fg: #ffffff;
-        --radius: 0;
-        --shadow: 4px 4px 0 var(--border);
-        --shadow-lg: 6px 6px 0 var(--border);
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --bg: #14141a;
-          --fg: #e6e6ef;
-          --muted: #9a9aae;
-          --card: #1e1e28;
-          --border: #e6e6ef;
-          --accent: #9d86ff;
-          --accent-fg: #14141a;
+    <!-- 기억된 언어 선택 복원. site.js는 defer라 첫 페인트보다 늦으므로 이 가드만
+         인라인으로 둔다 — 그래야 잘못된 언어가 한 번 그려지지 않는다.
+         저장은 언어 링크를 직접 눌렀을 때만 일어나므로 첫 방문자는 항상 이 영어
+         페이지를 본다. 값은 "en"|"ko" 둘 중 하나라 각각 정확히 한 페이지에
+         대응한다(= 리다이렉트 루프가 불가능).
+         크롤러에는 localStorage가 없어 절대 이동하지 않는다. -->
+    <script>
+      try {
+        if (localStorage.getItem("uninotepad-lang") === "ko") {
+          location.replace("/ko" + location.hash);
         }
-      }
+      } catch (e) {}
+    </script>
 
-      * { box-sizing: border-box; }
-
-      html { scroll-behavior: smooth; }
-
-      body {
-        margin: 0;
-        padding: 0 1.5rem 5rem;
-        font: 16px/1.75 -apple-system, BlinkMacSystemFont, "Segoe UI",
-          "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-        background: var(--bg);
-        color: var(--fg);
-        /* 한글은 기본값이면 글자 단위로 끊긴다 — 어절을 유지하고,
-           넘칠 위험이 있는 긴 영문/URL만 break-word로 처리한다.
-           anywhere가 아닌 break-word인 이유: anywhere는 grid 아이템의 min-content
-           폭까지 줄여 auto-fit 열 폭이 흔들린다. */
-        word-break: keep-all;
-        overflow-wrap: break-word;
-      }
-
-      /* 끝줄에 한 단어만 남는 고아 줄 방지. */
-      h1, h2, .tagline, figcaption, .dl-card h3, .feature .t { text-wrap: balance; }
-      p { text-wrap: pretty; }
-
-      a { color: var(--accent); font-weight: 600; text-decoration-thickness: 2px; text-underline-offset: 2px; }
-
-      section { max-width: 60rem; margin: 0 auto; }
-      h2 {
-        width: fit-content;
-        margin: 4rem auto 1.5rem;
-        font-size: 1.5rem;
-        font-weight: 900;
-        letter-spacing: -0.01em;
-        text-align: center;
-        background: var(--accent);
-        color: var(--accent-fg);
-        padding: 0.4rem 1rem;
-        border: 3px solid var(--border);
-        box-shadow: var(--shadow);
-      }
-
-      /* ---- Hero ---------------------------------------------------------- */
-      .hero {
-        max-width: 52rem;
-        margin: 0 auto;
-        padding: 4rem 0 1rem;
-        text-align: center;
-      }
-      .hero img.icon { width: 96px; height: 96px; }
-      .hero h1 { margin: 1rem 0 0.25rem; font-size: 2.5rem; font-weight: 900; letter-spacing: -0.03em; }
-      .hero .tagline { margin: 0; font-size: 1.25rem; color: var(--fg); font-weight: 600; }
-      /* 여러 줄짜리 본문은 중앙 정렬하면 줄마다 시작점이 달라진다 — 본문만 좌측으로.
-         좌측 정렬은 폭을 좁히는 것과 짝 (한 줄 40자 안쪽). */
-      .hero .lead { margin: 1.5rem auto 0; max-width: 34rem; color: var(--muted); text-align: left; }
-
-      .cta { margin: 2rem 0 0.75rem; display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
-      .btn {
-        display: inline-flex; align-items: center; gap: 0.5rem;
-        padding: 0.8rem 1.5rem; border-radius: var(--radius);
-        font-size: 1rem; font-weight: 700; text-decoration: none;
-        border: 3px solid var(--border); background: var(--card); color: var(--fg);
-        box-shadow: var(--shadow);
-        transition: transform 0.06s ease, box-shadow 0.06s ease;
-      }
-      .btn:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--border); }
-      .btn:active { transform: translate(4px, 4px); box-shadow: none; }
-      .btn.primary { background: var(--accent); color: var(--accent-fg); }
-      .hero .sub { margin: 0.5rem 0 0; font-size: 0.9rem; color: var(--muted); min-height: 1.2em; }
-
-      /* VS Code 확장 한 줄 안내 — 히어로의 다운로드 동선을 가리지 않도록 버튼이 아니라
-         본문 폭의 좁은 카드로. .mac-guide와 같은 왼쪽 강조선 어법을 쓰되 한 줄 분량. */
-      .hero .ext-strip {
-        max-width: 40rem; margin: 1.75rem auto 0; padding: 0.7rem 0.95rem;
-        border: 3px solid var(--border); border-left: 10px solid var(--accent);
-        border-radius: var(--radius); background: var(--card); box-shadow: var(--shadow);
-        font-size: 0.9rem; color: var(--muted); text-align: left;
-      }
-      .hero .ext-strip b { color: var(--fg); font-weight: 800; }
-
-      .hero .shot { margin: 2.5rem auto 0; max-width: 56rem; }
-      .hero .shot img { width: 100%; border-radius: var(--radius); border: 3px solid var(--border); box-shadow: var(--shadow-lg); }
-      /* 히어로는 다크/라이트를 위아래로 — 한 장씩 크게 보여 준다. */
-      .hero .shot.pair { max-width: 64rem; display: grid; grid-template-columns: 1fr; gap: 2rem; }
-      .hero .shot.pair figure { border: none; border-radius: 0; background: transparent; overflow: visible; }
-      .hero .shot.pair figcaption { padding: 0.6rem 0 0; text-align: center; border-top: none; }
-
-      /* ---- Download cards ------------------------------------------------ */
-      .downloads {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 1rem;
-      }
-      .dl-card {
-        border: 3px solid var(--border); border-radius: var(--radius); padding: 1.25rem;
-        background: var(--card); box-shadow: var(--shadow);
-      }
-      .dl-card.recommended { box-shadow: 6px 6px 0 var(--accent); }
-      .dl-card h3 { margin: 0 0 0.75rem; font-size: 1.1rem; font-weight: 800; display: flex; align-items: center; gap: 0.4rem; }
-      .dl-card .tag {
-        font-size: 0.7rem; font-weight: 800; color: var(--accent-fg); background: var(--accent);
-        padding: 0.15rem 0.5rem; border-radius: var(--radius); border: 2px solid var(--border); margin-left: auto;
-      }
-      .dl-card ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
-      .dl-card a.dl {
-        display: block; padding: 0.55rem 0.8rem; border-radius: var(--radius);
-        border: 2px solid var(--border); text-decoration: none; color: var(--fg);
-        font-size: 0.95rem; font-weight: 600;
-        transition: transform 0.06s ease, box-shadow 0.06s ease, background 0.06s ease;
-      }
-      .dl-card a.dl:hover { background: var(--accent); color: var(--accent-fg); box-shadow: var(--shadow); transform: translate(-2px, -2px); }
-      .dl-note { max-width: 46rem; margin: 1.25rem auto 0; font-size: 0.85rem; color: var(--muted); text-align: left; }
-      .dl-note code { background: var(--card); border: 2px solid var(--border); padding: 0.1rem 0.35rem; border-radius: var(--radius); }
-      /* macOS 카드 안의 경고 줄 — 카드에서 안내로 시선을 넘긴다. */
-      .dl-card .warn {
-        margin: 0.75rem 0 0; padding: 0.4rem 0.55rem; font-size: 0.82rem; font-weight: 700;
-        border: 2px solid var(--border); background: var(--accent); color: var(--accent-fg);
-      }
-      .dl-card .warn a { color: inherit; }
-
-      /* ---- macOS 첫 실행 안내 -------------------------------------------- */
-      /* 공증되지 않은 앱이라 macOS가 "손상됨"이라며 막는다 — 이 한 줄을 놓치면 앱을
-         아예 못 여니, 각주(.dl-note)가 아니라 건너뛸 수 없는 카드로 세운다. */
-      .mac-guide {
-        max-width: 46rem; margin: 1.5rem auto 0; padding: 1.1rem 1.25rem;
-        border: 3px solid var(--border); border-left: 10px solid var(--accent);
-        border-radius: var(--radius); background: var(--card); box-shadow: var(--shadow);
-        scroll-margin-top: 1.5rem;
-      }
-      /* 방문 OS가 macOS일 때만 강조 — 다른 OS 사용자에게는 조용히 남아 있다. */
-      .mac-guide.for-you { box-shadow: 6px 6px 0 var(--accent); }
-      .mac-guide .t { margin: 0; font-size: 1.05rem; font-weight: 800; }
-      .mac-guide .why { margin: 0.6rem 0 0; font-size: 0.9rem; color: var(--muted); }
-      .mac-guide ol { margin: 0.9rem 0 0; padding-left: 1.4rem; display: grid; gap: 0.6rem; font-size: 0.95rem; }
-      /* grid 아이템의 자동 최소 크기는 min-content — 안에 든 nowrap 명령줄이 좁은 화면에서
-         카드를 밀어낸다. 0으로 낮춰 명령줄 자신이 가로 스크롤되게 한다. */
-      .mac-guide ol li { min-width: 0; }
-      .mac-guide ol b { font-weight: 800; }
-      .mac-guide .after { margin: 0.9rem 0 0; font-size: 0.85rem; color: var(--muted); }
-      /* 본문 속 짧은 코드 조각. .cmd code(복사용 한 줄)와 겹치지 않도록 li의 직계만 잡는다. */
-      .mac-guide li > code, .mac-guide .why code, .mac-guide .after code, details p code {
-        background: var(--bg); border: 2px solid var(--border); border-radius: var(--radius);
-        padding: 0.05rem 0.3rem; font-size: 0.85em; white-space: nowrap;
-      }
-      .cmd { display: flex; gap: 0.5rem; align-items: stretch; margin: 0.5rem 0 0; }
-      .cmd code {
-        flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap;
-        padding: 0.5rem 0.6rem; font-size: 0.9rem;
-        background: var(--bg); border: 2px solid var(--border); border-radius: var(--radius);
-      }
-      .copy-btn {
-        flex: 0 0 auto; padding: 0.45rem 0.7rem; font: inherit; font-size: 0.85rem; font-weight: 700;
-        border: 2px solid var(--border); border-radius: var(--radius);
-        background: var(--card); color: var(--fg); cursor: pointer; box-shadow: 2px 2px 0 var(--border);
-        transition: transform 0.06s ease, box-shadow 0.06s ease, background 0.06s ease;
-      }
-      .copy-btn:hover { background: var(--accent); color: var(--accent-fg); }
-      .copy-btn:active { transform: translate(2px, 2px); box-shadow: none; }
-      /* 좁은 화면에서는 명령을 가로 스크롤 뒤에 숨기지 말고 두 줄로 펼친다. */
-      @media (max-width: 560px) {
-        .cmd { flex-wrap: wrap; }
-        .cmd code { flex: 1 1 100%; white-space: normal; overflow-wrap: anywhere; }
-      }
-
-      /* 섹션 도입부 — 각주(.dl-note)보다 크고, 본문처럼 읽히는 폭. */
-      .section-lead { max-width: 44rem; margin: 0 auto; font-size: 1.05rem; color: var(--muted); text-align: left; }
-
-      /* ---- Feature grid -------------------------------------------------- */
-      .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; }
-      .feature { border: 3px solid var(--border); border-radius: var(--radius); padding: 1.1rem 1.25rem; background: var(--card); box-shadow: var(--shadow); }
-      .feature .t { font-weight: 800; margin: 0 0 0.35rem; }
-      .feature .d { margin: 0; color: var(--muted); font-size: 0.95rem; }
-      .feature .d code { background: var(--bg); border: 2px solid var(--border); padding: 0.05rem 0.3rem; border-radius: var(--radius); font-size: 0.85em; white-space: nowrap; }
-      /* 항목이 여럿인 설명은 문장으로 이어 붙이지 않고 목록으로 — 훑어보기 쉽게. */
-      .feature .keys { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
-      .feature .keys li { padding-left: 0.9rem; text-indent: -0.9rem; }
-      .feature .keys li::before { content: "· "; color: var(--accent); font-weight: 800; }
-
-      /* ---- Screenshots --------------------------------------------------- */
-      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
-      figure { margin: 0; border: 3px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--card); box-shadow: var(--shadow); }
-      figure img { display: block; width: 100%; }
-      figcaption { padding: 0.75rem 1rem; font-size: 0.9rem; color: var(--muted); border-top: 3px solid var(--border); }
-      figcaption b { color: var(--fg); font-weight: 800; }
-
-      /* ---- Lightbox ------------------------------------------------------ */
-      .grid figure img, .hero .shot img { cursor: zoom-in; }
-      .lightbox { border: none; outline: none; padding: 0; background: transparent; max-width: min(96vw, 1400px); max-height: 92vh; }
-      .lightbox::backdrop { background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px); }
-      .lightbox figure { margin: 0; border: none; border-radius: 0; background: transparent; overflow: visible; }
-      /* 썸네일이 아닌 본 이미지에만 적용되도록 ID로 한정. */
-      #lightboxImg { display: block; margin: 0 auto; max-width: 100%; max-height: 68vh; border: 3px solid #fff; border-radius: 0; cursor: zoom-out; }
-      .lightbox figcaption { text-align: center; color: #eee; padding: 0.6rem 0 0; font-size: 0.9rem; }
-      .lightbox figcaption b { color: #fff; }
-      .lb-stage { position: relative; display: flex; align-items: center; justify-content: center; }
-      /* 화살표는 이미지가 아니라 무대(stage)에 고정 — 이미지 비율이 달라도 위치가 흔들리지 않는다. */
-      .lb-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 3px solid #fff; border-radius: 0; background: rgb(0 0 0 / 65%); color: #fff; font-size: 1.7rem; line-height: 1; cursor: pointer; }
-      .lb-nav:hover { background: var(--accent); }
-      .lb-prev { left: 0.5rem; }
-      .lb-next { right: 0.5rem; }
-      .lb-count { text-align: center; color: #bbb; font-size: 0.8rem; margin: 0.35rem 0 0; }
-      .lb-thumbs { display: flex; gap: 0.5rem; justify-content: center; overflow-x: auto; padding: 0.7rem 0.2rem 0.2rem; }
-      .lb-thumbs button { flex: 0 0 auto; padding: 0; line-height: 0; border: 3px solid transparent; border-radius: 0; background: none; cursor: pointer; opacity: 0.5; transition: opacity 0.15s, border-color 0.15s; }
-      .lb-thumbs button:hover { opacity: 0.85; }
-      .lb-thumbs button[aria-current="true"] { opacity: 1; border-color: var(--accent); }
-      .lb-thumbs img { display: block; width: 96px; height: 60px; object-fit: cover; border-radius: 0; }
-      @media (max-width: 560px) {
-        .lb-nav { width: 36px; height: 36px; font-size: 1.4rem; }
-        .lb-thumbs img { width: 64px; height: 42px; }
-      }
-
-      /* ---- FAQ ----------------------------------------------------------- */
-      .faq { max-width: 48rem; }
-      details { border: 3px solid var(--border); border-radius: var(--radius); padding: 0.5rem 1rem; margin: 0.8rem 0; background: var(--card); box-shadow: var(--shadow); }
-      details summary { cursor: pointer; font-weight: 700; padding: 0.4rem 0; }
-      details p { color: var(--muted); margin: 0.6rem 0; }
-      details p + p { margin-top: 0.8rem; }
-
-      footer { max-width: 60rem; margin: 4rem auto 0; padding-top: 2rem; border-top: 3px solid var(--border); text-align: center; color: var(--muted); font-size: 0.9rem; }
-    </style>
+    <link rel="stylesheet" href="/assets/site.css?v=2" />
+    <script src="/assets/site.js?v=2" defer></script>
   </head>
   <body>
+    <nav class="lang-switch" aria-label="Language">
+      <a href="/" hreflang="en" lang="en" data-lang="en" aria-current="page">EN</a>
+      <a href="/ko" hreflang="ko" lang="ko" data-lang="ko">한국어</a>
+    </nav>
+
+    <!-- 한국어 브라우저 방문자에게만 site.js가 노출한다. 자동 전환은 하지 않는다. -->
+    <a class="lang-nudge" id="langNudge" href="/ko" hreflang="ko" lang="ko" data-lang="ko" hidden>
+      이 페이지를 한국어로 보기 →
+    </a>
+
     <!-- ==================== Hero ==================== -->
     <header class="hero">
-      <img class="icon" src="/assets/app-icon.png" alt="UniNotepad 앱 아이콘" />
+      <img class="icon" src="/assets/app-icon.png" alt="The UniNotepad app icon" />
       <h1>UniNotepad</h1>
-      <p class="tagline">껐다 켜도 그대로인 메모장.</p>
+      <p class="tagline">Your tabs, exactly where you left them.</p>
       <p class="lead">
-        저장하는 걸 깜빡한 채 창을 닫아도, 컴퓨터가 갑자기 꺼져도 괜찮습니다.
-        열어둔 탭은 <b>저장하지 않은 내용까지</b> 그대로 남아 있다가 다음에 앱을 열면
-        떠날 때 모습 그대로 돌아옵니다. Windows · macOS · Linux, 설치 파일 3MB 안팎.
+        Forgot to save? Closed the window? Lost power? Every tab you had open —
+        <b>including the ones you never saved</b> — is still there, and the next time you
+        open the app it comes back exactly as you left it. Windows, macOS, and Linux;
+        around 3 MB to install.
       </p>
 
       <div class="cta">
-        <a class="btn primary" id="heroDownload" href="#download">내려받기</a>
-        <a class="btn" href="https://github.com/ilphs/UniNotepad" target="_blank" rel="noopener">GitHub에서 보기</a>
+        <a class="btn primary" id="heroDownload" href="#download">Download</a>
+        <a class="btn" href="https://github.com/ilphs/UniNotepad" target="_blank" rel="noopener">View on GitHub</a>
       </div>
-      <p class="sub" id="heroSub"><span data-version>최신 버전</span> · 무료 · 오픈소스</p>
+      <p class="sub" id="heroSub"><span data-version>Latest release</span> · Free · Open source</p>
       <!-- macOS 방문자에게만 노출 — 받기 전에 첫 실행 절차를 알고 가도록. -->
       <p class="sub" id="macHint" hidden>
-        🍎 macOS는 첫 실행 전 <a href="#macos-first-run">터미널 한 줄</a>이 필요합니다
+        🍎 On macOS, <a href="#macos-first-run">one Terminal command</a> is needed before the first launch
       </p>
 
       <p class="ext-strip">
-        🧩 VS Code를 쓰신다면 —
+        🧩 Using VS Code? The
         <a href="https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview" target="_blank" rel="noopener"><b>UniNotepad Markdown Preview</b></a>
-        확장으로 같은 Mermaid 미리보기(확대 · 드래그 · 배경 지정)를 편집기 안에서 그대로 쓸 수 있습니다.
-        <a href="#preview">자세히</a>
+        extension gives you the same Mermaid preview — zoom, drag, custom background — right inside your editor.
+        <a href="#preview">Learn more</a>
       </p>
 
       <div class="shot pair">
         <figure>
-          <img src="/assets/syntax-markdown.png" alt="다크 테마에서 본 UniNotepad의 Markdown 분할 미리보기 화면" />
-          <figcaption><b>다크</b> 테마 — 편집·미리보기 분할</figcaption>
+          <img src="/assets/syntax-markdown.png" alt="UniNotepad's split Markdown preview in the dark theme" />
+          <figcaption><b>Dark</b> theme — editor and preview side by side</figcaption>
         </figure>
         <figure>
-          <img src="/assets/syntax-markdown-light.png" alt="라이트 테마에서 편집 창을 닫고 미리보기만 켠 UniNotepad 화면" />
-          <figcaption><b>라이트</b> 테마 — 편집 창을 닫고 미리보기만</figcaption>
+          <img src="/assets/syntax-markdown-light.png" alt="UniNotepad in the light theme with the editor pane closed, showing only the preview" />
+          <figcaption><b>Light</b> theme — editor pane closed, preview only</figcaption>
         </figure>
       </div>
     </header>
 
     <!-- ==================== Download ==================== -->
-    <h2 id="download">📥 내려받기</h2>
+    <h2 id="download">📥 Download</h2>
     <section>
       <div class="downloads">
         <div class="dl-card" data-os="mac">
           <h3>🍎 macOS</h3>
           <ul>
-            <li><a class="dl" href="/download/mac-arm">Apple Silicon (M1 이후) · .dmg</a></li>
+            <li><a class="dl" href="/download/mac-arm">Apple Silicon (M1 and later) · .dmg</a></li>
             <li><a class="dl" href="/download/mac-intel">Intel · .dmg</a></li>
           </ul>
-          <p class="warn">⚠️ 첫 실행 전 <a href="#macos-first-run">아래 한 줄</a>을 실행해야 열립니다</p>
+          <p class="warn">⚠️ Run <a href="#macos-first-run">the command below</a> before the first launch</p>
         </div>
         <div class="dl-card" data-os="windows">
           <h3>🪟 Windows</h3>
           <ul>
-            <li><a class="dl" href="/download/windows">설치 관리자 · .msi</a></li>
-            <li><a class="dl" href="/download/windows-exe">NSIS 설치 · .exe</a></li>
+            <li><a class="dl" href="/download/windows">Installer · .msi</a></li>
+            <li><a class="dl" href="/download/windows-exe">NSIS setup · .exe</a></li>
           </ul>
         </div>
         <div class="dl-card" data-os="linux">
@@ -329,175 +122,176 @@
           <ul>
             <li><a class="dl" href="/download/linux-deb">Debian · .deb</a></li>
             <li><a class="dl" href="/download/linux-rpm">Fedora/RHEL · .rpm</a></li>
-            <li><a class="dl" href="/download/linux-appimage">이식형 · .AppImage</a></li>
+            <li><a class="dl" href="/download/linux-appimage">Portable · .AppImage</a></li>
           </ul>
         </div>
       </div>
       <div class="mac-guide" id="macos-first-run">
-        <p class="t">🍎 macOS를 쓰신다면 — 첫 실행 전 한 줄이 꼭 필요합니다</p>
+        <p class="t">🍎 On macOS — one command is required before the first launch</p>
         <p class="why">
-          이 앱은 Apple 개발자 인증서 공증(notarization) 없이 배포됩니다. 그래서 내려받은 앱을 처음 열면
-          macOS가 <b>"손상되었기 때문에 열 수 없습니다"</b>라며 막고, 휴지통으로 옮기라고 권합니다.
-          파일이 깨진 것이 아니라 인터넷에서 받은 앱에 붙는 <b>격리 꼬리표</b> 때문이니 지우지 마세요.
+          This app is distributed without Apple Developer notarization. So the first time you open it,
+          macOS blocks it with <b>"UniNotepad is damaged and can't be opened. You should move it to the Trash."</b>
+          The file is not damaged — it is the <b>quarantine attribute</b> macOS attaches to anything downloaded
+          from the internet. Don't delete the app.
         </p>
         <ol>
-          <li>내려받은 <code>.dmg</code>를 열고 <b>UniNotepad</b>를 <b>응용 프로그램</b> 폴더로 끌어다 놓습니다.</li>
+          <li>Open the downloaded <code>.dmg</code> and drag <b>UniNotepad</b> into your <b>Applications</b> folder.</li>
           <li>
-            <b>터미널</b> 앱을 열고(Spotlight <code>⌘ + Space</code> → "터미널") 아래 한 줄을 붙여넣고 <code>Enter</code> — 격리 꼬리표만 지우는 명령입니다.
+            Open <b>Terminal</b> (Spotlight <code>⌘ + Space</code> → "Terminal"), paste the line below, and press <code>Enter</code> — it only strips the quarantine attribute.
             <span class="cmd">
               <code id="xattrCmd">xattr -cr /Applications/UniNotepad.app</code>
-              <button type="button" class="copy-btn" data-copy="#xattrCmd">복사</button>
+              <button type="button" class="copy-btn" data-copy="#xattrCmd">Copy</button>
             </span>
           </li>
-          <li>이제 응용 프로그램에서 <b>UniNotepad</b>를 열면 정상적으로 실행됩니다.</li>
+          <li>Now open <b>UniNotepad</b> from Applications and it launches normally.</li>
         </ol>
         <p class="after">
-          한 번만 하면 됩니다. 나중에 새 버전 <code>.dmg</code>로 덮어썼을 때만 같은 줄을 한 번 더 실행해 주세요.
+          You only have to do this once. Run the same line again only if you replace the app with a newer <code>.dmg</code>.
         </p>
       </div>
       <p class="dl-note">
-        모든 파일은 <a href="https://github.com/ilphs/UniNotepad/releases/latest" target="_blank" rel="noopener">최신 릴리스</a>로 자동 연결됩니다.
-        Windows·Linux는 내려받아 바로 설치하면 됩니다.
+        Every link resolves to the <a href="https://github.com/ilphs/UniNotepad/releases/latest" target="_blank" rel="noopener">latest release</a> automatically.
+        On Windows and Linux, just download and install.
       </p>
     </section>
 
     <!-- ==================== Features ==================== -->
-    <h2>✨ 무엇이 다른가요</h2>
+    <h2>✨ What makes it different</h2>
     <section>
       <div class="features">
-        <div class="feature"><p class="t">💾 저장 걱정 없음</p><p class="d">타이핑을 멈추면 알아서 기록 — 닫을 때 "저장하시겠습니까?"를 묻지 않습니다.</p></div>
-        <div class="feature"><p class="t">🗂️ 탭 · 세션 복원</p><p class="d">껐다 켜도, 갑자기 꺼져도 열어둔 탭이 미저장 메모까지 그대로 — 탭바 + 버튼, Ctrl+Tab 순환, 우클릭으로 한꺼번에 닫기.</p></div>
-        <div class="feature"><p class="t">📝 Markdown 실시간 미리보기</p><p class="d">타이핑하는 대로 오른쪽에 렌더 — GFM 표 · 체크박스 · 코드블록 색칠 · 스크롤 따라가기. Ctrl/Cmd+Shift+M으로 열고 닫고, 가운데 경계선을 끌어 비율 조절 — 비율·확대율은 탭마다 기억.</p></div>
-        <div class="feature"><p class="t">🪟 편집 창 · 미리보기 창 따로 여닫기</p><p class="d">두 창을 탭마다 각각 켜고 끕니다 — 이 탭은 미리보기만 크게, 저 탭은 편집만. 창 오른쪽 위에 마우스를 올리면 × 버튼이 나타나고, 다시 열 때는 상태 표시줄의 Editor · Preview를 누르면 됩니다. 창 구성도 탭마다 기억됩니다.</p></div>
-        <div class="feature"><p class="t">🧜 Mermaid 다이어그램</p><p class="d"><code>```mermaid</code> 코드블록은 물론 <code>.mmd</code> 파일도 통째로 그림으로 — 순서도·시퀀스·간트·클래스 등 Mermaid 11이 그리는 건 다 됩니다. 차트만 따로 확대하고 배경색도 선택.</p></div>
-        <div class="feature"><p class="t">🖨️ 미리보기 내보내기</p><p class="d">렌더된 문서를 HTML 한 파일로 저장하거나 그대로 인쇄(PDF) — 다이어그램도 그림째로 담깁니다.</p></div>
-        <div class="feature"><p class="t">🎨 구문 강조</p><p class="d">143개 언어를 파일 이름만 보고 자동 판별합니다.</p></div>
-        <div class="feature"><p class="t">🌗 라이트·다크 테마</p><p class="d"><code>View ▸ Theme</code>에서 Light · Dark · System 중 선택. System은 OS의 밝은/어두운 모드를 그대로 따라갑니다. 편집기 · 구문 강조 · Markdown/Mermaid 미리보기 색이 한꺼번에 바뀌고, 고른 테마는 다음에 켤 때도 유지됩니다.</p></div>
-        <div class="feature"><p class="t">✂️ 줄 편집 도구</p><p class="d">정렬 · 중복/빈 줄 제거 · 공백 정리 · 대소문자 · 줄 이동.</p></div>
-        <div class="feature"><p class="t">⌨️ 다중 커서 · 코드 폴딩</p><p class="d">같은 단어를 한꺼번에 선택해 고치고, 긴 코드는 접어서 봅니다. 공백 문자 표시까지.</p></div>
-        <div class="feature"><p class="t">🇰🇷 예전 인코딩 파일</p><p class="d">UTF-8·UTF-16은 물론 EUC-KR/CP949 · Shift-JIS · GBK · Big5도 판별해서 엽니다. 표현할 수 없는 문자는 저장 전에 미리 경고.</p></div>
-        <div class="feature"><p class="t">👀 외부 변경 감지</p><p class="d">다른 프로그램이 파일을 고치면 켜져 있는 동안에도 바로 알아챕니다 — 편집 전이면 조용히 새로 고치고, 편집 중이면 배너로 물어봅니다.</p></div>
-        <div class="feature"><p class="t">🗄️ 큰 파일도 안전하게</p><p class="d">10MB가 넘는 파일은 확인 후 가볍게(구문 강조 없이) 열어 앱이 굳지 않습니다.</p></div>
-        <div class="feature"><p class="t">⚙️ 한곳에서 설정</p><p class="d">폰트 · 줄번호 · 들여쓰기 · 저장 옵션 · 테마를 <code>Ctrl/Cmd+,</code> 한 화면에서.</p></div>
-        <div class="feature"><p class="t">🔄 자동 업데이트 확인</p><p class="d">새 버전이 나오면 상태바에 조용히 알려줍니다 — Windows·AppImage는 앱 안에서 바로 설치.</p></div>
-        <div class="feature"><p class="t">🪶 가벼움</p><p class="d">브라우저를 끼워 넣지 않고 OS 기능을 써서 설치 파일 3MB 안팎.</p></div>
+        <div class="feature"><p class="t">💾 Nothing to save</p><p class="d">It records as soon as you stop typing — no "Do you want to save changes?" when you close.</p></div>
+        <div class="feature"><p class="t">🗂️ Tabs and session restore</p><p class="d">Quit, crash, or reboot — your open tabs come back, unsaved notes included. Tab bar with a + button, Ctrl+Tab cycling, right-click to close several at once.</p></div>
+        <div class="feature"><p class="t">📝 Live Markdown preview</p><p class="d">Renders on the right as you type — GFM tables, checkboxes, highlighted code blocks, synced scrolling. Toggle with Ctrl/Cmd+Shift+M and drag the middle divider to set the split — the ratio and zoom are remembered per tab.</p></div>
+        <div class="feature"><p class="t">🪟 Open and close each pane</p><p class="d">Turn the editor and the preview on or off per tab — full-width preview in this tab, editor only in that one. Hover the top-right corner of a pane for its × button; reopen from the Editor · Preview buttons in the status bar. The layout is remembered per tab too.</p></div>
+        <div class="feature"><p class="t">🧜 Mermaid diagrams</p><p class="d"><code>```mermaid</code> code blocks, and whole <code>.mmd</code> files rendered as one picture — flowcharts, sequence, Gantt, class, anything Mermaid 11 draws. Zoom a chart on its own and pick its background color.</p></div>
+        <div class="feature"><p class="t">🖨️ Export the preview</p><p class="d">Save the rendered document as a single HTML file, or print it straight to PDF — diagrams come along as images.</p></div>
+        <div class="feature"><p class="t">🎨 Syntax highlighting</p><p class="d">143 languages, detected from the file name alone.</p></div>
+        <div class="feature"><p class="t">🌗 Light and dark themes</p><p class="d">Pick Light, Dark, or System under <code>View ▸ Theme</code>. System follows your OS appearance. The editor, the syntax colors, and the Markdown/Mermaid preview all switch together, and your choice sticks across restarts.</p></div>
+        <div class="feature"><p class="t">✂️ Line tools</p><p class="d">Sort, remove duplicate or blank lines, trim whitespace, change case, move lines.</p></div>
+        <div class="feature"><p class="t">⌨️ Multiple cursors and code folding</p><p class="d">Select every occurrence of a word and edit them at once; fold long blocks. Whitespace rendering included.</p></div>
+        <div class="feature"><p class="t">🌏 Legacy encodings</p><p class="d">UTF-8 and UTF-16, plus EUC-KR/CP949, Shift-JIS, GBK, and Big5 — detected and opened correctly. Characters the chosen encoding can't represent are flagged before saving.</p></div>
+        <div class="feature"><p class="t">👀 External change detection</p><p class="d">If another program edits the file while UniNotepad is running, it notices right away — refreshing quietly if you haven't typed anything, asking with a banner if you have.</p></div>
+        <div class="feature"><p class="t">🗄️ Large files, safely</p><p class="d">Files over 10 MB open in a light mode (no syntax highlighting) after a confirmation, so the app never freezes.</p></div>
+        <div class="feature"><p class="t">⚙️ One place for settings</p><p class="d">Font, line numbers, indentation, save options, and theme — all on one screen at <code>Ctrl/Cmd+,</code>.</p></div>
+        <div class="feature"><p class="t">🔄 Automatic update checks</p><p class="d">New releases show up quietly in the status bar — Windows and AppImage builds install from inside the app.</p></div>
+        <div class="feature"><p class="t">🪶 Lightweight</p><p class="d">It uses the OS web view instead of bundling a browser, so the installer is around 3 MB.</p></div>
       </div>
     </section>
 
     <!-- ==================== Preview spotlight ==================== -->
-    <h2 id="preview">📄 Markdown · Mermaid 미리보기</h2>
+    <h2 id="preview">📄 Markdown and Mermaid preview</h2>
     <section>
       <p class="section-lead">
-        글을 쓰는 화면 오른쪽에서 결과가 바로 그려집니다. 브라우저를 따로 띄우거나 플러그인을 깔 필요가 없고,
-        <b>인터넷 없이도 전부 앱 안에서 렌더</b>되므로 문서 내용이 밖으로 나가지 않습니다.
+        The result is drawn right next to what you're writing. No separate browser window, no plugin to install —
+        and because <b>everything renders locally inside the app</b>, your document never leaves your machine.
       </p>
       <div class="grid" style="margin-top: 1.5rem">
         <figure>
-          <img src="/assets/syntax-markdown.png" alt="Markdown 분할 미리보기" />
-          <figcaption><b>Markdown</b> — 쓰는 대로 오른쪽 미리보기가 따라옵니다. GFM 표·체크박스·코드블록 색칠까지</figcaption>
+          <img src="/assets/syntax-markdown.png" alt="Split Markdown preview" />
+          <figcaption><b>Markdown</b> — the preview on the right follows as you type. GFM tables, checkboxes, and highlighted code blocks included</figcaption>
         </figure>
         <figure>
-          <img src="/assets/syntax-mermaid.png" alt="Mermaid 다이어그램 미리보기" />
-          <figcaption><b>Mermaid</b> — 순서도를 글로 적으면 그림이 됩니다. 차트만 따로 확대하고 배경색도 선택</figcaption>
+          <img src="/assets/syntax-mermaid.png" alt="Mermaid diagram preview" />
+          <figcaption><b>Mermaid</b> — write a flowchart in text and get the picture. Zoom the chart on its own and pick its background</figcaption>
         </figure>
       </div>
       <div class="features" style="margin-top: 1.25rem">
         <div class="feature">
           <p class="t">📝 Markdown</p>
-          <p class="d">표 · 체크박스 목록 · 인용 · 이미지를 그대로 렌더하고, 코드블록은 미리보기 안에서도 언어별로 색이 입혀집니다. 편집기를 스크롤하면 미리보기가 같은 위치를 따라옵니다. 문서 안의 <code>```mermaid</code> 블록은 그 자리에서 다이어그램으로 바뀝니다.</p>
+          <p class="d">Tables, checkbox lists, blockquotes, and images render as written, and code blocks get per-language colors inside the preview as well. Scroll the editor and the preview follows the same spot. Any <code>```mermaid</code> block in the document turns into a diagram right where it sits.</p>
         </div>
         <div class="feature">
           <p class="t">🧜 Mermaid</p>
-          <p class="d"><code>.mmd</code> · <code>.mermaid</code> 파일은 문서 전체가 하나의 다이어그램으로 크게 그려집니다. 순서도 · 시퀀스 · 간트 · 클래스 · 상태도 등 Mermaid 11이 지원하는 종류 그대로. 문법이 틀리면 화면을 지우지 않고 어디가 문제인지 그 자리에 보여줍니다.</p>
+          <p class="d"><code>.mmd</code> and <code>.mermaid</code> files render as one large diagram for the whole document. Flowcharts, sequence, Gantt, class, state — whatever Mermaid 11 supports. On a syntax error the view isn't cleared; it shows you what is wrong and where.</p>
         </div>
         <div class="feature">
-          <p class="t">⌨️ 쓰는 법</p>
+          <p class="t">⌨️ How to use it</p>
           <div class="d">
             <ul class="keys">
-              <li>열고 닫기 <code>Ctrl/Cmd+Shift+M</code>(탭마다 따로)</li>
-              <li>가운데 경계선을 끌어 좌우 비율 조절(탭마다 따로 기억)</li>
-              <li>창 오른쪽 위 <b>×</b>로 한쪽만 남기고, 상태 표시줄의 <code>Editor</code> · <code>Preview</code>로 다시 열기</li>
-              <li>편집기·미리보기 각각 확대 <code>Ctrl/Cmd</code> + <code>=</code> <code>-</code> <code>0</code>(탭마다 유지)</li>
-              <li>HTML로 내보내기 <code>File ▸ Export Preview as HTML…</code></li>
-              <li>인쇄(PDF) <code>Ctrl/Cmd+P</code></li>
-              <li>저장하지 않은 새 글은 상태 표시줄에서 파일 타입만 골라 주면 바로 열립니다</li>
+              <li>Toggle with <code>Ctrl/Cmd+Shift+M</code> (per tab)</li>
+              <li>Drag the middle divider to set the split (remembered per tab)</li>
+              <li>Close one pane with the <b>×</b> at its top right; reopen from <code>Editor</code> · <code>Preview</code> in the status bar</li>
+              <li>Zoom the editor and the preview independently with <code>Ctrl/Cmd</code> + <code>=</code> <code>-</code> <code>0</code> (kept per tab)</li>
+              <li>Export to HTML with <code>File ▸ Export Preview as HTML…</code></li>
+              <li>Print to PDF with <code>Ctrl/Cmd+P</code></li>
+              <li>For an unsaved new note, just pick the file type in the status bar and the preview opens</li>
             </ul>
           </div>
         </div>
         <div class="feature">
-          <p class="t">🧩 VS Code에서도</p>
+          <p class="t">🧩 In VS Code too</p>
           <p class="d">
-            같은 Mermaid 미리보기를
-            <a href="https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview" target="_blank" rel="noopener">VS&nbsp;Code 확장</a>으로도
-            쓸 수 있습니다 — 다이어그램 확대 · 드래그로 밀어보기 · 배경 투명/색 지정까지 그대로.
-            확장 목록에서 <b>UniNotepad Markdown Preview</b>를 찾아 설치하고
-            <code>Cmd/Ctrl+K Shift+M</code>으로 엽니다. VS Code 기본 미리보기를 대체하지 않고 나란히 놓입니다.
+            The same Mermaid preview is available as a
+            <a href="https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview" target="_blank" rel="noopener">VS&nbsp;Code extension</a> —
+            diagram zoom, drag to pan, transparent or custom background, all of it.
+            Find <b>UniNotepad Markdown Preview</b> in the extensions list, install it, and open it with
+            <code>Cmd/Ctrl+K Shift+M</code>. It sits alongside VS Code's built-in preview rather than replacing it.
           </p>
         </div>
       </div>
     </section>
 
     <!-- ==================== Screenshots ==================== -->
-    <h2>🖼 화면</h2>
+    <h2>🖼 Screens</h2>
     <section>
       <div class="grid">
         <figure>
-          <img src="/assets/filetype-picker.png" alt="상태 표시줄의 파일 타입 선택 메뉴" />
-          <figcaption><b>파일 타입 선택</b> — 저장하지 않은 새 글도 Markdown·Mermaid로 지정하면 바로 미리보기가 열립니다</figcaption>
+          <img src="/assets/filetype-picker.png" alt="The file type menu in the status bar" />
+          <figcaption><b>File type picker</b> — set an unsaved note to Markdown or Mermaid and the preview opens right away</figcaption>
         </figure>
         <figure>
-          <img src="/assets/syntax-typescript.png" alt="TypeScript 구문 강조" />
-          <figcaption><b>TypeScript</b> — 타입과 제네릭까지</figcaption>
+          <img src="/assets/syntax-typescript.png" alt="TypeScript syntax highlighting" />
+          <figcaption><b>TypeScript</b> — types and generics included</figcaption>
         </figure>
         <figure>
-          <img src="/assets/syntax-python.png" alt="Python 구문 강조" />
-          <figcaption><b>Python</b> — docstring과 데코레이터</figcaption>
+          <img src="/assets/syntax-python.png" alt="Python syntax highlighting" />
+          <figcaption><b>Python</b> — docstrings and decorators</figcaption>
         </figure>
         <figure>
-          <img src="/assets/syntax-bash.png" alt="Bash 구문 강조" />
-          <figcaption><b>Bash</b> — 명령어 스크립트</figcaption>
+          <img src="/assets/syntax-bash.png" alt="Bash syntax highlighting" />
+          <figcaption><b>Bash</b> — shell scripts</figcaption>
         </figure>
       </div>
     </section>
 
     <!-- ==================== FAQ ==================== -->
-    <h2>❓ 자주 묻는 질문</h2>
+    <h2>❓ Frequently asked questions</h2>
     <section class="faq">
       <details>
-        <summary>저장을 안 했는데 정말 안 없어지나요?</summary>
-        <p>네. 타이핑을 멈추면 1.5초 뒤에, 그리고 탭을 옮기거나 창을 닫을 때마다 조용히 기록해 둡니다. 컴퓨터가 강제로 꺼져도 마지막 1~2초 분량 외에는 남아 있습니다.</p>
+        <summary>I didn't save. Is my text really still there?</summary>
+        <p>Yes. It is recorded 1.5 seconds after you stop typing, and again every time you switch tabs or close the window. Even if the machine loses power, nothing beyond the last second or two is gone.</p>
       </details>
       <details>
-        <summary>그럼 저장 버튼은 왜 있나요?</summary>
-        <p>앱이 알아서 보관하는 건 이 앱 안에서만 쓰는 임시 보관본입니다. 내용을 실제 파일로 남겨 다른 프로그램에서도 열려면 저장을 해야 합니다. 저장할 때는 임시 파일에 먼저 완전히 쓴 뒤 순간적으로 바꿔치기하는 방식이라, 저장 도중 컴퓨터가 꺼져도 원래 파일이 깨지지 않습니다.</p>
+        <summary>Then what is the Save button for?</summary>
+        <p>What the app keeps on its own is a working copy that only this app reads. To leave the content as a real file that other programs can open, you save it. Saving writes the whole file to a temporary one first and then swaps it into place in a single step, so the original survives even if the machine dies mid-save.</p>
       </details>
       <details id="faq-macos">
-        <summary>macOS에서 "손상되었기 때문에 열 수 없습니다"라고 나옵니다</summary>
-        <p>파일이 깨진 것이 아닙니다. 이 앱은 Apple 개발자 인증서 공증 없이 배포하기 때문에, 인터넷에서 받은 앱에 붙는 격리 꼬리표를 macOS가 그렇게 안내합니다. 휴지통으로 옮기지 마세요.</p>
-        <p><b>UniNotepad</b>를 <b>응용 프로그램</b> 폴더로 옮긴 뒤, 터미널에서 아래 한 줄을 실행하고 다시 열면 됩니다.</p>
+        <summary>macOS says "UniNotepad is damaged and can't be opened"</summary>
+        <p>The file is not damaged. This app is distributed without Apple Developer notarization, so that message is how macOS reports the quarantine attribute attached to anything downloaded from the internet. Don't move it to the Trash.</p>
+        <p>Move <b>UniNotepad</b> into your <b>Applications</b> folder, run the line below in Terminal, and open it again.</p>
         <span class="cmd">
           <code id="xattrCmdFaq">xattr -cr /Applications/UniNotepad.app</code>
-          <button type="button" class="copy-btn" data-copy="#xattrCmdFaq">복사</button>
+          <button type="button" class="copy-btn" data-copy="#xattrCmdFaq">Copy</button>
         </span>
-        <p>자세한 단계는 <a href="#macos-first-run">내려받기 섹션의 macOS 안내</a>에 있습니다.</p>
+        <p>The full steps are in the <a href="#macos-first-run">macOS section under Download</a>.</p>
       </details>
       <details>
-        <summary>한글이 깨지지 않나요?</summary>
-        <p>UTF-8 파일은 (BOM이 있든 없든) 그대로 잘 열립니다. 예전 윈도우 메모장에서 "ANSI"로 저장한 한글 파일(EUC-KR/CP949)도 알아서 판별해 제대로 엽니다. 혹시 잘못 인식되면 상태 표시줄에서 EUC-KR을 직접 골라 다시 읽어올 수 있습니다.</p>
-        <p>일본어(Shift-JIS)·중국어 간체(GBK)·번체(Big5)로 저장된 옛 문서도 같은 방식으로 자동 판별해 열고, 상태 표시줄에서 직접 골라 다시 읽을 수도 있습니다.</p>
-        <p>UTF-16(LE/BE) 파일도 마찬가지로 열고 저장할 수 있으며, 지금 고른 인코딩으로 표현할 수 없는 문자가 있으면 저장 전에 미리 알려줍니다.</p>
+        <summary>Can it open files saved in older encodings?</summary>
+        <p>UTF-8 files open correctly whether or not they have a BOM. Korean files saved as "ANSI" by the classic Windows Notepad (EUC-KR/CP949) are detected and opened properly too. If one is misidentified, pick the encoding from the status bar and it is read again.</p>
+        <p>Older documents in Japanese (Shift-JIS) or Chinese (GBK, Big5) are detected the same way, and can likewise be re-read with an encoding you choose.</p>
+        <p>UTF-16 (LE/BE) files open and save as well, and if the current encoding can't represent a character in the document, you are warned before saving.</p>
       </details>
       <details>
-        <summary>작업하던 파일을 다른 프로그램에서 고치면요?</summary>
-        <p>다음에 앱을 켤 때 알아채고 "파일이 바뀌었다"고 알려줍니다. 이때도 사용자가 쓰던 내용이 우선이라 멋대로 덮어쓰지 않습니다.</p>
+        <summary>What if another program edits the file I'm working on?</summary>
+        <p>UniNotepad notices while it is running — and on the next launch if it wasn't — and tells you the file changed. Your version always takes priority, so nothing is overwritten behind your back.</p>
       </details>
     </section>
 
     <footer>
       <p>
         <a href="https://github.com/ilphs/UniNotepad" target="_blank" rel="noopener">GitHub</a> ·
-        <a href="https://github.com/ilphs/UniNotepad/releases" target="_blank" rel="noopener">모든 릴리스</a> ·
-        Tauri 2 + CodeMirror 6로 제작
+        <a href="https://github.com/ilphs/UniNotepad/releases" target="_blank" rel="noopener">All releases</a> ·
+        Built with Tauri 2 + CodeMirror 6
       </p>
     </footer>
 
@@ -505,207 +299,14 @@
     <dialog class="lightbox" id="lightbox">
       <figure>
         <div class="lb-stage">
-          <button type="button" class="lb-nav lb-prev" id="lbPrev" aria-label="이전 화면">‹</button>
+          <button type="button" class="lb-nav lb-prev" id="lbPrev" aria-label="Previous screenshot">‹</button>
           <img id="lightboxImg" src="" alt="" />
-          <button type="button" class="lb-nav lb-next" id="lbNext" aria-label="다음 화면">›</button>
+          <button type="button" class="lb-nav lb-next" id="lbNext" aria-label="Next screenshot">›</button>
         </div>
         <figcaption id="lightboxCaption"></figcaption>
         <p class="lb-count" id="lbCount" aria-live="polite"></p>
         <div class="lb-thumbs" id="lbThumbs"></div>
       </figure>
     </dialog>
-
-    <script>
-      // 방문 OS를 추정해 (1) 해당 다운로드 카드를 강조하고 (2) 히어로 버튼을 그 OS로 연결.
-      // macOS의 Apple Silicon/Intel 구분은 브라우저로 불가능하므로 Apple Silicon을 기본 추천.
-      (function () {
-        function detectOS() {
-          var ua = navigator.userAgent || "";
-          var p = navigator.platform || "";
-          if (/Mac/i.test(p) || /Mac OS X/i.test(ua)) return "mac";
-          if (/Win/i.test(p) || /Windows/i.test(ua)) return "windows";
-          if (/Linux|X11/i.test(p) || /Linux/i.test(ua)) return "linux";
-          return null;
-        }
-        var HERO = {
-          mac: { href: "/download/mac-arm", label: "macOS용 내려받기 (Apple Silicon)" },
-          windows: { href: "/download/windows", label: "Windows용 내려받기 (.msi)" },
-          linux: { href: "/download/linux-appimage", label: "Linux용 내려받기 (.AppImage)" },
-        };
-        var os = detectOS();
-        var hero = document.getElementById("heroDownload");
-        if (os && HERO[os]) {
-          hero.setAttribute("href", HERO[os].href);
-          hero.textContent = HERO[os].label;
-          var card = document.querySelector('.dl-card[data-os="' + os + '"]');
-          if (card) {
-            card.classList.add("recommended");
-            var tag = document.createElement("span");
-            tag.className = "tag";
-            tag.textContent = "추천";
-            card.querySelector("h3").appendChild(tag);
-          }
-        }
-
-        // macOS 방문자에게는 첫 실행 안내를 히어로에서부터 알리고 카드도 강조.
-        if (os === "mac") {
-          var hint = document.getElementById("macHint");
-          if (hint) hint.hidden = false;
-          var guide = document.getElementById("macos-first-run");
-          if (guide) guide.classList.add("for-you");
-        }
-
-        // 최신 버전 표시 (실패해도 조용히 넘어감 — "최신 버전" 문구 유지).
-        fetch("https://api.github.com/repos/ilphs/UniNotepad/releases/latest")
-          .then(function (r) { return r.ok ? r.json() : null; })
-          .then(function (d) {
-            if (d && d.tag_name) {
-              var els = document.querySelectorAll("[data-version]");
-              for (var i = 0; i < els.length; i++) els[i].textContent = d.tag_name;
-            }
-          })
-          .catch(function () {});
-      })();
-
-      // xattr 명령 복사 버튼 — 손으로 옮겨 적다 틀리는 것이 가장 흔한 실패 원인이다.
-      // 클립보드 API가 막힌 환경(비-HTTPS 등)에서는 명령 전체를 선택해 주는 것으로 대체.
-      (function () {
-        var btns = document.querySelectorAll(".copy-btn");
-        for (var i = 0; i < btns.length; i++) {
-          btns[i].addEventListener("click", function () {
-            var btn = this;
-            var code = document.querySelector(btn.getAttribute("data-copy"));
-            if (!code) return;
-            function done(label) {
-              btn.textContent = label;
-              setTimeout(function () { btn.textContent = "복사"; }, 1600);
-            }
-            function selectFallback() {
-              var range = document.createRange();
-              range.selectNodeContents(code);
-              var sel = window.getSelection();
-              sel.removeAllRanges();
-              sel.addRange(range);
-              done("선택됨");
-            }
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-              navigator.clipboard
-                .writeText(code.textContent)
-                .then(function () { done("복사됨!"); })
-                .catch(selectFallback);
-            } else {
-              selectFallback();
-            }
-          });
-        }
-      })();
-
-      // #faq-macos로 들어온 방문자에게는 해당 FAQ를 펼쳐 둔다 (링크 클릭·직접 진입 모두).
-      (function () {
-        function openIfTargeted() {
-          if (location.hash !== "#faq-macos") return;
-          var d = document.getElementById("faq-macos");
-          if (d) d.open = true;
-        }
-        openIfTargeted();
-        window.addEventListener("hashchange", openIfTargeted);
-      })();
-
-      // 스크린샷 클릭 → 라이트박스로 크게 보기. 열린 채로 화살표·키보드·썸네일·스와이프로
-      // 다른 화면까지 넘겨볼 수 있다. Esc 닫기·포커스 트랩은 <dialog>가 기본 제공.
-      (function () {
-        var lightbox = document.getElementById("lightbox");
-        var lbImg = document.getElementById("lightboxImg");
-        var lbCap = document.getElementById("lightboxCaption");
-        var lbCount = document.getElementById("lbCount");
-        var lbThumbs = document.getElementById("lbThumbs");
-        var all = Array.prototype.slice.call(
-          document.querySelectorAll(".grid figure img, .hero .shot img")
-        );
-        // 히어로와 미리보기 섹션에 같은 스크린샷이 겹쳐 있다 — 넘겨볼 목록에서는 한 번만.
-        var seen = {};
-        var shots = all.filter(function (img) {
-          if (seen[img.src]) return false;
-          seen[img.src] = true;
-          return true;
-        });
-        if (!shots.length) return;
-        var current = 0;
-
-        // 썸네일은 페이지의 스크린샷에서 그대로 생성 — 나중에 이미지를 늘려도 여기는 손댈 필요 없다.
-        var thumbs = shots.map(function (img, i) {
-          var btn = document.createElement("button");
-          btn.type = "button";
-          btn.setAttribute("aria-label", img.alt || "화면 " + (i + 1));
-          var t = document.createElement("img");
-          t.src = img.src;
-          t.alt = "";
-          t.loading = "lazy";
-          btn.appendChild(t);
-          btn.addEventListener("click", function () { show(i); });
-          lbThumbs.appendChild(btn);
-          return btn;
-        });
-
-        function preload(i) { new Image().src = shots[i].src; }
-
-        function show(i) {
-          var n = shots.length;
-          current = (i % n + n) % n; // 양끝에서 순환
-          var img = shots[current];
-          lbImg.src = img.src;
-          lbImg.alt = img.alt;
-          var fig = img.closest("figure");
-          var cap = fig && fig.querySelector("figcaption");
-          if (cap) lbCap.innerHTML = cap.innerHTML;
-          else lbCap.textContent = img.alt;
-          lbCount.textContent = current + 1 + " / " + n;
-          for (var j = 0; j < thumbs.length; j++) {
-            thumbs[j].setAttribute("aria-current", j === current ? "true" : "false");
-          }
-          thumbs[current].scrollIntoView({ block: "nearest", inline: "center" });
-          preload((current + 1) % n); // 넘길 때 흰 깜빡임 방지
-          preload((current - 1 + n) % n);
-        }
-
-        // 클릭은 중복 포함 모든 이미지가 받고, 목록에서는 같은 화면의 첫 항목으로 연다.
-        all.forEach(function (img) {
-          img.addEventListener("click", function () {
-            var i = 0;
-            for (var j = 0; j < shots.length; j++) {
-              if (shots[j].src === img.src) { i = j; break; }
-            }
-            show(i);
-            lightbox.showModal();
-          });
-        });
-
-        document.getElementById("lbPrev").addEventListener("click", function () { show(current - 1); });
-        document.getElementById("lbNext").addEventListener("click", function () { show(current + 1); });
-        lightbox.addEventListener("keydown", function (e) {
-          if (e.key === "ArrowLeft") { e.preventDefault(); show(current - 1); }
-          else if (e.key === "ArrowRight") { e.preventDefault(); show(current + 1); }
-        });
-
-        // 모바일 스와이프. 스와이프 뒤 따라오는 click이 라이트박스를 닫지 않도록 한 번 흘려보낸다.
-        var touchX = null;
-        var swiped = false;
-        lbImg.addEventListener("touchstart", function (e) {
-          touchX = e.changedTouches[0].clientX;
-        }, { passive: true });
-        lbImg.addEventListener("touchend", function (e) {
-          if (touchX === null) return;
-          var dx = e.changedTouches[0].clientX - touchX;
-          touchX = null;
-          if (Math.abs(dx) > 40) { swiped = true; show(current + (dx < 0 ? 1 : -1)); }
-        }, { passive: true });
-
-        // 배경이나 본 이미지를 눌렀을 때만 닫는다 — 화살표·썸네일 클릭까지 닫히면 안 되므로.
-        lightbox.addEventListener("click", function (e) {
-          if (swiped) { swiped = false; return; }
-          if (e.target === lightbox || e.target === lbImg) lightbox.close();
-        });
-      })();
-    </script>
   </body>
 </html>
