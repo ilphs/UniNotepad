@@ -76,14 +76,16 @@ h2 {
    4rem이라 최상단에서도 앱 아이콘과 겹치지 않는다. */
 .lang-switch {
   position: fixed; top: 0.75rem; right: 0.75rem; z-index: 20;
-  display: flex;
+  /* 1fr 1fr — 라벨 길이가 달라도(EN vs 한국어) 두 칸이 넓은 쪽 기준으로 같은 폭이 된다.
+     flex로 두면 칸 폭이 글자 수를 그대로 따라가 좌우가 어긋난다. */
+  display: grid; grid-template-columns: 1fr 1fr;
   border: 3px solid var(--border); border-radius: var(--radius);
   background: var(--card); box-shadow: var(--shadow);
 }
 .lang-switch a {
   padding: 0.3rem 0.65rem;
   font-size: 0.8rem; font-weight: 800; line-height: 1.4;
-  color: var(--fg); text-decoration: none;
+  color: var(--fg); text-decoration: none; text-align: center;
 }
 .lang-switch a + a { border-left: 3px solid var(--border); }
 .lang-switch a[aria-current="page"] { background: var(--accent); color: var(--accent-fg); }
@@ -133,24 +135,47 @@ h2 {
 .btn:hover { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--border); }
 .btn:active { transform: translate(4px, 4px); box-shadow: none; }
 .btn.primary { background: var(--accent); color: var(--accent-fg); }
+
+/* 카드 안에 놓는 한 단계 작은 버튼. 히어로의 Download가 페이지에서 유일한 primary로
+   남아야 하므로, 부가 동선(VS Code 확장)은 색이 아니라 크기로 위계를 낮춘다. */
+.btn.sm { padding: 0.5rem 0.9rem; font-size: 0.9rem; border-width: 2px; box-shadow: 2px 2px 0 var(--border); }
+.btn.sm:hover { background: var(--accent); color: var(--accent-fg); transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--border); }
+.btn.sm:active { transform: translate(2px, 2px); box-shadow: none; }
 .hero .sub { margin: 0.5rem 0 0; font-size: 0.9rem; color: var(--muted); min-height: 1.2em; }
 
-/* VS Code 확장 한 줄 안내 — 히어로의 다운로드 동선을 가리지 않도록 버튼이 아니라
-   본문 폭의 좁은 카드로. .mac-guide와 같은 왼쪽 강조선 어법을 쓰되 한 줄 분량. */
+/* VS Code 확장 안내 — 히어로의 다운로드 동선을 가리지 않도록 CTA 줄이 아니라
+   본문 폭의 좁은 카드로. .mac-guide와 같은 왼쪽 강조선 어법.
+   설명은 왼쪽, 마켓플레이스로 가는 버튼은 오른쪽에 따로 세운다 — 문장 속 인라인
+   링크는 같은 줄의 "자세히"(#preview)와 경쟁해 클릭이 페이지 안쪽으로 샜다. */
 .hero .ext-strip {
-  max-width: 40rem; margin: 1.75rem auto 0; padding: 0.7rem 0.95rem;
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  max-width: 40rem; margin: 1.75rem auto 0; padding: 0.85rem 0.95rem;
   border: 3px solid var(--border); border-left: 10px solid var(--accent);
   border-radius: var(--radius); background: var(--card); box-shadow: var(--shadow);
-  font-size: 0.9rem; color: var(--muted); text-align: left;
+  text-align: left;
 }
+/* 16rem 아래로는 줄바꿈이 너무 잦아진다 — 그 전에 버튼을 아랫줄로 내린다. */
+.hero .ext-strip .txt { flex: 1 1 16rem; min-width: 0; margin: 0; font-size: 0.9rem; color: var(--muted); }
+.hero .ext-strip .btn { flex: 0 0 auto; }
 .hero .ext-strip b { color: var(--fg); font-weight: 800; }
+/* 좁은 화면에서 버튼이 아랫줄로 내려가면 탭 대상으로 넓게 편다. */
+@media (max-width: 560px) {
+  .hero .ext-strip .btn { flex: 1 1 100%; justify-content: center; }
+}
 
 .hero .shot { margin: 2.5rem auto 0; max-width: 56rem; }
 .hero .shot img { width: 100%; border-radius: var(--radius); border: 3px solid var(--border); box-shadow: var(--shadow-lg); }
-/* 히어로는 다크/라이트를 위아래로 — 한 장씩 크게 보여 준다. */
-.hero .shot.pair { max-width: 64rem; display: grid; grid-template-columns: 1fr; gap: 2rem; }
-.hero .shot.pair figure { border: none; border-radius: 0; background: transparent; overflow: visible; }
-.hero .shot.pair figcaption { padding: 0.6rem 0 0; text-align: center; border-top: none; }
+/* 히어로 갤러리 — 주인공(다크 테마)은 폭을 다 쓰고, 보조 두 장(라이트 테마 · VS Code
+   확장)은 나란히. 세 장을 모두 전폭으로 쌓으면 히어로만 2,000px을 넘어 다운로드
+   섹션이 스크롤 한참 뒤로 밀린다. */
+.hero .shot.gallery { max-width: 64rem; display: grid; grid-template-columns: 1fr 1fr; gap: 2rem 1.5rem; }
+.hero .shot.gallery .lead-shot { grid-column: 1 / -1; }
+.hero .shot.gallery figure { border: none; border-radius: 0; background: transparent; overflow: visible; }
+.hero .shot.gallery figcaption { padding: 0.6rem 0 0; text-align: center; border-top: none; }
+/* 반으로 나뉜 칸이 스크린샷을 알아볼 수 없을 만큼 좁아지기 전에 한 줄씩으로. */
+@media (max-width: 700px) {
+  .hero .shot.gallery { grid-template-columns: 1fr; }
+}
 
 /* ---- Download cards ------------------------------------------------ */
 .downloads {
@@ -242,6 +267,8 @@ h2 {
 .feature .keys { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
 .feature .keys li { padding-left: 0.9rem; text-indent: -0.9rem; }
 .feature .keys li::before { content: "· "; color: var(--accent); font-weight: 800; }
+/* 설명 카드가 행동으로 끝나야 하는 경우(VS Code 확장)의 버튼. */
+.feature .btn { margin-top: 0.9rem; }
 
 /* ---- Screenshots --------------------------------------------------- */
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }

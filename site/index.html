@@ -43,8 +43,8 @@
       } catch (e) {}
     </script>
 
-    <link rel="stylesheet" href="/assets/site.css?v=2" />
-    <script src="/assets/site.js?v=2" defer></script>
+    <link rel="stylesheet" href="/assets/site.css?v=5" />
+    <script src="/assets/site.js?v=5" defer></script>
   </head>
   <body>
     <nav class="lang-switch" aria-label="Language">
@@ -79,21 +79,26 @@
         🍎 On macOS, <a href="#macos-first-run">one Terminal command</a> is needed before the first launch
       </p>
 
-      <p class="ext-strip">
-        🧩 Using VS Code? The
-        <a href="https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview" target="_blank" rel="noopener"><b>UniNotepad Markdown Preview</b></a>
-        extension gives you the same Mermaid preview — zoom, drag, custom background — right inside your editor.
-        <a href="#preview">Learn more</a>
-      </p>
+      <div class="ext-strip">
+        <p class="txt">
+          🧩 <b>Using VS Code?</b> The same Mermaid preview — zoom, drag, custom background —
+          runs right inside your editor. <a href="#preview">Learn more</a>
+        </p>
+        <a class="btn sm" href="https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview" target="_blank" rel="noopener">VS Code Extension</a>
+      </div>
 
-      <div class="shot pair">
-        <figure>
+      <div class="shot gallery">
+        <figure class="lead-shot">
           <img src="/assets/syntax-markdown.png" alt="UniNotepad's split Markdown preview in the dark theme" />
           <figcaption><b>Dark</b> theme — editor and preview side by side</figcaption>
         </figure>
         <figure>
           <img src="/assets/syntax-markdown-light.png" alt="UniNotepad in the light theme with the editor pane closed, showing only the preview" />
           <figcaption><b>Light</b> theme — editor pane closed, preview only</figcaption>
+        </figure>
+        <figure>
+          <img src="/assets/vscode-extension.png" alt="The UniNotepad Markdown Preview extension page in the VS Code Extensions view" />
+          <figcaption><b>VS Code</b> — the same Mermaid preview as an extension</figcaption>
         </figure>
       </div>
     </header>
@@ -221,12 +226,12 @@
         <div class="feature">
           <p class="t">🧩 In VS Code too</p>
           <p class="d">
-            The same Mermaid preview is available as a
-            <a href="https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview" target="_blank" rel="noopener">VS&nbsp;Code extension</a> —
+            The same Mermaid preview is available as a VS&nbsp;Code extension —
             diagram zoom, drag to pan, transparent or custom background, all of it.
             Find <b>UniNotepad Markdown Preview</b> in the extensions list, install it, and open it with
             <code>Cmd/Ctrl+K Shift+M</code>. It sits alongside VS Code's built-in preview rather than replacing it.
           </p>
+          <a class="btn sm" href="https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview" target="_blank" rel="noopener">VS Code Extension</a>
         </div>
       </div>
     </section>

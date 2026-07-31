@@ -42,8 +42,8 @@
       } catch (e) {}
     </script>
 
-    <link rel="stylesheet" href="/assets/site.css?v=2" />
-    <script src="/assets/site.js?v=2" defer></script>
+    <link rel="stylesheet" href="/assets/site.css?v=5" />
+    <script src="/assets/site.js?v=5" defer></script>
   </head>
   <body>
     <nav class="lang-switch" aria-label="Language">
@@ -72,21 +72,26 @@
         🍎 macOS는 첫 실행 전 <a href="#macos-first-run">터미널 한 줄</a>이 필요합니다
       </p>
 
-      <p class="ext-strip">
-        🧩 VS Code를 쓰신다면 —
-        <a href="https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview" target="_blank" rel="noopener"><b>UniNotepad Markdown Preview</b></a>
-        확장으로 같은 Mermaid 미리보기(확대 · 드래그 · 배경 지정)를 편집기 안에서 그대로 쓸 수 있습니다.
-        <a href="#preview">자세히</a>
-      </p>
+      <div class="ext-strip">
+        <p class="txt">
+          🧩 <b>VS Code를 쓰신다면</b> — 같은 Mermaid 미리보기(확대 · 드래그 · 배경 지정)를
+          편집기 안에서 그대로 쓸 수 있습니다. <a href="#preview">자세히</a>
+        </p>
+        <a class="btn sm" href="https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview" target="_blank" rel="noopener">VS Code 확장</a>
+      </div>
 
-      <div class="shot pair">
-        <figure>
+      <div class="shot gallery">
+        <figure class="lead-shot">
           <img src="/assets/syntax-markdown.png" alt="다크 테마에서 본 UniNotepad의 Markdown 분할 미리보기 화면" />
           <figcaption><b>다크</b> 테마 — 편집·미리보기 분할</figcaption>
         </figure>
         <figure>
           <img src="/assets/syntax-markdown-light.png" alt="라이트 테마에서 편집 창을 닫고 미리보기만 켠 UniNotepad 화면" />
           <figcaption><b>라이트</b> 테마 — 편집 창을 닫고 미리보기만</figcaption>
+        </figure>
+        <figure>
+          <img src="/assets/vscode-extension.png" alt="VS Code 확장 목록에 표시된 UniNotepad Markdown Preview 확장 페이지" />
+          <figcaption><b>VS Code</b> — 같은 Mermaid 미리보기를 확장으로</figcaption>
         </figure>
       </div>
     </header>
@@ -213,12 +218,12 @@
         <div class="feature">
           <p class="t">🧩 VS Code에서도</p>
           <p class="d">
-            같은 Mermaid 미리보기를
-            <a href="https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview" target="_blank" rel="noopener">VS&nbsp;Code 확장</a>으로도
+            같은 Mermaid 미리보기를 VS&nbsp;Code 확장으로도
             쓸 수 있습니다 — 다이어그램 확대 · 드래그로 밀어보기 · 배경 투명/색 지정까지 그대로.
             확장 목록에서 <b>UniNotepad Markdown Preview</b>를 찾아 설치하고
             <code>Cmd/Ctrl+K Shift+M</code>으로 엽니다. VS Code 기본 미리보기를 대체하지 않고 나란히 놓입니다.
           </p>
+          <a class="btn sm" href="https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview" target="_blank" rel="noopener">VS Code 확장</a>
         </div>
       </div>
     </section>
