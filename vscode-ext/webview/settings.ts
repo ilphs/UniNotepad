@@ -38,9 +38,17 @@ function clampAlpha(n: number): number {
   return Math.max(0, Math.min(1, n));
 }
 
+/** Preview text-column bounds (px at 100% zoom), mirroring the app's
+ *  settings.ts. 0 is a distinct value rather than the bottom of the range: it
+ *  means "no cap", so the floor applies only to nonzero values. */
+const CONTENT_WIDTH_MIN = 320;
+const CONTENT_WIDTH_MAX = 3000;
+const CONTENT_WIDTH_DEFAULT = 680;
+
 let mirror: PreviewSettings = {
   mermaidBackground: "255,255,255,1",
   mermaidBackgroundEnabled: false,
+  contentWidth: CONTENT_WIDTH_DEFAULT,
 };
 
 /** Adopt a `settings` push from the host. */
@@ -58,6 +66,20 @@ export function mermaidBgEnabled(): boolean {
 export function setMermaidBgEnabled(on: boolean): void {
   mirror = { ...mirror, mermaidBackgroundEnabled: on };
   post({ type: "setSetting", key: "mermaidBackgroundEnabled", value: on });
+}
+
+/**
+ * Width cap for the text column, in px at 100% zoom; 0 means "fill the panel".
+ *
+ * `contentWidth` is optional on the wire, and settings.json is hand-editable, so
+ * every non-integer, negative, or absent value has to land on the default rather
+ * than on 0 — reading a typo as "no cap" would silently change the layout.
+ */
+export function previewContentWidth(): number {
+  const v = mirror.contentWidth;
+  if (typeof v !== "number" || !Number.isInteger(v) || v < 0) return CONTENT_WIDTH_DEFAULT;
+  if (v === 0) return 0;
+  return Math.max(CONTENT_WIDTH_MIN, Math.min(CONTENT_WIDTH_MAX, v));
 }
 
 /** The stored backdrop color, or the default if anything about the stored

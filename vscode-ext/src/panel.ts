@@ -54,6 +54,7 @@ function readSettings(): PreviewSettings {
   return {
     mermaidBackground: cfg.get<string>("mermaidBackground", "255,255,255,1"),
     mermaidBackgroundEnabled: cfg.get<boolean>("mermaidBackgroundEnabled", false),
+    contentWidth: cfg.get<number>("contentWidth", 680),
   };
 }
 

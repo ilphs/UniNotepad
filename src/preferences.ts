@@ -27,7 +27,10 @@ import {
   setTrimTrailingOnSave,
   ensureFinalNewline,
   setEnsureFinalNewline,
+  previewContentWidth,
+  setPreviewContentWidth,
 } from "./settings";
+import { refreshPreviewContentWidth } from "./preview";
 import {
   applyFontFamily,
   setEditorFontSizePx,
@@ -42,6 +45,12 @@ import { setTheme, themeChoice } from "./theme";
 const FONT_SIZE_MIN = 8;
 const FONT_SIZE_MAX = 40;
 
+/** Preview text-column bounds — mirror settings.ts. The input's own floor is 0
+ *  (the "no cap" value); PREVIEW_WIDTH_MIN is applied by the normalizer below,
+ *  which has to match `setPreviewContentWidth` exactly. */
+const PREVIEW_WIDTH_MIN = 320;
+const PREVIEW_WIDTH_MAX = 3000;
+
 /** A section heading + its rows, appended to the modal box. */
 function section(box: HTMLElement, title: string, rows: HTMLElement[]): void {
   const wrap = document.createElement("div");
@@ -54,13 +63,22 @@ function section(box: HTMLElement, title: string, rows: HTMLElement[]): void {
   box.appendChild(wrap);
 }
 
-/** A labeled number input row (`.field-row`), clamped to [min, max] on commit. */
+/**
+ * A labeled number input row (`.field-row`), clamped to [min, max] on commit.
+ *
+ * `normalize` runs after that clamp, for settings whose accepted values aren't a
+ * plain range — the preview width takes 0 ("no cap") *or* 320+, with nothing in
+ * between. It must return exactly what the setter will store, because the input
+ * is rewritten to its result: without that the field would keep showing a value
+ * the setting silently rejected.
+ */
 function numberRow(
   label: string,
   value: number,
   min: number,
   max: number,
   onChange: (v: number) => void,
+  normalize?: (v: number) => number,
 ): HTMLElement {
   const wrap = document.createElement("label");
   wrap.className = "field-row";
@@ -80,8 +98,9 @@ function numberRow(
       return;
     }
     const clamped = Math.max(min, Math.min(max, Math.round(n)));
-    input.value = String(clamped);
-    onChange(clamped);
+    const next = normalize ? normalize(clamped) : clamped;
+    input.value = String(next);
+    onChange(next);
   };
   input.addEventListener("change", commit);
   wrap.append(text, input);
@@ -178,6 +197,21 @@ export function openPreferences(): void {
   section(box, "Files", [
     checkboxRow("Trim trailing whitespace on save", trimTrailingOnSave(), setTrimTrailingOnSave),
     checkboxRow("Ensure final newline on save", ensureFinalNewline(), setEnsureFinalNewline),
+  ]);
+
+  // ---- Preview ----
+  section(box, "Preview", [
+    numberRow(
+      "Text width (px, 0 = fill pane)",
+      previewContentWidth(),
+      0,
+      PREVIEW_WIDTH_MAX,
+      (v) => {
+        setPreviewContentWidth(v);
+        refreshPreviewContentWidth();
+      },
+      (v) => (v <= 0 ? 0 : Math.max(PREVIEW_WIDTH_MIN, v)),
+    ),
   ]);
 
   // ---- Appearance ----

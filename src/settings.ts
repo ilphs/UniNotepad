@@ -16,6 +16,7 @@ const INDENT_WIDTH_KEY = "uninotepad.indentWidth";
 const MERMAID_BG_KEY = "uninotepad.mermaidBg";
 const MERMAID_BG_ON_KEY = "uninotepad.mermaidBgEnabled";
 const FONT_SIZE_KEY = "uninotepad.editorFontSize";
+const PREVIEW_WIDTH_KEY = "uninotepad.previewContentWidth";
 
 /** Indent width bounds (columns). */
 const INDENT_WIDTH_MIN = 1;
@@ -27,6 +28,13 @@ const INDENT_WIDTH_DEFAULT = 4;
 const FONT_SIZE_MIN = 8;
 const FONT_SIZE_MAX = 40;
 const FONT_SIZE_DEFAULT = 14;
+
+/** Preview text-column bounds (px at 100% zoom). 0 is a distinct value, not the
+ *  bottom of the range: it means "no cap", so the text fills the pane the way
+ *  Mermaid diagrams already do. Hence MIN as a floor for *nonzero* values. */
+const PREVIEW_WIDTH_MIN = 320;
+const PREVIEW_WIDTH_MAX = 3000;
+const PREVIEW_WIDTH_DEFAULT = 680;
 
 /** Editor:preview split bounds — keeps either pane from collapsing. */
 const RATIO_MIN = 0.2;
@@ -154,6 +162,31 @@ export function previewRatio(): number {
 export function setPreviewRatio(ratio: number): void {
   const clamped = Math.max(RATIO_MIN, Math.min(RATIO_MAX, ratio));
   localStorage.setItem(RATIO_KEY, String(clamped));
+}
+
+/**
+ * Width cap for the preview's *text* column, in px at 100% zoom. 0 means no cap
+ * — the text fills the pane. Mermaid diagrams ignore this entirely; they always
+ * get the full pane (see `.md-body > *:not(.mermaid-frame)` in styles.css).
+ *
+ * Unlike the other numeric settings, 0 has to survive the clamp, so the floor is
+ * applied only to nonzero values. A missing key reads as NaN here — not 0, the
+ * way `Number(null)` would — because the explicit null check runs first, so an
+ * unset setting still falls through to the default rather than to "no cap".
+ */
+export function previewContentWidth(): number {
+  const raw = localStorage.getItem(PREVIEW_WIDTH_KEY);
+  if (raw === null) return PREVIEW_WIDTH_DEFAULT;
+  const v = Number(raw);
+  if (!Number.isInteger(v) || v < 0) return PREVIEW_WIDTH_DEFAULT;
+  if (v === 0) return 0;
+  return Math.max(PREVIEW_WIDTH_MIN, Math.min(PREVIEW_WIDTH_MAX, v));
+}
+
+export function setPreviewContentWidth(px: number): void {
+  const n = Math.round(px);
+  const clamped = n <= 0 ? 0 : Math.max(PREVIEW_WIDTH_MIN, Math.min(PREVIEW_WIDTH_MAX, n));
+  localStorage.setItem(PREVIEW_WIDTH_KEY, String(clamped));
 }
 
 /** Backdrop painted behind every rendered Mermaid diagram: 8-bit RGB channels

@@ -34,7 +34,7 @@ import {
   previewZoomFactor,
   setPreviewZoomHandler,
 } from "./mermaid-view";
-import { setPreviewEnabled, previewRatio } from "./settings";
+import { setPreviewEnabled, previewRatio, previewContentWidth } from "./settings";
 
 let splitEl: HTMLElement;
 let editorHost: HTMLElement;
@@ -518,8 +518,11 @@ function htmlDocument(title: string, body: string): string {
 <meta charset="utf-8">
 <title>${esc}</title>
 <style>
-  body { max-width: 48rem; margin: 2rem auto; padding: 0 1rem;
+  /* Same split as the preview pane: the text keeps a readable column, a Mermaid
+     diagram gets the whole page. */
+  body { margin: 2rem auto; padding: 0 1rem; max-width: 1600px;
     font: 16px/1.6 -apple-system, "Segoe UI", Roboto, sans-serif; color: #1a1a1a; }
+  body > *:not(.mermaid-frame) { max-width: 44rem; margin-inline: auto; }
   pre { background: #f5f5f5; padding: 1rem; overflow-x: auto; border-radius: 6px; }
   code { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
   blockquote { border-left: 4px solid #ddd; margin: 0; padding-left: 1rem; color: #555; }
@@ -584,7 +587,28 @@ function applyPreviewZoom(): void {
   if (!previewHost) return;
   const factor = previewZoomFactor();
   previewHost.style.setProperty("--preview-font-size", `${PREVIEW_BASE_FONT * factor}px`);
+  applyContentWidth(factor);
   applyMermaidZoom();
+}
+
+/**
+ * Push the text-column cap to CSS as `--md-col`.
+ *
+ * Scaled by the zoom factor for the same reason the font size is: zooming in
+ * should widen the column along with the glyphs, or the text just reflows into
+ * fewer words per line. `none` (not `0`) is what the settings' 0 becomes — CSS
+ * `max-width: 0` would collapse the column to nothing.
+ */
+function applyContentWidth(factor: number): void {
+  const px = previewContentWidth();
+  previewHost.style.setProperty("--md-col", px > 0 ? `${Math.round(px * factor)}px` : "none");
+}
+
+/** Re-read the width setting and repaint. Called by Preferences, which can
+ *  change it while a preview is on screen. */
+export function refreshPreviewContentWidth(): void {
+  if (!previewHost) return;
+  applyContentWidth(previewZoomFactor());
 }
 
 /** The active tab's preview scale as a percentage, for the status bar. */

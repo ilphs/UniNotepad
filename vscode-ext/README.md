@@ -43,6 +43,7 @@ the Side*.
 | `uninotepadPreview.mermaidBackgroundEnabled` | `false` | Paint a solid backdrop behind diagrams |
 | `uninotepadPreview.mermaidBackground` | `255,255,255,1` | Backdrop as `r,g,b,a` — normally edited by the in-diagram popover |
 | `uninotepadPreview.scrollEditorWithPreview` | `true` | Sync preview scroll to the editor (one-way) |
+| `uninotepadPreview.contentWidth` | `680` | Text column width cap in px at 100% zoom; `0` fills the panel. Mermaid diagrams ignore it and always use the full width |
 
 ## Known gaps
 

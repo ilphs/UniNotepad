@@ -58,19 +58,39 @@ body {
 .md-body {
   flex: 1 1 auto;
   min-width: 0;
-  /* Fill narrow panes, but stop growing at a readable line length on wide ones.
-     The 48ch floor only bites on very narrow panes, where flex shrink still
-     prevents overflow. Note `box-sizing: border-box` — the horizontal padding
-     counts against these values. */
+  /* Spans the whole panel. The readable-line-length cap used to live here, which
+     is why a wide Mermaid diagram could never grow past it however large the
+     window got — the cap now sits on the *children* instead (below), so text
+     stays readable while a diagram gets the full panel. */
   box-sizing: border-box;
-  max-width: clamp(48ch, 92%, 100ch);
-  margin: 0 auto; /* auto margins center the column in the flex-row pane */
+  max-width: none;
+  margin: 0;
   padding: 28px 32px 48px;
   line-height: 1.7;
   /* Preview zoom sets --preview-font-size on #preview-host (preview.ts); the 15px
      fallback is the 100% base used before any zoom is applied. */
   font-size: var(--preview-font-size, 15px);
   overflow-wrap: break-word; /* keep long URLs/words from overflowing */
+}
+
+/* The readable text column. Every top-level block is capped and centered inside
+   the full-width `.md-body` — except `.mermaid-frame`, which keeps the whole
+   panel so a wide diagram scales with the window.
+
+   Kept in normal block flow rather than a full-bleed grid on purpose: grid items
+   don't collapse margins, so the paragraph/heading rhythm below would silently
+   double. `margin-inline` (not the `margin` shorthand) for the same reason — the
+   vertical margins those rules set must survive.
+
+   `--md-col` is a px length, not `ch`: this cap sits on the children, and `ch`
+   resolves against each child's own font-size, so an h1 (1.7em) would get a
+   column 70% wider than a paragraph. preview.ts computes it from
+   `uninotepadPreview.contentWidth` scaled by the preview zoom. The 680px
+   fallback matches that setting's default — the same effective text width the
+   old `100ch` cap produced once its horizontal padding was subtracted. */
+.md-body > *:not(.mermaid-frame) {
+  max-width: var(--md-col, 680px);
+  margin-inline: auto;
 }
 
 .md-body > :first-child { margin-top: 0; }
@@ -206,6 +226,7 @@ body {
    an error.) */
 #preview-host.mmd-solo .mermaid-error {
   margin: 12px;
+  max-width: none; /* solo is full-bleed; the text column cap doesn't apply */
   align-self: flex-start;
 }
 

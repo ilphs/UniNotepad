@@ -2,7 +2,7 @@
   "name": "uninotepad-markdown-preview",
   "displayName": "UniNotepad Markdown Preview",
   "description": "Markdown preview with interactive Mermaid diagrams — pan, zoom, and a transparent/solid diagram backdrop. Ported from the UniNotepad editor.",
-  "version": "0.5.0",
+  "version": "0.5.5",
   "publisher": "ilphs",
   "license": "MIT",
   "private": true,
@@ -128,6 +128,13 @@
           "default": "255,255,255,1",
           "pattern": "^\\s*\\d{1,3}\\s*,\\s*\\d{1,3}\\s*,\\s*\\d{1,3}\\s*,\\s*(0|1|0?\\.\\d+)\\s*$",
           "description": "Mermaid diagram backdrop as \"r,g,b,a\" — 0-255 channels and a 0-1 opacity. Edited by the in-diagram backdrop popover."
+        },
+        "uninotepadPreview.contentWidth": {
+          "type": "number",
+          "default": 680,
+          "minimum": 0,
+          "maximum": 3000,
+          "description": "Width cap for the preview's text column, in pixels at 100% zoom. 0 fills the panel. Mermaid diagrams ignore this and always use the full panel width."
         },
         "uninotepadPreview.scrollEditorWithPreview": {
           "type": "boolean",

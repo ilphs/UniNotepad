@@ -80,7 +80,10 @@ const settle = () => new Promise((r) => setTimeout(r, 150));
   assert.strictEqual(host.style.getPropertyValue("--preview-font-size"), "15px");
   assert.strictEqual(host.style.getPropertyValue("--mmd-zoom"), "1");
   assert.strictEqual(host.style.getPropertyValue("--mmd-bg"), "transparent");
-  ok("host CSS variables seeded at 100% / transparent backdrop");
+  // Seeded before the host's first `settings` push, so this is the mirror's own
+  // default rather than a configured value.
+  assert.strictEqual(host.style.getPropertyValue("--md-col"), "680px");
+  ok("host CSS variables seeded at 100% / transparent backdrop / default column");
 
   // ---- markdown render ----
   send(w, {
@@ -174,8 +177,11 @@ const settle = () => new Promise((r) => setTimeout(r, 150));
   assert.strictEqual(getState().zoomExp, 1);
   assert.strictEqual(host.style.getPropertyValue("--mmd-zoom"), "1.25");
   assert.strictEqual(host.style.getPropertyValue("--preview-font-size"), "18.75px");
+  // The text column widens with the glyphs, or zooming in just reflows the same
+  // paragraph into fewer words per line. 680 × 1.25.
+  assert.strictEqual(host.style.getPropertyValue("--md-col"), "850px");
   assert.ok(host.classList.contains("mmd-zoomed"), "mmd-zoomed not applied off 100%");
-  ok("zoom in scales diagrams and text together, and flags the host");
+  ok("zoom in scales diagrams, text, and the column together, and flags the host");
 
   send(w, { type: "zoom", dir: -1 });
   assert.strictEqual(getState().zoomExp, 0);
@@ -218,6 +224,40 @@ const settle = () => new Promise((r) => setTimeout(r, 150));
     "a malformed setting must fall back to the whole default tuple",
   );
   ok("malformed backdrop falls back to the default tuple");
+
+  // ---- text column width ----
+  // A settings push repaints the column without a re-render, the same way the
+  // backdrop does — both are CSS variables on the host.
+  send(w, {
+    type: "settings",
+    settings: { mermaidBackground: "255,255,255,1", mermaidBackgroundEnabled: false, contentWidth: 1200 },
+  });
+  assert.strictEqual(host.style.getPropertyValue("--md-col"), "1200px");
+  ok("contentWidth setting repaints --md-col without a re-render");
+
+  // 0 is "fill the panel", and it has to reach CSS as `none`: `max-width: 0`
+  // would collapse the column to nothing.
+  send(w, {
+    type: "settings",
+    settings: { mermaidBackground: "255,255,255,1", mermaidBackgroundEnabled: false, contentWidth: 0 },
+  });
+  assert.strictEqual(host.style.getPropertyValue("--md-col"), "none");
+  ok("contentWidth 0 becomes `none`, not `0px`");
+
+  // settings.json is hand-editable and the field is optional on the wire, so a
+  // junk or absent value must land on the default — never on 0, which would
+  // silently reflow the whole document.
+  send(w, {
+    type: "settings",
+    settings: { mermaidBackground: "255,255,255,1", mermaidBackgroundEnabled: false, contentWidth: -50 },
+  });
+  assert.strictEqual(host.style.getPropertyValue("--md-col"), "680px");
+  send(w, {
+    type: "settings",
+    settings: { mermaidBackground: "255,255,255,1", mermaidBackgroundEnabled: false },
+  });
+  assert.strictEqual(host.style.getPropertyValue("--md-col"), "680px");
+  ok("invalid or absent contentWidth falls back to the default column");
 
   // ---- requestHtml round-trip ----
   send(w, { type: "content", fileType: "markdown", text: "# Export me" });

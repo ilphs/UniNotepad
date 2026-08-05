@@ -33,6 +33,7 @@ import {
   previewZoomFactor,
   setPreviewZoomHandler,
 } from "./mermaid-view";
+import { previewContentWidth } from "./settings";
 import type { PreviewFileType } from "../shared/protocol";
 
 let previewHost: HTMLElement;
@@ -230,6 +231,12 @@ export function renderedHtml(): string {
 export function applyPreviewZoom(): void {
   const factor = previewZoomFactor();
   previewHost.style.setProperty("--preview-font-size", `${PREVIEW_BASE_FONT * factor}px`);
+  // Scaled by the zoom factor for the same reason the font size is: zooming in
+  // should widen the column along with the glyphs, or the text just reflows into
+  // fewer words per line. `none` (not `0`) is what the setting's 0 becomes — CSS
+  // `max-width: 0` would collapse the column to nothing.
+  const col = previewContentWidth();
+  previewHost.style.setProperty("--md-col", col > 0 ? `${Math.round(col * factor)}px` : "none");
   applyMermaidZoom();
 }
 

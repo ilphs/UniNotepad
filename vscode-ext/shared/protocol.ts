@@ -19,6 +19,11 @@ export interface PreviewSettings {
    *  a malformed user setting falls back there, next to the code that paints it. */
   mermaidBackground: string;
   mermaidBackgroundEnabled: boolean;
+  /** Width cap for the *text* column, in px at 100% zoom; 0 means no cap.
+   *  Mermaid diagrams ignore it and always get the full panel. Optional so the
+   *  webview keeps working against a host that predates the setting — it falls
+   *  back to the same default the contribution declares. */
+  contentWidth?: number;
 }
 
 export type HostToWebview =

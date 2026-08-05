@@ -9,7 +9,13 @@
 import { initState, post } from "./host";
 import { applySettings } from "./settings";
 import { applyMermaidBg, handleZoom } from "./mermaid-view";
-import { mountPreview, renderedHtml, setContent, setScrollFraction } from "./preview";
+import {
+  applyPreviewZoom,
+  mountPreview,
+  renderedHtml,
+  setContent,
+  setScrollFraction,
+} from "./preview";
 import type { HostToWebview } from "../shared/protocol";
 
 const host = document.getElementById("preview-host");
@@ -32,9 +38,12 @@ window.addEventListener("message", (e: MessageEvent<HostToWebview>) => {
       return;
     case "settings":
       applySettings(msg.settings);
-      // Repaint rather than re-render: the backdrop is a CSS variable on the
-      // host, which is the entire point of that design (see mermaid-view.ts).
+      // Repaint rather than re-render: both the backdrop and the text-column cap
+      // are CSS variables on the host, which is the entire point of that design
+      // (see mermaid-view.ts). applyPreviewZoom re-derives `--md-col` from the
+      // new setting at the current zoom factor.
       applyMermaidBg();
+      applyPreviewZoom();
       return;
     case "requestHtml":
       post({ type: "html", token: msg.token, html: renderedHtml() });

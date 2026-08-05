@@ -368,12 +368,12 @@ body {
 .md-body {
   flex: 1 1 auto;
   min-width: 0;
-  /* Fill narrow panes, but stop growing at a readable line length on wide ones.
-     The 48ch floor only bites on very narrow panes, where flex shrink still
-     prevents overflow. Note `box-sizing: border-box` — the 64px of horizontal
-     padding counts against these values. */
-  max-width: clamp(48ch, 92%, 100ch);
-  margin: 0 auto; /* auto margins center the column in the flex-row pane */
+  /* Spans the whole pane. The readable-line-length cap used to live here, which
+     is why a wide Mermaid diagram could never grow past it however large the
+     window got — the cap now sits on the *children* instead (below), so text
+     stays readable while a diagram gets the full pane. */
+  max-width: none;
+  margin: 0;
   padding: 28px 32px 48px;
   line-height: 1.7;
   /* Per-tab preview zoom sets --preview-font-size on #preview-host (preview.ts);
@@ -381,15 +381,35 @@ body {
   font-size: var(--preview-font-size, 15px);
   overflow-wrap: break-word; /* keep long URLs/words from overflowing */
 }
+/* The readable text column. Every top-level block is capped and centered inside
+   the full-width `.md-body` — except `.mermaid-frame`, which keeps the whole
+   pane so a wide diagram scales with the window.
+
+   Kept in normal block flow rather than a full-bleed grid on purpose: grid items
+   don't collapse margins, so the paragraph/heading rhythm below would silently
+   double. `margin-inline` (not the `margin` shorthand) for the same reason — the
+   vertical margins those rules set must survive.
+
+   `--md-col` is a px length, not `ch`: this cap sits on the children, and `ch`
+   resolves against each child's own font-size, so an h1 (1.7em) would get a
+   column 70% wider than a paragraph. preview.ts computes it from the user's
+   width setting scaled by the preview zoom (applyPreviewZoom). The 680px
+   fallback is the pre-setting default — the same effective text width the old
+   `100ch` cap produced once its 64px of padding was subtracted. */
+.md-body > *:not(.mermaid-frame) {
+  max-width: var(--md-col, 680px);
+  margin-inline: auto;
+}
+
 /* Preview is the only pane (the editor was closed for this tab). The column cap
-   above is there to keep line length readable *beside the editor*; given the
-   whole window it just parks the text in the middle with the scrollbar stranded
-   far to the right. Fill the pane instead — the padding still keeps the text off
-   the edge. Same specificity as the .mmd-solo rules below, but those set these
-   two properties to the same values, so source order between them is moot. */
-#preview-host.pane-only .md-body {
+   is there to keep line length readable *beside the editor*; given the whole
+   window it just parks the text in the middle with the scrollbar stranded far to
+   the right. Fill the pane instead — the padding still keeps the text off the
+   edge. This overrides the cap directly rather than setting `--md-col: none` on
+   the host: preview.ts writes that variable as an *inline* style, which no
+   stylesheet declaration can outrank. */
+#preview-host.pane-only .md-body > *:not(.mermaid-frame) {
   max-width: none;
-  margin: 0;
 }
 
 .md-body > :first-child { margin-top: 0; }
@@ -530,6 +550,7 @@ body {
    zoom applies to an error.) */
 #preview-host.mmd-solo .mermaid-error {
   margin: 12px;
+  max-width: none; /* solo is full-bleed; the text column cap doesn't apply */
   align-self: flex-start;
 }
 
@@ -1097,15 +1118,22 @@ body {
     color: #000 !important;
   }
 
-  /* On paper `.md-body` is no longer a flex item, so the screen rule's `92%`
-     would resolve against the page and print wider than before. Pin the column.
+  /* Pin the text column to a paper-appropriate measure, ignoring whatever width
+     the user set for the screen. `ch` is safe again here because the preview
+     zoom is neutralized on paper, so every child renders at the base font size.
      The `.pane-only` selector has to be repeated at its own specificity: paper
      has no split to widen for, so an editor closed on screen must not leak a
-     full-bleed column onto the page. */
-  .md-body,
-  #preview-host.pane-only .md-body {
+     full-bleed column onto the page. `.mermaid-frame` stays excluded — a diagram
+     should use the full page width, then scale down to fit it (see the
+     `.mermaid-diagram svg` rule below). */
+  .md-body {
+    max-width: none;
+    margin: 0;
+  }
+  .md-body > *:not(.mermaid-frame),
+  #preview-host.pane-only .md-body > *:not(.mermaid-frame) {
     max-width: 72ch;
-    margin: 0 auto;
+    margin-inline: auto;
   }
 
   /* Interactive chrome is screen-only — never on paper. */

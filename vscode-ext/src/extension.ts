@@ -104,8 +104,11 @@ function htmlDocument(title: string, body: string): string {
 <meta charset="utf-8">
 <title>${esc}</title>
 <style>
-  body { max-width: 48rem; margin: 2rem auto; padding: 0 1rem;
+  /* Same split as the preview panel: the text keeps a readable column, a Mermaid
+     diagram gets the whole page. */
+  body { margin: 2rem auto; padding: 0 1rem; max-width: 1600px;
     font: 16px/1.6 -apple-system, "Segoe UI", Roboto, sans-serif; color: #1a1a1a; }
+  body > *:not(.mermaid-frame) { max-width: 44rem; margin-inline: auto; }
   pre { background: #f5f5f5; padding: 1rem; overflow-x: auto; border-radius: 6px; }
   code { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
   blockquote { border-left: 4px solid #ddd; margin: 0; padding-left: 1rem; color: #555; }
