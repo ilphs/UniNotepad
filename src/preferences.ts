@@ -29,6 +29,8 @@ import {
   setEnsureFinalNewline,
   previewContentWidth,
   setPreviewContentWidth,
+  pasteHtmlAsMarkdown,
+  setPasteHtmlAsMarkdown,
 } from "./settings";
 import { refreshPreviewContentWidth } from "./preview";
 import {
@@ -191,6 +193,13 @@ export function openPreferences(): void {
       setIndentWidth(Number(v));
       applyIndent();
     }),
+    // Markdown tabs only — the label says so, because the setting is global and
+    // its effect would otherwise look inconsistent from a code tab.
+    checkboxRow(
+      "Paste HTML as Markdown (Markdown tabs)",
+      pasteHtmlAsMarkdown(),
+      setPasteHtmlAsMarkdown,
+    ),
   ]);
 
   // ---- Files ----

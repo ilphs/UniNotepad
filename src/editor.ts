@@ -63,6 +63,7 @@ import {
   editorFontFamily,
 } from "./settings";
 import { updatePanes, revealEditorPane, schedulePreviewRender } from "./preview";
+import { markdownPaste } from "./paste";
 
 let view: EditorView;
 let hostEl: HTMLElement;
@@ -191,6 +192,9 @@ export function makeState(
       ]),
       wrap.of(wrapExtension()),
       whitespace.of(whitespaceExtension()),
+      // Markdown tabs only, and only when the clipboard carries an HTML flavor;
+      // everything else falls through to CodeMirror's own paste.
+      markdownPaste(),
       EditorView.updateListener.of((u) => {
         // Ignore programmatic setState (tab switch): those carry no transactions.
         if (u.docChanged && u.transactions.length > 0) {

@@ -17,6 +17,7 @@ const MERMAID_BG_KEY = "uninotepad.mermaidBg";
 const MERMAID_BG_ON_KEY = "uninotepad.mermaidBgEnabled";
 const FONT_SIZE_KEY = "uninotepad.editorFontSize";
 const PREVIEW_WIDTH_KEY = "uninotepad.previewContentWidth";
+const PASTE_MD_KEY = "uninotepad.pasteHtmlAsMarkdown";
 
 /** Indent width bounds (columns). */
 const INDENT_WIDTH_MIN = 1;
@@ -120,6 +121,18 @@ export function editorFontFamily(): string {
 
 export function setEditorFontFamily(name: string): void {
   localStorage.setItem(FONT_FAMILY_KEY, FONT_VALUES.has(name) ? name : "");
+}
+
+/** Convert clipboard HTML to Markdown when pasting into a Markdown tab
+ *  (default ON). Every other file type keeps the plain-text flavor: turning a
+ *  copied web page into Markdown inside a `.ts` or `.log` buffer would be a
+ *  surprise, not a convenience. */
+export function pasteHtmlAsMarkdown(): boolean {
+  return readBool(PASTE_MD_KEY, true);
+}
+
+export function setPasteHtmlAsMarkdown(on: boolean): void {
+  writeBool(PASTE_MD_KEY, on);
 }
 
 /** Strip trailing whitespace from every line on save (default OFF). */

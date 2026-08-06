@@ -49,6 +49,7 @@ UniNotepad에서는 그런 일이 생기지 않습니다. 열어둔 탭은 **저
 | 🪟 **편집 창 · 미리보기 창 따로 여닫기** | 두 창을 **탭마다 각각** 켜고 끕니다 — 이 탭은 미리보기만 크게, 저 탭은 편집만. 창 오른쪽 위에 마우스를 올리면 **×** 버튼이 나타나고, 다시 열 때는 상태 표시줄의 `Editor` · `Preview`를 누르면 됩니다. 창 구성도 **탭마다** 기억됩니다 |
 | 🧜 **Mermaid 다이어그램** | ` ```mermaid ` 코드블록은 물론 `.mmd` 파일도 통째로 그림으로 — 순서도·시퀀스·간트·클래스 등 [Mermaid 11](https://mermaid.js.org/)이 그리는 건 다 됩니다. 넓은 창에서는 다이어그램이 창 폭까지 커지고, 차트만 따로 확대하거나 배경색을 고를 수도 있어요 |
 | 🖨️ **미리보기 내보내기** | 렌더된 문서를 HTML 한 파일로 저장하거나 그대로 인쇄(PDF) — 다이어그램도 그림째로 담깁니다 |
+| 📋 **웹에서 복사 → Markdown으로 붙여넣기** | 챗봇 답변이나 웹 문서를 복사해 **Markdown 탭**에 붙이면 제목 · 목록 · 표 · 코드블록이 Markdown 문법 그대로 들어옵니다. 다른 형식 탭(`.ts`, `.log` 등)은 예전처럼 원문 그대로 — `Preferences ▸ Editor ▸ Paste HTML as Markdown`에서 끌 수 있어요 |
 | 🧩 **VS Code 확장** | 같은 Mermaid 미리보기를 VS Code 안에서도 — [UniNotepad Markdown Preview](https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview). 기본 미리보기를 대체하지 않고 나란히 놓입니다 |
 | 🎨 **구문 강조** | 143개 언어를 파일 이름만 보고 자동 판별 |
 | 🌗 **라이트·다크 테마** | `View ▸ Theme`에서 **Light · Dark · System** 중 선택 — System은 OS의 밝은/어두운 모드를 그대로 따라갑니다. 편집기·구문 강조·미리보기 색이 한꺼번에 바뀌고, 고른 테마는 다음에 켤 때도 유지됩니다 |
