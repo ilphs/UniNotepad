@@ -2,15 +2,23 @@
   "name": "uninotepad-markdown-preview",
   "displayName": "UniNotepad Markdown Preview",
   "description": "Markdown preview with interactive Mermaid diagrams — pan, zoom, and a transparent/solid diagram backdrop. Ported from the UniNotepad editor.",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "publisher": "ilphs",
   "license": "MIT",
   "private": true,
   "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#14141a",
+    "theme": "dark"
+  },
+  "homepage": "https://uninotepad-xi.vercel.app/",
   "repository": {
     "type": "git",
     "url": "https://github.com/ilphs/UniNotepad.git",
     "directory": "vscode-ext"
+  },
+  "bugs": {
+    "url": "https://github.com/ilphs/UniNotepad/issues"
   },
   "engines": {
     "vscode": "^1.75.0"

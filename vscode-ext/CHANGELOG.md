@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.1 — 2026-08-06
+
+- Marketplace listing only, no functional change: the Resources sidebar now links
+  the project website and the issue tracker (`homepage` / `bugs`), and the gallery
+  banner uses the site's dark background instead of the default white.
+
 ## 0.6.0 — 2026-08-06
 
 - **Open Preview (UniNote)** in the right-click menu of the Explorer and of an
