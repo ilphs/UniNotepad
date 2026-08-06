@@ -44,10 +44,14 @@
   }
 
   // ---- 언어 전환 -------------------------------------------------------
-  // 스위처와 안내 줄 모두 [data-lang]을 달고 있어 한 곳에서 처리한다.
+  // 스위처와 안내 줄 모두 [data-lang]을 달고 있어 이동/해시는 한 곳에서 처리한다.
   // 선택은 여기서만 기록된다 — 그래서 첫 방문자는 항상 기본 언어(영어)를 본다.
   (function () {
     var links = document.querySelectorAll("[data-lang]");
+    // 기억되는 것은 스위처(EN/한국어) 클릭뿐이다. 안내 줄("이 페이지를 한국어로
+    // 보기")은 이번 한 번만 넘어가는 링크다 — 그 한 번의 클릭으로 이후 모든 방문이
+    // /ko로 튕기면, 영어 URL을 직접 열어도 되돌아오지 않아 고장으로 읽힌다.
+    var switcher = document.querySelectorAll(".lang-switch [data-lang]");
 
     function syncHash() {
       for (var i = 0; i < links.length; i++) {
@@ -59,8 +63,8 @@
     syncHash();
     window.addEventListener("hashchange", syncHash);
 
-    for (var i = 0; i < links.length; i++) {
-      links[i].addEventListener("click", function () {
+    for (var i = 0; i < switcher.length; i++) {
+      switcher[i].addEventListener("click", function () {
         try { localStorage.setItem(LANG_KEY, this.getAttribute("data-lang")); } catch (e) {}
       });
     }
