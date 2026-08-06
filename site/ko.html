@@ -29,21 +29,12 @@
     <meta property="og:image" content="https://uninotepad-xi.vercel.app/assets/syntax-markdown.png" />
     <meta name="twitter:card" content="summary_large_image" />
 
-    <!-- 기억된 언어 선택 복원. site.js는 defer라 첫 페인트보다 늦으므로 이 가드만
-         인라인으로 둔다 — 그래야 잘못된 언어가 한 번 그려지지 않는다.
-         저장은 언어 링크를 직접 눌렀을 때만 일어나고, 값은 "en"|"ko" 둘 중 하나라
-         각각 정확히 한 페이지에 대응한다(= 리다이렉트 루프가 불가능).
-         크롤러에는 localStorage가 없어 절대 이동하지 않는다. -->
-    <script>
-      try {
-        if (localStorage.getItem("uninotepad-lang") === "en") {
-          location.replace("/" + location.hash);
-        }
-      } catch (e) {}
-    </script>
+    <!-- 언어는 URL로만 정해진다: / 는 영어, /ko 는 한국어. 기억된 선택으로
+         자동 이동시키지 않는다 — 주소를 직접 연 사람이 다른 언어로 튕기면
+         링크가 고장난 것으로 읽힌다. -->
 
-    <link rel="stylesheet" href="/assets/site.css?v=7" />
-    <script src="/assets/site.js?v=7" defer></script>
+    <link rel="stylesheet" href="/assets/site.css?v=8" />
+    <script src="/assets/site.js?v=8" defer></script>
   </head>
   <body>
     <nav class="lang-switch" aria-label="Language">

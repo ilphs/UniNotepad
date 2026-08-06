@@ -3,14 +3,13 @@
 // 각 HTML에 있고, 여기에는 JS가 만들어 내는 문구만 사전(T)으로 들어 있다.
 // 고칠 때는 두 HTML의 ?v= 숫자를 함께 올릴 것 — Vercel 엣지가 자산을 캐시한다.
 //
-// <head>에서 defer로 불린다. DOM은 완성된 뒤에 실행되지만 첫 페인트보다는
-// 늦으므로, 언어 리다이렉트 가드만은 각 HTML의 <head> 인라인에 남아 있다.
+// 언어는 URL이 정한다(/ = 영어, /ko = 한국어). 이 파일은 언어를 저장하지도,
+// 자동으로 페이지를 바꾸지도 않는다 — 열린 주소가 곧 언어다.
 
 (function () {
   "use strict";
 
   var LANG = document.documentElement.lang === "ko" ? "ko" : "en";
-  var LANG_KEY = "uninotepad-lang";
 
   var T = {
     en: {
@@ -39,19 +38,11 @@
     },
   }[LANG];
 
-  function storedLang() {
-    try { return localStorage.getItem(LANG_KEY); } catch (e) { return null; }
-  }
-
   // ---- 언어 전환 -------------------------------------------------------
-  // 스위처와 안내 줄 모두 [data-lang]을 달고 있어 이동/해시는 한 곳에서 처리한다.
-  // 선택은 여기서만 기록된다 — 그래서 첫 방문자는 항상 기본 언어(영어)를 본다.
+  // 스위처와 안내 줄 모두 [data-lang]을 달고 있어 한 곳에서 처리한다. 하는 일은
+  // 해시 유지뿐 — 어떤 선택도 저장하지 않으므로 다음 방문도 연 주소 그대로다.
   (function () {
     var links = document.querySelectorAll("[data-lang]");
-    // 기억되는 것은 스위처(EN/한국어) 클릭뿐이다. 안내 줄("이 페이지를 한국어로
-    // 보기")은 이번 한 번만 넘어가는 링크다 — 그 한 번의 클릭으로 이후 모든 방문이
-    // /ko로 튕기면, 영어 URL을 직접 열어도 되돌아오지 않아 고장으로 읽힌다.
-    var switcher = document.querySelectorAll(".lang-switch [data-lang]");
 
     function syncHash() {
       for (var i = 0; i < links.length; i++) {
@@ -63,16 +54,10 @@
     syncHash();
     window.addEventListener("hashchange", syncHash);
 
-    for (var i = 0; i < switcher.length; i++) {
-      switcher[i].addEventListener("click", function () {
-        try { localStorage.setItem(LANG_KEY, this.getAttribute("data-lang")); } catch (e) {}
-      });
-    }
-
     // 한국어 브라우저 방문자에게만 한 줄 안내 (영어 페이지에만 존재).
-    // 이미 언어를 고른 사람에게는 띄우지 않는다 — 그 선택이 곧 대답이다.
+    // 안내일 뿐 자동 전환은 하지 않는다 — 이동은 클릭한 사람만 한다.
     var nudge = document.getElementById("langNudge");
-    if (!nudge || storedLang()) return;
+    if (!nudge) return;
     var list = navigator.languages && navigator.languages.length
       ? navigator.languages
       : [navigator.language || ""];
