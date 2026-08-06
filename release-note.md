@@ -1,5 +1,36 @@
 # UniNotepad 릴리즈 노트
 
+## v0.9.0
+
+### 웹에서 복사한 글이 Markdown 그대로 들어옵니다
+
+- 챗봇 답변이나 웹 문서를 복사해 **Markdown 탭**에 붙이면 제목 · 목록 · 표 ·
+  코드블록 · 체크리스트가 Markdown 문법 그대로 들어옵니다. 그동안은 서식이 전부
+  사라진 평문만 들어왔습니다.
+- 다른 형식 탭(`.ts` · `.log` 등)은 예전처럼 원문 그대로입니다.
+  `Preferences ▸ Editor ▸ Paste HTML as Markdown`에서 끌 수 있습니다.
+- 웹 페이지의 버튼 · 아이콘 같은 부속물은 걸러내고, 붙여 넣은 이미지는
+  설명(alt) 텍스트만 남깁니다.
+
+```mermaid
+graph LR
+  A[붙여넣기] --> B{Markdown 탭인가?}
+  B -->|아니오| C[원문 그대로]
+  B -->|예| D{클립보드에 서식이 있나?}
+  D -->|없음| C
+  D -->|있음| E[Markdown으로 변환해 삽입]
+  E --> F[제목 · 목록 · 표 · 코드블록]
+```
+
+### 함께 나온 것
+
+- **VS Code 확장 0.6.1** — 탐색기와 에디터 탭 우클릭 메뉴에
+  `Open Preview (UniNote)`가 추가됐습니다. 파일을 열지 않고도 바로 미리보기가
+  뜹니다. 설치: [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview)
+- **공식 사이트** — 언어를 주소로만 정하도록 바꿨습니다(`/`는 영어, `/ko`는
+  한국어). 한 번 한국어를 고르면 영어 주소를 직접 열어도 계속 한국어로 튕기던
+  문제가 사라집니다.
+
 ## v0.8.2
 
 ### 미리보기 폭이 창 크기를 따릅니다
