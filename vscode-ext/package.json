@@ -2,7 +2,7 @@
   "name": "uninotepad-markdown-preview",
   "displayName": "UniNotepad Markdown Preview",
   "description": "Markdown preview with interactive Mermaid diagrams — pan, zoom, and a transparent/solid diagram backdrop. Ported from the UniNotepad editor.",
-  "version": "0.5.5",
+  "version": "0.6.0",
   "publisher": "ilphs",
   "license": "MIT",
   "private": true,
@@ -40,6 +40,10 @@
           "light": "media/toolbar-icon-light.svg",
           "dark": "media/toolbar-icon-dark.svg"
         }
+      },
+      {
+        "command": "uninotepadPreview.openFromExplorer",
+        "title": "Open Preview (UniNote)"
       },
       {
         "command": "uninotepadPreview.zoomIn",
@@ -96,7 +100,25 @@
           "group": "navigation"
         }
       ],
+      "explorer/context": [
+        {
+          "command": "uninotepadPreview.openFromExplorer",
+          "when": "resourceLangId == markdown || resourceExtname == .mmd || resourceExtname == .mermaid",
+          "group": "navigation@10"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "uninotepadPreview.openFromExplorer",
+          "when": "resourceLangId == markdown || resourceExtname == .mmd || resourceExtname == .mermaid",
+          "group": "navigation@10"
+        }
+      ],
       "commandPalette": [
+        {
+          "command": "uninotepadPreview.openFromExplorer",
+          "when": "false"
+        },
         {
           "command": "uninotepadPreview.zoomIn",
           "when": "activeWebviewPanelId == 'uninotepad.markdownPreview'"

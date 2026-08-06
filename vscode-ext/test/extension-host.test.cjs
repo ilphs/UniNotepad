@@ -19,6 +19,7 @@ let capturedHtml = "";
 let createdPanels = 0;
 let savedBytes = null;
 const registered = new Map();
+const openedUris = [];
 let serializerViewType = null;
 const themeListeners = [];
 const docChangeListeners = [];
@@ -107,7 +108,10 @@ function makePanel() {
       if (disposables) disposables.push(d);
       return d;
     },
-    reveal() {},
+    reveal() {
+      self.reveals++;
+    },
+    reveals: 0,
     dispose() {
       if (self.disposeHandler) self.disposeHandler();
     },
@@ -174,7 +178,10 @@ const vscode = {
     onDidChangeTextDocument: event(docChangeListeners),
     onDidChangeConfiguration: event([]),
     onDidCloseTextDocument: event(closeDocListeners),
-    openTextDocument: () => Promise.resolve(doc),
+    openTextDocument: (u) => {
+      openedUris.push(u);
+      return Promise.resolve(doc);
+    },
     getConfiguration: () => ({
       get: (k, d) => (k in config ? config[k] : d),
       update: (k, v) => {
@@ -216,6 +223,7 @@ ok("activate/deactivate exported");
 
 for (const id of [
   "uninotepadPreview.open",
+  "uninotepadPreview.openFromExplorer",
   "uninotepadPreview.zoomIn",
   "uninotepadPreview.zoomOut",
   "uninotepadPreview.zoomReset",
@@ -223,7 +231,7 @@ for (const id of [
 ]) {
   assert.ok(registered.has(id), "command not registered: " + id);
 }
-ok("all 5 commands registered");
+ok("all 6 commands registered");
 
 assert.strictEqual(serializerViewType, "uninotepad.markdownPreview");
 ok("serializer registered for the panel view type");
@@ -387,8 +395,25 @@ messageHandler({ type: "setSetting", key: "mermaidBackgroundEnabled", value: tru
 assert.strictEqual(config.mermaidBackgroundEnabled, true);
 ok("setSetting reaches configuration");
 
-// --- export round-trip
 (async () => {
+  // --- context-menu path: the clicked URI is what gets previewed, with no
+  // active editor involved (in the explorer the file need not even be open)
+  const savedEditor = vscode.window.activeTextEditor;
+  vscode.window.activeTextEditor = undefined;
+  const revealsBefore = panelStub.reveals;
+  const createdBefore = createdPanels;
+  await vscode.commands.executeCommand(
+    "uninotepadPreview.openFromExplorer",
+    mkUri("file:///tmp/sample.md"),
+  );
+  vscode.window.activeTextEditor = savedEditor;
+  assert.strictEqual(openedUris.length, 1, "the clicked URI was never opened");
+  assert.strictEqual(openedUris[0].toString(), "file:///tmp/sample.md");
+  assert.strictEqual(createdPanels, createdBefore, "context menu stacked a second panel");
+  assert.ok(panelStub.reveals > revealsBefore, "existing panel not revealed");
+  ok("explorer/tab context menu previews the clicked URI without an active editor");
+
+  // --- export round-trip
   posted.length = 0;
   const exporting = vscode.commands.executeCommand("uninotepadPreview.exportHtml");
   await new Promise((r) => setImmediate(r));

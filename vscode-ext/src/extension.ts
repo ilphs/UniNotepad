@@ -20,6 +20,22 @@ export function activate(context: vscode.ExtensionContext): void {
       PreviewPanel.show(editor.document, extensionUri);
     }),
 
+    // The explorer and editor-tab context menus hand us the clicked resource,
+    // which is not necessarily the active editor — and in the explorer it may
+    // not be open at all, so the document has to be loaded before showing it.
+    vscode.commands.registerCommand("uninotepadPreview.openFromExplorer", async (uri?: vscode.Uri) => {
+      const target = uri ?? vscode.window.activeTextEditor?.document.uri;
+      if (!target) {
+        void vscode.window.showInformationMessage("Open a Markdown or Mermaid document first.");
+        return;
+      }
+      try {
+        PreviewPanel.show(await vscode.workspace.openTextDocument(target), extensionUri);
+      } catch (e) {
+        void vscode.window.showErrorMessage(`Failed to open the preview: ${(e as Error).message}`);
+      }
+    }),
+
     // Zoom is routed through the host even though the state lives in the webview:
     // a webview cannot register a VS Code keybinding, and the app's own zoom
     // shortcuts are what users will reach for. The `when` clauses in package.json

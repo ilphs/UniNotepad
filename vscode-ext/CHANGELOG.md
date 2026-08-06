@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0 — 2026-08-06
+
+- **Open Preview (UniNote)** in the right-click menu of the Explorer and of an
+  editor tab, for `.md` / `.mmd` / `.mermaid` files. The explorer path previews the
+  clicked file without opening it in an editor first.
+
 ## 0.1.3 — 2026-07-31
 
 - **Fixed: clicking a link in the preview opened it twice, so the "Do you want Code

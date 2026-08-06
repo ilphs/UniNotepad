@@ -4,6 +4,10 @@ Markdown preview with an **interactive Mermaid layer** — pan, zoom, and a
 switchable transparent/solid diagram backdrop — ported from the
 [UniNotepad](https://github.com/ilphs/UniNotepad) editor.
 
+📄 **Website:** [English](https://uninotepad-xi.vercel.app/) ·
+[한국어](https://uninotepad-xi.vercel.app/ko) — what the desktop editor is, and
+where to download it (Windows · macOS · Linux).
+
 VS Code already ships a Markdown preview, so this extension is not trying to
 replace it. What it adds is the diagram-handling that UniNotepad built up: a zoom
 ladder that scales the document text and the diagrams together, click-and-drag
@@ -16,7 +20,7 @@ full-bleed layout for a standalone `.mmd` file that *is* one diagram.
 
 | Action | How |
 |---|---|
-| Open the preview | `Cmd/Ctrl+K Shift+M`, or the diagram icon in the editor title bar |
+| Open the preview | `Cmd/Ctrl+K Shift+M`, the diagram icon in the editor title bar, or **Open Preview (UniNote)** when you right-click the file in the Explorer or its editor tab |
 | Zoom text + diagrams | `Cmd/Ctrl+=` / `Cmd/Ctrl+-` / `Cmd/Ctrl+0` (preview focused) |
 | Pan a zoomed diagram | Click and drag inside it |
 | Diagram backdrop | Hover a diagram → **Transparent** / **Backdrop** in its toolbar |
