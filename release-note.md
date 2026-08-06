@@ -28,7 +28,7 @@ graph LR
 - 위 미리보기 폭 개선이 확장에도 똑같이 적용되고, 글 폭을 정하는
   `uninotepadPreview.contentWidth` 설정이 추가됐습니다.
 - 미리보기의 **링크가 두 번 열리던 문제**를 고쳤습니다.
-- 설치: [UniNotepad Markdown Preview — VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview)
+- 설치: [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview)
 
 ### 웹사이트
 
