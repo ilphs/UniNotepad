@@ -33,8 +33,8 @@
          자동 이동시키지 않는다 — 주소를 직접 연 사람이 다른 언어로 튕기면
          링크가 고장난 것으로 읽힌다. -->
 
-    <link rel="stylesheet" href="/assets/site.css?v=14" />
-    <script src="/assets/site.js?v=14" defer></script>
+    <link rel="stylesheet" href="/assets/site.css?v=15" />
+    <script src="/assets/site.js?v=15" defer></script>
   </head>
   <body>
     <nav class="lang-switch" aria-label="Language">
@@ -85,7 +85,7 @@
       <div class="ext-strip">
         <p class="txt">
           🧩 <b>Using VS Code?</b> The same Mermaid preview — zoom, drag, custom background —
-          runs right inside your editor. <a href="#preview">Learn more</a>
+          runs right inside your editor.
         </p>
         <a class="btn sm" href="https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview" target="_blank" rel="noopener">VS Code Extension</a>
       </div>
@@ -105,14 +105,6 @@
             aria-label="Picking Markdown from the UniNotepad status bar, typing notes and a Mermaid diagram while the preview renders them live, then closing the editor pane to show the preview full width"
           ></video>
           <figcaption><b>Dark</b> theme — pick Markdown, type on the left, rendered on the right</figcaption>
-        </figure>
-        <figure>
-          <img src="/assets/syntax-markdown-light.png" alt="UniNotepad in the light theme with the editor pane closed, showing only the preview" />
-          <figcaption><b>Light</b> theme — editor pane closed, preview only</figcaption>
-        </figure>
-        <figure>
-          <img src="/assets/vscode-extension.png" alt="The UniNotepad Markdown Preview extension page in the VS Code Extensions view" />
-          <figcaption><b>VS Code</b> — the same Mermaid preview as an extension</figcaption>
         </figure>
       </div>
     </header>
@@ -198,63 +190,15 @@
       </div>
     </section>
 
-    <!-- ==================== Preview spotlight ==================== -->
-    <h2 id="preview">📄 Markdown and Mermaid preview</h2>
-    <section>
-      <p class="section-lead">
-        The result is drawn right next to what you're writing. No separate browser window, no plugin to install —
-        and because <b>everything renders locally inside the app</b>, your document never leaves your machine.
-      </p>
-      <div class="grid" style="margin-top: 1.5rem">
-        <figure>
-          <img src="/assets/syntax-markdown.png" alt="Split Markdown preview" />
-          <figcaption><b>Markdown</b> — the preview on the right follows as you type. GFM tables, checkboxes, and highlighted code blocks included</figcaption>
-        </figure>
-        <figure>
-          <img src="/assets/syntax-mermaid.png" alt="Mermaid diagram preview" />
-          <figcaption><b>Mermaid</b> — write a flowchart in text and get the picture. Zoom the chart on its own and pick its background</figcaption>
-        </figure>
-      </div>
-      <div class="features" style="margin-top: 1.25rem">
-        <div class="feature">
-          <p class="t">📝 Markdown</p>
-          <p class="d">Tables, checkbox lists, blockquotes, and images render as written, and code blocks get per-language colors inside the preview as well. Scroll the editor and the preview follows the same spot. Any <code>```mermaid</code> block in the document turns into a diagram right where it sits.</p>
-        </div>
-        <div class="feature">
-          <p class="t">🧜 Mermaid</p>
-          <p class="d"><code>.mmd</code> and <code>.mermaid</code> files render as one large diagram for the whole document. Flowcharts, sequence, Gantt, class, state — whatever Mermaid 11 supports. Widen the window and the diagram widens with it, while the text beside it keeps a readable column — set that column under <code>Preferences ▸ Preview</code>. On a syntax error the view isn't cleared; it shows you what is wrong and where.</p>
-        </div>
-        <div class="feature">
-          <p class="t">⌨️ How to use it</p>
-          <div class="d">
-            <ul class="keys">
-              <li>Toggle with <code>Ctrl/Cmd+Shift+M</code> (per tab)</li>
-              <li>Drag the middle divider to set the split (remembered per tab)</li>
-              <li>Close one pane with the <b>×</b> at its top right; reopen from <code>Editor</code> · <code>Preview</code> in the status bar</li>
-              <li>Zoom the editor and the preview independently with <code>Ctrl/Cmd</code> + <code>=</code> <code>-</code> <code>0</code> (kept per tab)</li>
-              <li>Export to HTML with <code>File ▸ Export Preview as HTML…</code></li>
-              <li>Print to PDF with <code>Ctrl/Cmd+P</code></li>
-              <li>For an unsaved new note, just pick the file type in the status bar and the preview opens</li>
-            </ul>
-          </div>
-        </div>
-        <div class="feature">
-          <p class="t">🧩 In VS Code too</p>
-          <p class="d">
-            The same Mermaid preview is available as a VS&nbsp;Code extension —
-            diagram zoom, drag to pan, transparent or custom background, all of it.
-            Find <b>UniNotepad Markdown Preview</b> in the extensions list, install it, and open it with
-            <code>Cmd/Ctrl+K Shift+M</code>. It sits alongside VS Code's built-in preview rather than replacing it.
-          </p>
-          <a class="btn sm" href="https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview" target="_blank" rel="noopener">VS Code Extension</a>
-        </div>
-      </div>
-    </section>
-
     <!-- ==================== Screenshots ==================== -->
     <h2>🖼 Screens</h2>
     <section>
       <div class="grid">
+        <!-- 히어로의 데모 영상이 다크 테마라, 라이트 테마는 여기 첫 자리에서 받는다. -->
+        <figure>
+          <img src="/assets/syntax-markdown-light.png" alt="UniNotepad in the light theme with the editor pane closed, showing only the preview" />
+          <figcaption><b>Light theme</b> — the editor pane closed, preview only</figcaption>
+        </figure>
         <figure>
           <img src="/assets/filetype-picker.png" alt="The file type menu in the status bar" />
           <figcaption><b>File type picker</b> — set an unsaved note to Markdown or Mermaid and the preview opens right away</figcaption>
