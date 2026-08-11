@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # 데모 녹화용 격리 HOME을 만들고 session.json을 심는다.
 #
-# 목적: Markdown 프리뷰가 이미 열린 빈 Untitled 탭으로 앱을 띄우는 것.
-# 프리뷰 분할 상태는 탭별로 세션에 저장되므로(src/session.ts:85-89, 170-176)
-# 여기서 미리 써 두면 녹화 중에 Cmd+Shift+M을 누를 필요가 없다 — 이 프로젝트의
-# "마우스 클릭 자동화 불가"와 "CM6가 accelerator를 가로챔" 제약을 통째로 피한다.
+# 목적: **평문(Normal) 상태의 빈 Untitled 탭**으로 앱을 띄우는 것. 영상은 여기서
+# 시작해 상태바 파일타입 픽커로 Markdown을 고르고, 그 선택이 프리뷰를 여는
+# 장면(src/tabs.ts:300-303 — markdown|mermaid를 고르면 previewVisible=true)을 보여준다.
+#
+# v1은 프리뷰가 열린 상태를 세션에 심어 클릭 자체를 피했지만, v2는 픽커 조작이
+# 시나리오의 일부다. 클릭은 CGEvent 합성으로 해결한다(click.js) — 세션 씨딩은
+# "빈 Untitled 하나만 있는 깨끗한 시작 상태"를 만드는 역할로 남는다.
 #
 # 사용자의 실제 세션(~/Library/Application Support/com.uninotepad.app)은 건드리지
 # 않는다. 격리 성공 여부는 창이 지정한 크기로 뜨는지로 확인한다.
@@ -22,10 +25,11 @@ TAB_ID="$(uuidgen)"
 # 스키마는 src/session.ts buildManifest() 기준 (MANIFEST_VERSION = 1).
 #   path: null            → Untitled. 내용은 backups/<id>.txt 에만 존재하고,
 #                           백업이 없으면 빈 문서로 복원된다(session.ts:203-208).
-#   fileType: "markdown"  → 확장자 없는 Untitled 탭에 프리뷰 자격을 준다.
-#                           isPreviewCapable()이 markdown|mermaid만 허용(preview.ts:174-180).
-#   previewVisible: true  → 프리뷰 창을 연 채로 시작.
-#   previewRatio: 0.5     → 좌우 반반.
+#   fileType: "normal"    → 평문으로 시작. isPreviewCapable()이 markdown|mermaid만
+#                           허용하므로(preview.ts:174-180) 프리뷰 칩도 창도 없다 —
+#                           영상의 첫 장면인 "편집기 전체 폭"이 여기서 나온다.
+#   previewVisible: false → 위와 같은 이유로 어차피 무시되지만, 시작 상태를 명시한다.
+#   previewRatio: 0.5     → Markdown을 고른 뒤 열릴 분할 비율.
 #   hasBackup: false      → 빈 문서로 시작(백업 파일 자체를 만들지 않는다).
 cat > "$APP_DIR/session.json" <<JSON
 {
@@ -41,7 +45,7 @@ cat > "$APP_DIR/session.json" <<JSON
       "hasBackup": false,
       "encoding": "utf8",
       "eol": "lf",
-      "fileType": "markdown",
+      "fileType": "normal",
       "diskMtimeMs": null,
       "largeFile": false,
       "cursor": 0,
@@ -50,7 +54,7 @@ cat > "$APP_DIR/session.json" <<JSON
       "editorFontSize": 15,
       "previewZoomExp": 0,
       "editorVisible": true,
-      "previewVisible": true
+      "previewVisible": false
     }
   ]
 }

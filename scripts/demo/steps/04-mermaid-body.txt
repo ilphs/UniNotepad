@@ -1,0 +1,8 @@
+A[Type] --> B{Markdown?}
+B -->|yes| P[Live preview]
+B -->|no| S[Syntax highlight]
+P --> D[(session.json)]
+S --> D
+D --> K[[backups]]
+K --> R[Restored after a crash]
+```
