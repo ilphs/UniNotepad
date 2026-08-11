@@ -163,6 +163,32 @@ v1(~22초)에서 세 가지가 바뀌었다: **파일타입을 고르는 오프�
 10. **산출물** — mp4가 1400×900 / 2MB 이하 / 오디오 트랙 없음.
 11. **육안 확인** — 사용자의 실제 파일명·문서가 한 프레임도 들어가지 않았는가.
 
+## 리포 README 반영 — GIF로 따로 변환한다
+
+**mp4를 커밋해 README에서 재생시킬 방법은 없다.** GitHub 마크다운 API로 확인한 결과
+`<video>` 태그는 새니타이저가 통째로 지우고, `![](x.mp4)`는 `<img src="…mp4">`가 되어
+깨진 이미지로 나온다. 남는 길은 둘뿐이다:
+
+- **GIF로 변환해 커밋** (지금 방식). 어디서나 자동 재생되고 미러에서도 보인다.
+- 이슈 댓글에 mp4를 드래그해 얻는 `user-attachments` URL. 진짜 플레이어가 붙지만
+  브라우저 수동 작업이 필요하고 github.com 밖에서는 링크로만 보인다.
+
+화면이 대부분 정적인 UI라 GIF 압축이 잘 먹는다 — 38.5초 전체가 900px·10fps에서
+1.2MB다. 재촬영하면 아래로 다시 만들어 `docs/`에 덮어쓰고 README의 파일명을 맞춘다.
+**`.git`은 LFS를 안 쓰므로 한 번 커밋한 GIF는 히스토리에 영구히 남는다** — 크기를
+키우기 전에 한 번 더 생각할 것.
+
+```bash
+V=site/assets/md-preview-v2.mp4
+ffmpeg -y -i "$V" -vf "fps=10,scale=900:-1:flags=lanczos,palettegen=stats_mode=diff" /tmp/pal.png
+ffmpeg -y -i "$V" -i /tmp/pal.png \
+  -lavfi "fps=10,scale=900:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=3" \
+  docs/md-preview-v2.gif
+```
+
+README에서는 홈페이지로 링크를 건다 — GIF에는 정지 수단이 없으니(WCAG 2.2.2),
+재생 컨트롤이 있는 사이트 영상으로 빠질 길을 남겨 둔다.
+
 ## 사이트 반영 (검증 통과 후)
 
 `site/index.html:79-82` 와 `site/ko.html:75-78` 의 lead shot `figure` 하나만 교체한다.
