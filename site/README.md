@@ -14,7 +14,7 @@ Vercel로 배포하는 정적 랜딩 페이지 + 다운로드 리다이렉트 �
 | `api/download/[os].js` | 최신 릴리스 에셋을 파일명 접미사로 매칭해 302 리다이렉트. `/download/<os>`로 접근 |
 | `vercel.json` | `/download/:os` → 함수 rewrite, `cleanUrls` |
 | `assets/*.png` | 스크린샷·아이콘 (README/docs 갤러리에서 복제) |
-| `assets/md-preview-v1.mp4` (+ `-poster.jpg`) | 히어로 lead shot의 Markdown 프리뷰 데모 영상. 촬영은 `scripts/demo/` |
+| `assets/md-preview-v2.mp4` (+ `-poster.jpg`) | 히어로 lead shot의 데모 영상(파일타입 선택 → 작성 → 편집창 토글). 촬영은 `scripts/demo/` |
 
 지원 OS 키: `mac-arm` · `mac-intel` · `windows` · `windows-exe` · `linux-deb` · `linux-rpm` · `linux-appimage`
 

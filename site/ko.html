@@ -33,8 +33,8 @@
          자동 이동시키지 않는다 — 주소를 직접 연 사람이 다른 언어로 튕기면
          링크가 고장난 것으로 읽힌다. -->
 
-    <link rel="stylesheet" href="/assets/site.css?v=10" />
-    <script src="/assets/site.js?v=10" defer></script>
+    <link rel="stylesheet" href="/assets/site.css?v=11" />
+    <script src="/assets/site.js?v=11" defer></script>
   </head>
   <body>
     <nav class="lang-switch" aria-label="Language">
@@ -76,16 +76,16 @@
              autoplay/loop을 JS가 아니라 여기 두는 이유 — JS가 죽어도 재생은 된다.
              site.js가 동작 최소화 설정과 화면 이탈 시 정지만 얹는다.
              controls는 빼지 말 것: 5초를 넘겨 자동 반복하는 콘텐츠에는 멈출 수단이
-             있어야 한다(WCAG 2.2.2). 이 영상은 21.9초 루프다.
+             있어야 한다(WCAG 2.2.2). 이 영상은 38.5초 루프다.
              파일명에 버전을 박는다: ?v= 규칙은 css/js에만 걸려 있어 영상에는 안 먹는다. -->
         <figure class="lead-shot">
           <video
-            src="/assets/md-preview-v1.mp4"
-            poster="/assets/md-preview-v1-poster.jpg"
+            src="/assets/md-preview-v2.mp4"
+            poster="/assets/md-preview-v2-poster.jpg"
             preload="auto" autoplay loop muted playsinline controls
-            aria-label="UniNotepad에서 Markdown을 입력하면 오른쪽 미리보기가 실시간으로 렌더되는 화면"
+            aria-label="UniNotepad 상태바에서 파일 타입을 Markdown으로 고르고, 메모와 Mermaid 다이어그램을 입력하는 동안 오른쪽 미리보기가 실시간으로 렌더되며, 마지막에 편집창을 닫아 미리보기를 전체 폭으로 보여주는 화면"
           ></video>
-          <figcaption><b>다크</b> 테마 — 왼쪽에 입력하면 오른쪽에 렌더</figcaption>
+          <figcaption><b>다크</b> 테마 — Markdown을 고르고 왼쪽에 입력, 오른쪽에 렌더</figcaption>
         </figure>
         <figure>
           <img src="/assets/syntax-markdown-light.png" alt="라이트 테마에서 편집 창을 닫고 미리보기만 켠 UniNotepad 화면" />
