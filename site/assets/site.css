@@ -3,14 +3,21 @@
    고칠 때는 두 HTML의 ?v= 숫자를 함께 올릴 것 — Vercel 엣지가 자산을 캐시한다. */
 
 :root {
-  /* 페이지 폭. 고정이 아니라 상한이다 — 창이 좁으면 창에 맞춰 줄어들고(body의 좌우
-     여백 1.5rem만 남는다), 넓어지면 여기서 멈춘다.
-     87.5rem = 1400px = **스크린샷·데모 영상 자산의 원본 가로폭**. 이 값을 넘기면
-     히어로 영상이 원본보다 확대되어 눈에 띄게 흐려진다(2560px 모니터에서 1.8배).
-     늘리려면 자산부터 더 큰 해상도로 다시 찍어야 한다.
+  /* 페이지 폭. 고정이 아니라 상한이다 — 창이 좁으면 창에 맞춰 줄어들고(아래 --gutter
+     만큼의 여백은 항상 남는다), 넓어지면 여기서 멈춘다.
+     상한을 87.5rem(1400px) 이상으로 올리지 말 것 — 스크린샷·데모 영상 자산의 원본
+     가로폭이 1400px이라, 그보다 넓으면 히어로 영상이 확대되어 눈에 띄게 흐려진다.
+     지금의 75rem(1200px)은 그 아래라 자산이 항상 축소되어 들어간다(선명하다).
      본문 텍스트는 이 폭을 따라가지 않는다 — .hero .lead(34rem), .section-lead(44rem),
      .faq(48rem), .dl-note(46rem)이 저마다 읽기 좋은 줄 길이를 따로 잡고 있다. */
-  --page: 87.5rem;
+  --page: 75rem;
+
+  /* 좌우 여백. 고정값이 아니라 창 폭에 비례한다 — 고정 24px로 두면 --page 상한에
+     닿기 전(대략 1340px 아래)까지는 내용이 화면 가장자리에 붙어 꽉 차 보인다.
+     5vw = 좌우 합쳐 화면의 10%. clamp의 두 끝이 각각 다른 문제를 막는다:
+       하한 1.5rem — 모바일에서 5vw(390px에서 19.5px)로 줄어 글이 테두리에 붙는 것
+       상한 5rem   — 창이 약 1340px를 넘으면 --page 상한이 그보다 큰 여백을 만든다 */
+  --gutter: clamp(1.5rem, 5vw, 5rem);
 
   --bg: #fdfcf7;
   --fg: #16161d;
@@ -41,7 +48,7 @@ html { scroll-behavior: smooth; }
 
 body {
   margin: 0;
-  padding: 0 1.5rem 5rem;
+  padding: 0 var(--gutter) 5rem;
   font: 16px/1.75 -apple-system, BlinkMacSystemFont, "Segoe UI",
     "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
   background: var(--bg);
@@ -276,8 +283,9 @@ h2 {
 .section-lead { max-width: 44rem; margin: 0 auto; font-size: 1.05rem; color: var(--muted); text-align: left; }
 
 /* ---- Feature grid -------------------------------------------------- */
-/* 최소폭 320px: 페이지가 1400px까지 넓어져도 4열에서 멈춘다. 260px로 두면 5열이
-   되면서 카드가 오히려 좁아진다(960px 3열일 때 309px → 1400px 5열일 때 262px). */
+/* 최소폭 320px: 페이지 상한 1200px에서 3열(카드 389px)이 된다. 260px로 두면 4열이
+   되면서 카드가 288px로 좁아진다 — 제목 한 줄 + 서너 줄 설명이 들어가는 카드에는
+   좁다. 밀도를 높이려면 이 값을 280px로 내리면 4열이 된다. */
 .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; }
 .feature { border: 3px solid var(--border); border-radius: var(--radius); padding: 1.1rem 1.25rem; background: var(--card); box-shadow: var(--shadow); }
 .feature .t { font-weight: 800; margin: 0 0 0.35rem; }
