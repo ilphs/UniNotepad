@@ -187,7 +187,7 @@ export function refreshStatusBar(): void {
     warn.className = "status-item";
     warn.textContent = "⚠ Backup save failed";
     warn.title = health.error ?? "Session backup could not be written. Click to retry.";
-    warn.addEventListener("click", () => void flushNow());
+    onPress(warn, () => void flushNow());
     right.prepend(warn);
   }
 
@@ -200,7 +200,7 @@ export function refreshStatusBar(): void {
     badge.textContent = updateBadgeLabel;
     badge.title = "Click for details";
     const onClick = updateBadgeOnClick;
-    badge.addEventListener("click", () => onClick?.());
+    onPress(badge, () => onClick?.());
     right.prepend(badge);
   }
 
@@ -237,6 +237,23 @@ const FILETYPE_OPTIONS: PickerOption[] = Object.entries(FILE_TYPE_LABELS).map(([
   label,
 }));
 
+/**
+ * Wire a status-bar chip to fire on mousedown, not click.
+ *
+ * `click` is unusable here: pressing a chip blurs the editor, CodeMirror
+ * reports that focus change ~10ms later as an empty update, and our update
+ * listener rebuilds the whole bar (replaceChildren) — so by mouseup the pressed
+ * span is detached and no click ever reaches it. The first press on any chip
+ * would be swallowed. preventDefault also keeps focus in the editor, so the
+ * rebuild never happens in the first place.
+ */
+function onPress(span: HTMLElement, handler: () => void): void {
+  span.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    handler();
+  });
+}
+
 /** A pane chip: zoom readout when the pane is open, dimmed "off" when closed.
  *  `onToggle` null means the chip is inert — the pane is the only one left, so
  *  closing it would leave an empty window. */
@@ -247,7 +264,7 @@ function paneChip(label: string, shown: boolean, onToggle: (() => void) | null):
   if (onToggle) {
     span.classList.add("status-item");
     span.title = shown ? "Click to close this pane" : "Click to reopen this pane";
-    span.addEventListener("click", onToggle);
+    onPress(span, onToggle);
   }
   return span;
 }
@@ -257,11 +274,20 @@ function pickerItem(label: string, onOpen: (anchor: HTMLElement) => void): HTMLE
   span.className = "status-item";
   span.textContent = label;
   span.title = "Click to change";
-  span.addEventListener("click", () => onOpen(span));
+  onPress(span, () => {
+    // Pressing the chip that owns the open menu dismisses it (openPicker leaves
+    // presses on its own anchor to us rather than closing as an outside click).
+    if (currentPickerAnchor === span) {
+      closeCurrentPicker?.();
+      return;
+    }
+    onOpen(span);
+  });
   return span;
 }
 
 let closeCurrentPicker: (() => void) | null = null;
+let currentPickerAnchor: HTMLElement | null = null;
 
 function openPicker(
   anchor: HTMLElement,
@@ -299,7 +325,10 @@ function openPicker(
   menu.style.top = `${Math.max(4, a.top - m.height - 4)}px`;
 
   const onDocDown = (e: MouseEvent) => {
-    if (!menu.contains(e.target as Node)) close();
+    const target = e.target as Node;
+    // The anchor is excluded so pressing it toggles (pickerItem) instead of
+    // closing here and immediately reopening.
+    if (!menu.contains(target) && !anchor.contains(target)) close();
   };
   const onKey = (e: KeyboardEvent) => {
     if (e.key === "Escape") close();
@@ -309,6 +338,7 @@ function openPicker(
     document.removeEventListener("mousedown", onDocDown, true);
     document.removeEventListener("keydown", onKey, true);
     closeCurrentPicker = null;
+    currentPickerAnchor = null;
   }
   // Defer so the click that opened the menu doesn't immediately close it.
   setTimeout(() => {
@@ -316,4 +346,5 @@ function openPicker(
     document.addEventListener("keydown", onKey, true);
   }, 0);
   closeCurrentPicker = close;
+  currentPickerAnchor = anchor;
 }
