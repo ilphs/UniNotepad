@@ -1,0 +1,4 @@
+
+- [x] Tabs restored after a crash
+- [x] Unsaved notes included
+- [ ] Anything left to save

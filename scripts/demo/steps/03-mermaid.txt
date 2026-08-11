@@ -1,0 +1,5 @@
+
+```mermaid
+flowchart LR
+A[Type] --> B[Render] --> C[Ship]
+```
