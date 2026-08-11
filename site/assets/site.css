@@ -22,6 +22,10 @@
   --bg: #fdfcf7;
   --fg: #16161d;
   --muted: #5c5c6b;
+  /* 본문용 중간 톤. --muted는 캡션·각주처럼 짧고 부차적인 글에 쓰는 색이라
+     히어로 리드처럼 실제로 읽어야 하는 문단에 쓰면 흐리다(배경 대비 약 6:1).
+     --fg보다는 물러서되 대비는 10:1을 넘겨, 위계는 지키고 읽히게 한다. */
+  --fg-soft: #3a3a48;
   --card: #ffffff;
   --border: #16161d;
   --accent: #7c5cff;
@@ -35,6 +39,7 @@
     --bg: #14141a;
     --fg: #e6e6ef;
     --muted: #9a9aae;
+    --fg-soft: #cdcddd;
     --card: #1e1e28;
     --border: #e6e6ef;
     --accent: #9d86ff;
@@ -136,11 +141,22 @@ h2 {
   text-align: center;
 }
 .hero img.icon { width: 96px; height: 96px; }
-.hero h1 { margin: 1rem 0 0.25rem; font-size: 2.5rem; font-weight: 900; letter-spacing: -0.03em; }
-.hero .tagline { margin: 0; font-size: 1.25rem; color: var(--fg); font-weight: 600; }
+.hero h1 { margin: 1rem 0 0.35rem; font-size: clamp(2.25rem, 6vw, 3rem); font-weight: 900; letter-spacing: -0.03em; line-height: 1.15; }
+/* 페이지에서 가장 먼저 읽히는 한 줄 — h1 다음 가는 크기와 굵기를 준다.
+   1.25rem/600이던 이전 값은 아래 .lead(1rem)와 차이가 작아 한 덩어리로 뭉쳐 보였다. */
+.hero .tagline { margin: 0; font-size: clamp(1.35rem, 3.4vw, 1.7rem); color: var(--fg); font-weight: 800; letter-spacing: -0.02em; line-height: 1.35; }
 /* 여러 줄짜리 본문은 중앙 정렬하면 줄마다 시작점이 달라진다 — 본문만 좌측으로.
-   좌측 정렬은 폭을 좁히는 것과 짝 (한 줄 40자 안쪽). */
-.hero .lead { margin: 1.5rem auto 0; max-width: 34rem; color: var(--muted); text-align: left; }
+   좌측 정렬은 폭을 좁히는 것과 짝. 글자를 1.125rem으로 키웠으므로 폭도 34→38rem으로
+   함께 늘린다 — 폭을 그대로 두면 한 줄이 30자 남짓으로 짧아져 시선이 자주 되돌아온다.
+   색은 --muted가 아니라 --fg-soft: 실제로 읽어야 하는 문단이다. */
+.hero .lead {
+  margin: 1.5rem auto 0; max-width: 38rem;
+  font-size: 1.125rem; line-height: 1.75; color: var(--fg-soft);
+  text-align: left;
+}
+/* 문장 속 강조("저장하지 않은 내용까지")는 이 페이지의 핵심 주장이다 —
+   본문 톤에서 완전한 전경색으로 한 단계 올려 훑어봐도 눈에 걸리게. */
+.hero .lead b { color: var(--fg); font-weight: 800; }
 
 .cta { margin: 2rem 0 0.75rem; display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
 .btn {
@@ -160,7 +176,7 @@ h2 {
 .btn.sm { padding: 0.5rem 0.9rem; font-size: 0.9rem; border-width: 2px; box-shadow: 2px 2px 0 var(--border); }
 .btn.sm:hover { background: var(--accent); color: var(--accent-fg); transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--border); }
 .btn.sm:active { transform: translate(2px, 2px); box-shadow: none; }
-.hero .sub { margin: 0.5rem 0 0; font-size: 0.9rem; color: var(--muted); min-height: 1.2em; }
+.hero .sub { margin: 0.5rem 0 0; font-size: 0.95rem; color: var(--fg-soft); min-height: 1.2em; }
 
 /* VS Code 확장 안내 — 히어로의 다운로드 동선을 가리지 않도록 CTA 줄이 아니라
    본문 폭의 좁은 카드로. .mac-guide와 같은 왼쪽 강조선 어법.
@@ -174,7 +190,7 @@ h2 {
   text-align: left;
 }
 /* 16rem 아래로는 줄바꿈이 너무 잦아진다 — 그 전에 버튼을 아랫줄로 내린다. */
-.hero .ext-strip .txt { flex: 1 1 16rem; min-width: 0; margin: 0; font-size: 0.9rem; color: var(--muted); }
+.hero .ext-strip .txt { flex: 1 1 16rem; min-width: 0; margin: 0; font-size: 0.95rem; line-height: 1.65; color: var(--fg-soft); }
 .hero .ext-strip .btn { flex: 0 0 auto; }
 .hero .ext-strip b { color: var(--fg); font-weight: 800; }
 /* 좁은 화면에서 버튼이 아랫줄로 내려가면 탭 대상으로 넓게 편다. */
