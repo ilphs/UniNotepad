@@ -33,8 +33,8 @@
          자동 이동시키지 않는다 — 주소를 직접 연 사람이 다른 언어로 튕기면
          링크가 고장난 것으로 읽힌다. -->
 
-    <link rel="stylesheet" href="/assets/site.css?v=13" />
-    <script src="/assets/site.js?v=13" defer></script>
+    <link rel="stylesheet" href="/assets/site.css?v=14" />
+    <script src="/assets/site.js?v=14" defer></script>
   </head>
   <body>
     <nav class="lang-switch" aria-label="Language">
@@ -52,11 +52,24 @@
       <img class="icon" src="/assets/app-icon.png" alt="The UniNotepad app icon" />
       <h1>UniNotepad</h1>
       <p class="tagline">Your tabs, exactly where you left them.</p>
+
+      <!-- 세 가지 상황 → 하나의 결과. 같은 내용을 한 문단으로 풀어 쓰면 훑어보는
+           방문자가 핵심 약속을 놓친다 — 상황은 카드로 끊어 읽히게, 결론은 배너로. -->
+      <div class="recovery">
+        <ul class="cases">
+          <li><span class="ic" aria-hidden="true">💤</span>You forgot to save</li>
+          <li><span class="ic" aria-hidden="true">✕</span>You closed the window</li>
+          <li><span class="ic" aria-hidden="true">⚡</span>The power went out</li>
+        </ul>
+        <p class="arrow"><span aria-hidden="true">↓</span> Next time you open the app</p>
+        <p class="result">
+          <b>Every tab is back</b> — including the ones you never saved.
+        </p>
+      </div>
+
       <p class="lead">
-        Forgot to save? Closed the window? Lost power? Every tab you had open —
-        <b>including the ones you never saved</b> — is still there, and the next time you
-        open the app it comes back exactly as you left it. Windows, macOS, and Linux;
-        around 3 MB to install.
+        Tabs, syntax highlighting, and live Markdown preview in a plain-text editor for
+        Windows, macOS, and Linux — around 3 MB to install.
       </p>
 
       <div class="cta">

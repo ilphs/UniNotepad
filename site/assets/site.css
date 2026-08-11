@@ -71,6 +71,9 @@ html[lang="ko"] body { word-break: keep-all; }
 /* display를 지정한 요소(.lang-nudge)가 hidden 속성을 이겨 버리지 않도록. */
 [hidden] { display: none !important; }
 
+/* 가운뎃점으로 이어 붙인 나열(Windows · macOS · Linux)이 점에서 끊기지 않도록. */
+.nowrap { white-space: nowrap; }
+
 /* 끝줄에 한 단어만 남는 고아 줄 방지. */
 h1, h2, .tagline, figcaption, .dl-card h3, .feature .t { text-wrap: balance; }
 p { text-wrap: pretty; }
@@ -145,18 +148,62 @@ h2 {
 /* 페이지에서 가장 먼저 읽히는 한 줄 — h1 다음 가는 크기와 굵기를 준다.
    1.25rem/600이던 이전 값은 아래 .lead(1rem)와 차이가 작아 한 덩어리로 뭉쳐 보였다. */
 .hero .tagline { margin: 0; font-size: clamp(1.35rem, 3.4vw, 1.7rem); color: var(--fg); font-weight: 800; letter-spacing: -0.02em; line-height: 1.35; }
-/* 여러 줄짜리 본문은 중앙 정렬하면 줄마다 시작점이 달라진다 — 본문만 좌측으로.
-   좌측 정렬은 폭을 좁히는 것과 짝. 글자를 1.125rem으로 키웠으므로 폭도 34→38rem으로
-   함께 늘린다 — 폭을 그대로 두면 한 줄이 30자 남짓으로 짧아져 시선이 자주 되돌아온다.
-   색은 --muted가 아니라 --fg-soft: 실제로 읽어야 하는 문단이다. */
+/* 핵심 약속은 아래 .recovery 블록이 지고, 여기는 "무엇인가"를 한 문장으로 말하는
+   자리다. 두세 줄짜리 짧은 문장이라 중앙 정렬해도 시작점이 흔들려 보이지 않는다
+   (한 문단을 통째로 중앙 정렬하는 것과는 다르다). 색은 --muted가 아니라 --fg-soft —
+   훑고 지나가는 캡션이 아니라 실제로 읽는 문장이다. */
 .hero .lead {
-  margin: 1.5rem auto 0; max-width: 38rem;
-  font-size: 1.125rem; line-height: 1.75; color: var(--fg-soft);
-  text-align: left;
+  margin: 1.75rem auto 0; max-width: 40rem;
+  font-size: 1.0625rem; line-height: 1.7; color: var(--fg-soft);
 }
-/* 문장 속 강조("저장하지 않은 내용까지")는 이 페이지의 핵심 주장이다 —
-   본문 톤에서 완전한 전경색으로 한 단계 올려 훑어봐도 눈에 걸리게. */
-.hero .lead b { color: var(--fg); font-weight: 800; }
+
+/* ---- 상황 → 결과 ---------------------------------------------------- */
+/* 이 제품이 하는 일은 "이런 일이 있어도 그대로"라는 한 문장인데, 문단으로 풀면
+   훑어보는 눈에 걸리지 않는다. 상황 셋을 같은 무게의 카드로 끊고, 화살표로 잇고,
+   결론만 반전 배너로 세운다 — 히어로에서 시선이 멈추는 지점을 하나 만든다. */
+.hero .recovery { max-width: 46rem; margin: 2rem auto 0; }
+.hero .cases {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem;
+}
+.hero .cases li {
+  display: flex; flex-direction: column; align-items: center; gap: 0.4rem;
+  padding: 0.9rem 0.6rem;
+  border: 3px solid var(--border); border-radius: var(--radius);
+  background: var(--card); box-shadow: var(--shadow);
+  font-size: 0.95rem; font-weight: 700; line-height: 1.4; text-align: center;
+}
+.hero .cases .ic { font-size: 1.5rem; line-height: 1; }
+/* 카드와 배너를 잇는 연결어. 셋과 하나 사이의 인과를 눈으로 보이게 하는 줄이라
+   글자는 작게, 화살표만 크게. */
+.hero .arrow {
+  margin: 0.85rem 0 0; font-size: 0.85rem; font-weight: 800;
+  letter-spacing: 0.02em; color: var(--muted);
+}
+.hero .arrow span { font-size: 1.15rem; vertical-align: -0.1em; color: var(--accent); }
+/* 결론 배너. 배경을 --accent로 두면 라이트 테마에서 흰 글자 대비가 4.7:1까지
+   떨어진다 — 페이지에서 가장 중요한 한 줄이므로 전경/배경을 통째로 뒤집어
+   양쪽 테마 모두 15:1 위로 올린다. 강조색은 글자 밑줄에만 남긴다. */
+.hero .result {
+  margin: 0.85rem 0 0; padding: 0.9rem 1.1rem;
+  border: 3px solid var(--border); border-left: 10px solid var(--accent);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+  background: var(--fg); color: var(--bg);
+  font-size: 1.1rem; font-weight: 700; line-height: 1.5;
+}
+.hero .result b {
+  font-weight: 900;
+  text-decoration: underline; text-decoration-color: var(--accent);
+  text-decoration-thickness: 4px; text-underline-offset: 3px;
+}
+/* 셋으로 나뉜 칸이 두세 글자마다 줄바꿈될 만큼 좁아지기 전에 세로로 쌓고,
+   그때는 아이콘을 왼쪽에 두어 목록처럼 읽히게 한다. */
+@media (max-width: 560px) {
+  .hero .cases { grid-template-columns: 1fr; gap: 0.5rem; }
+  .hero .cases li { flex-direction: row; justify-content: flex-start; gap: 0.6rem; padding: 0.7rem 0.85rem; text-align: left; }
+  .hero .cases .ic { font-size: 1.25rem; }
+  .hero .result { font-size: 1rem; }
+}
 
 .cta { margin: 2rem 0 0.75rem; display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; }
 .btn {
