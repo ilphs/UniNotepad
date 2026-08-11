@@ -10,10 +10,11 @@ Vercel로 배포하는 정적 랜딩 페이지 + 다운로드 리다이렉트 �
 | `index.html` | 랜딩 페이지 **영어판** (`/`). 기본 언어 |
 | `ko.html` | 랜딩 페이지 **한국어판** (`/ko`). `cleanUrls`가 확장자를 떼 준다 |
 | `assets/site.css` | 두 페이지가 공유하는 스타일 |
-| `assets/site.js` | 두 페이지가 공유하는 스크립트 (OS 감지·라이트박스·복사 버튼·언어 스위처) |
+| `assets/site.js` | 두 페이지가 공유하는 스크립트 (OS 감지·라이트박스·복사 버튼·언어 스위처·히어로 영상 제어) |
 | `api/download/[os].js` | 최신 릴리스 에셋을 파일명 접미사로 매칭해 302 리다이렉트. `/download/<os>`로 접근 |
 | `vercel.json` | `/download/:os` → 함수 rewrite, `cleanUrls` |
 | `assets/*.png` | 스크린샷·아이콘 (README/docs 갤러리에서 복제) |
+| `assets/md-preview-v1.mp4` (+ `-poster.jpg`) | 히어로 lead shot의 Markdown 프리뷰 데모 영상. 촬영은 `scripts/demo/` |
 
 지원 OS 키: `mac-arm` · `mac-intel` · `windows` · `windows-exe` · `linux-deb` · `linux-rpm` · `linux-appimage`
 
@@ -23,6 +24,8 @@ Vercel로 배포하는 정적 랜딩 페이지 + 다운로드 리다이렉트 �
   동일해야 한다. 한쪽에만 섹션을 추가하면 다른 언어에서 그 내용이 통째로 사라진다.
 - **`assets/site.css` · `assets/site.js`를 고치면 두 HTML의 `?v=` 숫자를 함께 올린다.**
   Vercel 엣지가 정적 자산을 캐시하므로, 올리지 않으면 배포해도 옛 파일이 계속 나간다.
+- **영상·이미지에는 `?v=`가 안 걸려 있다** — 데모 영상을 다시 찍으면 쿼리를 붙이지 말고
+  **파일명 자체의 버전을 올리고**(`md-preview-v2.mp4`) 두 HTML을 함께 고친다.
 - **본문 문구는 HTML에, JS가 만들어 내는 문구만 `site.js`의 `T` 사전에** 둔다
   (추천 배지 · 복사 버튼 · 히어로 다운로드 라벨 · 썸네일 aria-label).
 - **언어는 URL이 정한다** — `/`는 영어, `/ko`는 한국어. 선택을 저장하지도, 자동으로

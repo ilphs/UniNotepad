@@ -158,6 +158,62 @@
     window.addEventListener("hashchange", openIfTargeted);
   })();
 
+  // ---- 히어로 데모 영상 --------------------------------------------------
+  // 자동재생 자체는 HTML의 autoplay/loop이 한다. 여기서는 두 가지만 얹는다:
+  //   * 동작 최소화(prefers-reduced-motion)를 켠 사람에게는 멈춘다 — 끝없이 도는
+  //     반복 재생은 그 설정이 막으려는 바로 그 움직임이다. 설정을 도중에 바꿔도 따라간다.
+  //   * 화면 밖으로 나가면 멈춘다. 아래 문서를 읽는 내내 히어로 영상이 계속 도는 것은
+  //     배터리만 먹는다. 다시 올라오면 이어서 재생한다.
+  // 어느 경우에도 빈 칸이 되지 않는다 — 화면 밖에서는 보던 프레임에 멈춰 있고,
+  // 동작 최소화에서는 poster로 돌아간다.
+  (function () {
+    var v = document.querySelector(".hero .shot video");
+    if (!v) return;
+
+    var reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+    var onScreen = true;
+
+    // 동작 최소화일 때 그냥 pause만 하면 거의 빈 편집기에서 얼어붙는다 — autoplay가
+    // 이미 시작한 뒤라 poster가 다시 나오지 않기 때문이다. load()로 요소를 초기
+    // 상태로 되돌리면 poster가 복귀한다(마지막 프레임 탐색은 디코딩에 기대야 해서
+    // 확실하지 않다). 여기서 멈춰도 controls가 남아 있으니 직접 재생할 수 있다.
+    var calmed = false;
+    function calm() {
+      if (calmed) return;
+      calmed = true;
+      v.removeAttribute("autoplay");
+      v.loop = false;
+      v.pause();
+      v.load(); // poster 복귀
+    }
+
+    function sync() {
+      if (reduce.matches) { calm(); return; }
+      calmed = false;
+      if (!onScreen) { v.pause(); return; }
+      v.loop = true;
+      var p = v.play();
+      // 브라우저가 자동재생을 거부하면 rejected promise가 온다(정책·저전력 모드 등).
+      // 잡지 않으면 콘솔에 unhandled rejection이 남는다 — poster가 있으니 조용히 넘긴다.
+      if (p && p.catch) p.catch(function () {});
+    }
+
+    if (reduce.addEventListener) reduce.addEventListener("change", sync);
+    else if (reduce.addListener) reduce.addListener(sync); // 구형 Safari
+
+    if (window.IntersectionObserver) {
+      new IntersectionObserver(
+        function (entries) {
+          onScreen = entries[0].isIntersecting;
+          sync();
+        },
+        { threshold: 0.2 }
+      ).observe(v);
+    }
+
+    sync();
+  })();
+
   // ---- 라이트박스 ------------------------------------------------------
   // 스크린샷 클릭 → 크게 보기. 열린 채로 화살표·키보드·썸네일·스와이프로
   // 다른 화면까지 넘겨볼 수 있다. Esc 닫기·포커스 트랩은 <dialog>가 기본 제공.
