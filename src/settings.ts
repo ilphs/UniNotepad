@@ -35,7 +35,12 @@ const FONT_SIZE_DEFAULT = 14;
  *  Mermaid diagrams already do. Hence MIN as a floor for *nonzero* values. */
 const PREVIEW_WIDTH_MIN = 320;
 const PREVIEW_WIDTH_MAX = 3000;
-const PREVIEW_WIDTH_DEFAULT = 680;
+/** Default to no cap. A fixed 680px column left the text stranded in the middle
+ *  of a wide pane with empty gutters on both sides; `.md-body`'s pane-proportional
+ *  side padding supplies the margin instead. Users who prefer a fixed measure can
+ *  still set one, and a value already stored keeps working — this only changes
+ *  what an unset preference resolves to. */
+const PREVIEW_WIDTH_DEFAULT = 0;
 
 /** Editor:preview split bounds — keeps either pane from collapsing. */
 const RATIO_MIN = 0.2;

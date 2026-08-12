@@ -255,9 +255,33 @@ async function renderNow(): Promise<void> {
   const doc = currentDoc();
   const mdBody = ensureMdBody();
   mdBody.innerHTML = DOMPurify.sanitize(marked.parse(doc) as string);
+  wrapTables(mdBody);
   await highlightCodeBlocks(mdBody, myRun);
   if (renderSeq !== myRun || previewHost.hidden) return;
   await renderMermaid(mdBody, myRun);
+}
+
+/** Give every table its own horizontal scroll viewport.
+ *
+ *  The overflow used to live on the table itself via `display:block`, which cost
+ *  the table its table layout — it sized to its content and ignored the pane (see
+ *  the `.md-table-wrap` note in styles.css). Moving the viewport to a wrapper
+ *  lets the table stay `display:table` and fill the width, while a table too wide
+ *  to wrap (long URLs, code) still scrolls instead of overflowing the pane.
+ *
+ *  Built with DOM calls rather than innerHTML so nothing re-enters the parser
+ *  after DOMPurify has run. Tables nested in a blockquote or list get a wrapper
+ *  too — the wrapper takes the table's place, so the surrounding structure and
+ *  the top-level column cap both keep applying to it. */
+function wrapTables(mdBody: HTMLElement): void {
+  for (const table of Array.from(mdBody.querySelectorAll("table"))) {
+    // Re-render reuses no nodes, but guard anyway so a wrapper is never nested.
+    if (table.parentElement?.classList.contains("md-table-wrap")) continue;
+    const wrap = document.createElement("div");
+    wrap.className = "md-table-wrap";
+    table.replaceWith(wrap);
+    wrap.appendChild(table);
+  }
 }
 
 /** Replace ```mermaid code blocks with rendered SVG diagrams. The block's
@@ -526,7 +550,12 @@ function htmlDocument(title: string, body: string): string {
   pre { background: #f5f5f5; padding: 1rem; overflow-x: auto; border-radius: 6px; }
   code { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
   blockquote { border-left: 4px solid #ddd; margin: 0; padding-left: 1rem; color: #555; }
-  table { border-collapse: collapse; } th, td { border: 1px solid #ccc; padding: 4px 8px; }
+  /* Tables arrive wrapped in the scroll container the preview gives them, so the
+     rules here mirror styles.css: the wrapper owns the flow margin and the
+     overflow, and the table fills it unless its cells refuse to wrap. */
+  .md-table-wrap { overflow-x: auto; margin: 0.8em 0; }
+  table { border-collapse: collapse; width: auto; min-width: 100%; margin: 0; }
+  th, td { border: 1px solid #ccc; padding: 4px 8px; }
   img, svg { max-width: 100%; }
 </style>
 </head>
