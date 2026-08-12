@@ -42,7 +42,7 @@
 ### 문서 구조 (소유권 분리)
 
 - **하니스 문서** (`Ref-docs/claude/` 하위) — 🔒 dotclaude 소유. `dotclaude-update`가 덮어쓰니 **수정 금지**.
-- **프로젝트 스펙** (`specs/` 하위) — 📝 자유롭게 작성.
+- **프로젝트 스펙** (`Ref-docs/specs/` 하위) — 📝 자유롭게 작성. → [SDD 가이드라인](Ref-docs/claude/sdd.md) · `/spec-guard`로 정합성 분석
 
 ### 하니스 상세 문서 (Ref-docs/claude/)
 
@@ -52,6 +52,7 @@
 - [컨벤션](Ref-docs/claude/conventions.md) — 커밋, 주석, 로깅 규칙
 - [셋업](Ref-docs/claude/setup.md) — 새 환경 초기 설정
 - [Agent Delegation](Ref-docs/claude/agent-delegation.md) — 에이전트 위임/파이프라인 상세
+- [SDD 가이드라인](Ref-docs/claude/sdd.md) — 스펙 문서 작성/관리 규약
 
 ### 핵심 규칙
 
@@ -62,4 +63,4 @@
 
 ---
 
-*최종 업데이트: 2026-07-21*
+*최종 업데이트: 2026-08-12*
