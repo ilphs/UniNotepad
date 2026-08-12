@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.0 — 2026-08-12
+
+- **The preview now uses the width of the panel.** `uninotepadPreview.contentWidth`
+  defaults to `0` (fill the panel) instead of `680`, so text no longer sits in a
+  fixed column with empty gutters on either side of a wide panel. Side margins grow
+  with the panel rather than staying at a flat 32px. If you prefer a fixed measure,
+  set `contentWidth` to a pixel value — an existing setting is left alone, this
+  only changes what an unset one resolves to.
+- **Tables fill the available width instead of hugging their content.** A table was
+  laid out as a block, which made it size to its cells and ignore the panel; it is a
+  table again, with the horizontal scrollbar moved to a wrapper so a table too wide
+  to wrap (long URLs, code) still scrolls rather than overflowing.
+
 ## 0.6.1 — 2026-08-06
 
 - Marketplace listing only, no functional change: the Resources sidebar now links

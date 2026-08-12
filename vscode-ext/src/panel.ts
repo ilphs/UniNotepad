@@ -54,7 +54,10 @@ function readSettings(): PreviewSettings {
   return {
     mermaidBackground: cfg.get<string>("mermaidBackground", "255,255,255,1"),
     mermaidBackgroundEnabled: cfg.get<boolean>("mermaidBackgroundEnabled", false),
-    contentWidth: cfg.get<number>("contentWidth", 680),
+    // 0 = no cap (fill the panel). Keep in sync with the setting's declared
+    // default in package.json — this fallback only fires if the contribution is
+    // missing, but the two disagreeing would be a silent layout bug.
+    contentWidth: cfg.get<number>("contentWidth", 0),
   };
 }
 

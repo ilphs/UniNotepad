@@ -65,7 +65,12 @@ body {
   box-sizing: border-box;
   max-width: none;
   margin: 0;
-  padding: 28px 32px 48px;
+  /* Side padding scales with the panel so a wide one gets breathing room instead
+     of text pinned to the edge. `%` (not `vw`) on purpose: it resolves against
+     the containing block, so a narrow side-by-side panel keeps the old 32px
+     while a full-width one grows — up to a ceiling, past which the gutters would
+     start eating the text. */
+  padding: 28px clamp(32px, 5%, 120px) 48px;
   line-height: 1.7;
   /* Preview zoom sets --preview-font-size on #preview-host (preview.ts); the 15px
      fallback is the 100% base used before any zoom is applied. */
@@ -85,11 +90,11 @@ body {
    `--md-col` is a px length, not `ch`: this cap sits on the children, and `ch`
    resolves against each child's own font-size, so an h1 (1.7em) would get a
    column 70% wider than a paragraph. preview.ts computes it from
-   `uninotepadPreview.contentWidth` scaled by the preview zoom. The 680px
-   fallback matches that setting's default — the same effective text width the
-   old `100ch` cap produced once its horizontal padding was subtracted. */
+   `uninotepadPreview.contentWidth` scaled by the preview zoom. The `none`
+   fallback matches that setting's default (fill the panel) and only applies for
+   the instant before preview.ts first writes the variable. */
 .md-body > *:not(.mermaid-frame) {
-  max-width: var(--md-col, 680px);
+  max-width: var(--md-col, none);
   margin-inline: auto;
 }
 
@@ -336,11 +341,27 @@ body {
 }
 .md-body img { max-width: 100%; }
 .md-body hr { border: none; border-top: 1px solid var(--border); margin: 1.2em 0; }
+/* Tables track the available width instead of hugging their content.
+   `display:block` used to sit here to get `overflow-x` for wide tables, but a
+   block-displayed table generates an *anonymous* table box inside that
+   shrink-to-fits its content — so the table ignored the panel entirely, staying
+   narrow however large it got. The scroll container is now a real wrapper
+   element (preview.ts wrapTables), which frees the table to be a table.
+
+   `width:auto` + `min-width:100%`, not `width:100%`: the floor makes a narrow
+   table fill the wrapper, while auto still lets a table whose cells can't wrap
+   (long URLs, code) grow past it and hand the overflow to the wrapper. */
+.md-table-wrap {
+  overflow-x: auto;
+  margin: 0.8em 0;
+}
 .md-body table {
   border-collapse: collapse;
-  margin: 0.8em 0;
-  display: block;
-  overflow-x: auto;
+  display: table;
+  width: auto;
+  min-width: 100%;
+  table-layout: auto;
+  margin: 0;
 }
 .md-body th,
 .md-body td {

@@ -128,7 +128,12 @@ function htmlDocument(title: string, body: string): string {
   pre { background: #f5f5f5; padding: 1rem; overflow-x: auto; border-radius: 6px; }
   code { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
   blockquote { border-left: 4px solid #ddd; margin: 0; padding-left: 1rem; color: #555; }
-  table { border-collapse: collapse; } th, td { border: 1px solid #ccc; padding: 4px 8px; }
+  /* Tables arrive wrapped in the scroll container the preview gives them, so the
+     rules here mirror preview.css: the wrapper owns the flow margin and the
+     overflow, and the table fills it unless its cells refuse to wrap. */
+  .md-table-wrap { overflow-x: auto; margin: 0.8em 0; }
+  table { border-collapse: collapse; width: auto; min-width: 100%; margin: 0; }
+  th, td { border: 1px solid #ccc; padding: 4px 8px; }
   img, svg { max-width: 100%; }
   .mmd-toolbar { display: none; }
 </style>

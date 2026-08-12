@@ -149,7 +149,31 @@ async function renderNow(): Promise<void> {
   if (renderSeq !== myRun) return;
   const mdBody = ensureMdBody();
   mdBody.innerHTML = DOMPurify.sanitize(marked.parse(docText) as string);
+  wrapTables(mdBody);
   await renderMermaid(mdBody, myRun);
+}
+
+/** Give every table its own horizontal scroll viewport.
+ *
+ *  The overflow used to live on the table itself via `display:block`, which cost
+ *  the table its table layout — it sized to its content and ignored the panel
+ *  (see the `.md-table-wrap` note in preview.css). Moving the viewport to a
+ *  wrapper lets the table stay `display:table` and fill the width, while a table
+ *  too wide to wrap (long URLs, code) still scrolls instead of overflowing.
+ *
+ *  Built with DOM calls rather than innerHTML so nothing re-enters the parser
+ *  after DOMPurify has run. Tables nested in a blockquote or list get a wrapper
+ *  too — the wrapper takes the table's place, so the surrounding structure and
+ *  the top-level column cap both keep applying to it. */
+function wrapTables(mdBody: HTMLElement): void {
+  for (const table of Array.from(mdBody.querySelectorAll("table"))) {
+    // Re-render reuses no nodes, but guard anyway so a wrapper is never nested.
+    if (table.parentElement?.classList.contains("md-table-wrap")) continue;
+    const wrap = document.createElement("div");
+    wrap.className = "md-table-wrap";
+    table.replaceWith(wrap);
+    wrap.appendChild(table);
+  }
 }
 
 /** Replace ```mermaid code blocks with rendered SVG diagrams. The block's source

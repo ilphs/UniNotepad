@@ -81,14 +81,22 @@ const settle = () => new Promise((r) => setTimeout(r, 150));
   assert.strictEqual(host.style.getPropertyValue("--mmd-zoom"), "1");
   assert.strictEqual(host.style.getPropertyValue("--mmd-bg"), "transparent");
   // Seeded before the host's first `settings` push, so this is the mirror's own
-  // default rather than a configured value.
-  assert.strictEqual(host.style.getPropertyValue("--md-col"), "680px");
+  // default rather than a configured value — and that default is "no cap", which
+  // has to reach CSS as `none` (see the contentWidth 0 case below).
+  assert.strictEqual(host.style.getPropertyValue("--md-col"), "none");
   ok("host CSS variables seeded at 100% / transparent backdrop / default column");
 
   // ---- markdown render ----
+  // An explicit column here, not the default: the default is "no cap", and the
+  // zoom assertions below check that the column scales with the glyphs — which
+  // `none` cannot demonstrate.
   send(w, {
     type: "settings",
-    settings: { mermaidBackground: "255,255,255,1", mermaidBackgroundEnabled: false },
+    settings: {
+      mermaidBackground: "255,255,255,1",
+      mermaidBackgroundEnabled: false,
+      contentWidth: 680,
+    },
   });
   send(w, {
     type: "content",
@@ -124,6 +132,21 @@ const settle = () => new Promise((r) => setTimeout(r, 150));
   assert.strictEqual(body.querySelectorAll("blockquote").length, 1);
   assert.strictEqual(body.querySelector("strong").textContent, "bold");
   ok("GFM rendered: headings, table, blockquote, inline marks");
+
+  // The table has to sit inside a `.md-table-wrap`, which is what carries the
+  // horizontal scrollbar. Without the wrapper the CSS would have to put the
+  // overflow back on the table itself via `display:block`, and a block-displayed
+  // table sizes to its content instead of to the panel.
+  const table = body.querySelector("table");
+  assert.ok(
+    table.parentElement.classList.contains("md-table-wrap"),
+    "table is not wrapped in .md-table-wrap",
+  );
+  assert.strictEqual(body.querySelectorAll(".md-table-wrap").length, 1);
+  // The wrapper takes the table's place in the flow, so it must be the child the
+  // top-level column cap applies to — not a stray node appended at the end.
+  assert.strictEqual(table.parentElement.parentElement, body);
+  ok("tables wrapped in a scroll container that keeps their place in the flow");
 
   const fence = body.querySelector("pre code");
   assert.ok(fence, "no fenced code block");
@@ -245,19 +268,29 @@ const settle = () => new Promise((r) => setTimeout(r, 150));
   ok("contentWidth 0 becomes `none`, not `0px`");
 
   // settings.json is hand-editable and the field is optional on the wire, so a
-  // junk or absent value must land on the default — never on 0, which would
-  // silently reflow the whole document.
+  // junk or absent value must land on the default — never on some arbitrary
+  // width, which would silently reflow the whole document. The default is now
+  // "no cap", so both of these read back as `none`.
   send(w, {
     type: "settings",
     settings: { mermaidBackground: "255,255,255,1", mermaidBackgroundEnabled: false, contentWidth: -50 },
   });
-  assert.strictEqual(host.style.getPropertyValue("--md-col"), "680px");
+  assert.strictEqual(host.style.getPropertyValue("--md-col"), "none");
   send(w, {
     type: "settings",
     settings: { mermaidBackground: "255,255,255,1", mermaidBackgroundEnabled: false },
   });
-  assert.strictEqual(host.style.getPropertyValue("--md-col"), "680px");
+  assert.strictEqual(host.style.getPropertyValue("--md-col"), "none");
   ok("invalid or absent contentWidth falls back to the default column");
+
+  // A nonzero value still gets the readability floor — 0 is the only way to
+  // uncap, so a too-small number must clamp up rather than fall through to it.
+  send(w, {
+    type: "settings",
+    settings: { mermaidBackground: "255,255,255,1", mermaidBackgroundEnabled: false, contentWidth: 50 },
+  });
+  assert.strictEqual(host.style.getPropertyValue("--md-col"), "320px");
+  ok("a nonzero contentWidth below the floor clamps up, not down to `none`");
 
   // ---- requestHtml round-trip ----
   send(w, { type: "content", fileType: "markdown", text: "# Export me" });

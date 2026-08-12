@@ -43,7 +43,11 @@ function clampAlpha(n: number): number {
  *  means "no cap", so the floor applies only to nonzero values. */
 const CONTENT_WIDTH_MIN = 320;
 const CONTENT_WIDTH_MAX = 3000;
-const CONTENT_WIDTH_DEFAULT = 680;
+/** 0 = no cap, matching the setting's declared default in package.json and the
+ *  host-side fallback in panel.ts. All three have to agree: this one seeds the
+ *  mirror for the frames before the host's first `settings` push, so a stale
+ *  value here shows as a column that snaps to a different width on load. */
+const CONTENT_WIDTH_DEFAULT = 0;
 
 let mirror: PreviewSettings = {
   mermaidBackground: "255,255,255,1",
