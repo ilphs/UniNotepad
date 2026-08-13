@@ -23,6 +23,9 @@ export function activate(context: vscode.ExtensionContext): void {
     // The explorer and editor-tab context menus hand us the clicked resource,
     // which is not necessarily the active editor — and in the explorer it may
     // not be open at all, so the document has to be loaded before showing it.
+    // Unlike the title-bar button, this entry point is not labelled "to the
+    // Side", so a first-time preview lands in the active column as another tab
+    // rather than splitting the window.
     vscode.commands.registerCommand("uninotepadPreview.openFromExplorer", async (uri?: vscode.Uri) => {
       const target = uri ?? vscode.window.activeTextEditor?.document.uri;
       if (!target) {
@@ -30,7 +33,7 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
       try {
-        PreviewPanel.show(await vscode.workspace.openTextDocument(target), extensionUri);
+        PreviewPanel.show(await vscode.workspace.openTextDocument(target), extensionUri, vscode.ViewColumn.Active);
       } catch (e) {
         void vscode.window.showErrorMessage(`Failed to open the preview: ${(e as Error).message}`);
       }

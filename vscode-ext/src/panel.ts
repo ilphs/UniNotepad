@@ -96,7 +96,18 @@ export class PreviewPanel {
   private htmlWaiters = new Map<number, (html: string) => void>();
   private htmlToken = 0;
 
-  static show(doc: vscode.TextDocument, extensionUri: vscode.Uri): void {
+  /** `column` only matters the first time a panel is created — once one exists,
+   *  every later call retargets in place and `reveal`s whatever column it is
+   *  already in, so a second file previewed from a different origin cannot
+   *  relocate it. Defaults to `Beside` for the editor-title button, which is
+   *  explicitly labelled "to the Side"; the Explorer/tab context menu passes
+   *  `Active` instead, so previewing a file it did not open a split for lands as
+   *  another tab next to the source rather than spawning a new column. */
+  static show(
+    doc: vscode.TextDocument,
+    extensionUri: vscode.Uri,
+    column: vscode.ViewColumn = vscode.ViewColumn.Beside,
+  ): void {
     const existing = PreviewPanel.current;
     if (existing) {
       // Running the command from a different file is the same intent as switching
@@ -108,7 +119,7 @@ export class PreviewPanel {
     const panel = vscode.window.createWebviewPanel(
       VIEW_TYPE,
       titleFor(doc),
-      { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true },
+      { viewColumn: column, preserveFocus: true },
       PreviewPanel.webviewOptions(extensionUri),
     );
     PreviewPanel.current = new PreviewPanel(panel, doc, extensionUri);
