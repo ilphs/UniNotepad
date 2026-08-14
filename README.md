@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="https://uninotepad-xi.vercel.app/"><img src="docs/md-preview-v2.gif" width="820" alt="상태 표시줄에서 파일 타입을 Markdown으로 고르자 미리보기 창이 열리고, 메모와 Mermaid 다이어그램을 입력하는 대로 오른쪽에 렌더되며, 마지막에 편집 창을 닫아 다이어그램이 전체 폭으로 커지는 화면"></a>
+  <a href="https://uninotepad-xi.vercel.app/"><img src="docs/md-preview-v3.gif" width="820" alt="상태 표시줄에서 파일 타입을 Markdown으로 고르자 미리보기 창이 열리고, 메모와 Mermaid 다이어그램을 입력하는 대로 오른쪽에 렌더되며, 마지막에 편집 창을 닫아 다이어그램이 전체 폭으로 커지는 화면"></a>
 </p>
 <p align="center"><sub>상태 표시줄에서 <b>Markdown</b>을 고르면 미리보기가 열리고, 치는 대로 오른쪽에 렌더됩니다. 마지막에 <b>편집 창을 닫으면</b> 다이어그램이 전체 폭으로 커집니다.<br>움직임 없이 보거나 재생을 멈추려면 <a href="https://uninotepad-xi.vercel.app/">홈페이지</a>에서 같은 영상을 재생 컨트롤과 함께 볼 수 있습니다.</sub></p>
 
