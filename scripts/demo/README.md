@@ -1,8 +1,10 @@
 # Markdown 프리뷰 데모 영상 — 촬영 파이프라인
 
 랜딩 페이지 히어로의 lead shot을 "타이핑 → 프리뷰가 따라옴" 영상으로 바꾸기 위한
-촬영 도구 모음. v1은 2026-08-11에 촬영·반영 완료. **v2는 촬영 대기 중이다** —
-아래 검증 체크리스트를 통과하기 전에는 산출물을 `site/assets/`에 넣지 말 것.
+촬영 도구 모음. v1·v2는 2026-08-11에 촬영·반영 완료. **v3은 v2 원본 위에 줌
+인서트를 얹은 후처리본**(2026-08-14, 재촬영 아님)이고 현재 사이트에 반영돼 있다.
+새로 촬영하거나 후처리를 바꾸면, 아래 검증 체크리스트를 통과하기 전에는 산출물을
+`site/assets/`에 넣지 말 것.
 
 ## 파일
 
@@ -17,7 +19,9 @@
 | `steps/0{1,2}-*.txt` | 산문 원고 2단락 |
 | `steps/03-mermaid-open.txt` | 펜스 + `flowchart LR` (디바운스보다 빠르게 쳐서 빈 다이어그램 렌더를 건너뛴다) |
 | `steps/04-mermaid-body.txt` | 다이어그램 본문 (줄마다 렌더되며 자라난다) |
-| `record.sh` | 가드 → 실행 → **리허설 검증** → 녹화 → 트림/인코딩 |
+| `record.sh` | 가드 → 실행 → **리허설 검증** → 녹화 → 트림/인코딩 (→ `md-preview-v2.mp4`) |
+| `zoom-scenes.py` | v2 원본에서 줌 구간(픽커, Editor 칩 클릭)의 crop 박스·타임코드를 ffmpeg `zoompan` 필터식으로 생성 |
+| `zoom-punch.sh` | `zoom-scenes.py` 실행 → v2에 후처리 렌더 → `md-preview-v3.mp4` + poster |
 
 ## 실행
 
@@ -26,6 +30,7 @@ npm run tauri build              # 릴리즈 바이너리 필요
 ./scripts/demo/probe-picker.sh   # 최초 1회 — 팝업을 찍어 MENU_* 좌표 실측
 # out/probe/02-picker.png 에서 "Markdown"/"Normal" 행 y를 재어 record.sh 상단에 채운다
 ./scripts/demo/record.sh
+./scripts/demo/zoom-punch.sh   # v2 위에 줌 인서트를 얹어 v3을 만든다 (선택)
 ```
 
 산출물은 `scripts/demo/out/` 에 떨어진다. 눈으로 확인한 뒤 직접 복사한다.
@@ -120,6 +125,54 @@ mermaid로 렌더를 시도하므로, 타이핑 도중의 불완전한 소스가
 촬영이 그랬다(10초 시점까지 리스트가 프리뷰에 전혀 없었다). `LINE_DELAY=0.5`로
 줄마다 디바운스를 통과시켜 줄 단위로 따라오게 만든다.
 
+## 줌 인서트 후처리 (v3)
+
+**재촬영이 아니라 v2 위의 후처리다.** 파일타입 픽커를 고르는 순간과 `Editor` 칩을
+두 번 클릭하는 순간이 원본에서는 1400×900 화면 구석의 작은 클릭이라 잘 안 보인다.
+`zoom-punch.sh`가 `md-preview-v2.mp4`를 입력으로 받아 그 세 구간만 확대한
+`md-preview-v3.mp4`를 만든다 — 클릭 좌표·타이밍이 이미 검증된 v2를 다시 찍을
+이유가 없다.
+
+**`crop`이 아니라 `zoompan`을 쓴다.** ffmpeg 8.x에서 `crop` 필터의 `eval` 옵션이
+없어졌다 — `w`/`h`에 `t`(경과 시간) 기반 `if(between(...))` 식을 넣어도 필터
+초기화 시점(첫 프레임 이전, `t`가 아직 정의되지 않은 시점) 딱 한 번만 평가되고
+그 뒤로는 절대 바뀌지 않는다. 그래서 항상 "확대 안 됨" 상태로 굳는다(직접 겪음 —
+`if(between(t,-1,999),...)`처럼 사실상 항상 참인 조건도 안 먹혔다). `zoompan`은
+스틸 이미지 팬/줌용 필터지만 `z`/`x`/`y`가 **출력 프레임마다** 재평가되므로 여기서는
+"시간에 따라 변하는 crop"으로 전용했다. `d=1`(입력 프레임 1개 = 출력 프레임 1개),
+`fps=30`(원본과 동일)으로 두면 프레임 드롭·중복이 없어 `on/30`(출력 프레임
+번호/fps)이 정확한 경과 초가 된다 — 이 값을 `t` 대신 시간 기준으로 쓴다.
+
+**구간별로 확대 배율과 크롭 박스가 다르다.** `zoom-scenes.py`의 `KEYFRAMES`가
+(시각, crop박스) 쌍의 목록이고, 구간 사이는 선형 보간, 각 확대 전후 0.25~0.3초
+램프를 둬서 툭 끊기지 않게 한다.
+
+| 구간 | 대략 시각(v2 기준, 실측) | crop 박스(입력 픽셀) | 배율 |
+|---|---|---|---|
+| 파일타입 픽커 | 0.85s 팝업 열림 → 2.35s `Markdown` 선택 | `x=670,y=430,w=730,h=470` | 1.92× |
+| `Editor` 끄기 클릭 | 30.85s | `x=800,y=540,w=560,h=360` | 2.5× |
+| `Editor` 켜기 클릭 | 35.25s | `x=800,y=540,w=560,h=360` | 2.5× |
+
+**이 타임스탬프는 `md-preview-v2.mp4` 전용 실측값이다.** 타이핑·클릭 자동화는
+매 촬영마다 `click_until`의 재시도 횟수·OS 스케줄링에 따라 프레임 단위로 흔들린다
+— 재촬영하면 이 표는 못 믿는다. 다시 만들려면 `ffmpeg -ss <T> -i md-preview-v2.mp4
+-frames:v 1 out.png`로 클릭 전후를 0.1초 간격으로 뽑아 상태가 실제로 바뀐 프레임을
+눈으로 찾고(팝업 열림, `Markdown` hover, `Editor 107%`↔`Editor off` 라벨 전환),
+`zoom-scenes.py`의 `KEYFRAMES`를 그 값으로 고쳐야 한다.
+
+**화질 트레이드오프.** 원본이 이미 비-레티나 논리 해상도(1400×900)라 2.5×까지
+확대하면 이론상 블러가 걱정됐지만(위 "왜 이렇게 만들었나" 참고), 실제로 렌더해
+보면 상태바 칩 텍스트("Editor 107%")가 2.5×에서도 읽힌다 — 레티나 재촬영(대안 2)
+은 필요 없다고 판단해 보류했다. 확대폭을 더 키우면(3× 이상) 이 판단을 다시 해야
+한다.
+
+**전체 배속(`ZOOM_SPEED`, 기본 1.4×).** `zoompan` 뒤에 `setpts=PTS/${ZOOM_SPEED}`를
+이어 붙여 재생 시간을 균등 압축한다 — v2의 38.5초가 27.5초가 된다. 프레임을
+버리는 게 아니라 PTS 간격만 좁히는 것이라(`1/30` → `1/(30·SPEED)`) 끊김이 없고,
+줌 구간의 crop 타이밍은 `zoompan` 안에서 v2의 원래 타임라인(`on/30`) 기준으로
+먼저 확정된 뒤 배속이 걸리므로 `KEYFRAMES` 재실측 없이 배속만 따로 조절할 수
+있다. `ZOOM_SPEED=1 ./scripts/demo/zoom-punch.sh`로 원속도로 되돌릴 수 있다.
+
 ## 스토리보드 (v2, 실측 38.5초)
 
 v1(~22초)에서 세 가지가 바뀌었다: **파일타입을 고르는 오프닝**, **더 큰 Mermaid**,
@@ -135,6 +188,10 @@ v1(~22초)에서 세 가지가 바뀌었다: **파일타입을 고르는 오프�
 | 17–31s | ```` ```mermaid ```` 8노드 다이어그램 (분기 → 합류 → DB/서브루틴 노드) | **줄마다 자라난다** |
 | 31–36s | `Editor` 칩 클릭 → 편집창이 닫히고 프리뷰가 전체 폭 | 넓은 다이어그램이 커진다 |
 | 36–38.5s | `Editor off` 칩 클릭 → 편집창 복귀, 정지 | 마지막 프레임 = poster |
+
+v3(현재 사이트 반영본)에서는 위 표의 픽커 구간과 두 `Editor` 클릭 순간에
+줌 인서트가 더해지고, 전체가 1.4× 배속되어 27.5초가 된다 — 시각·crop 박스·배속은
+"줌 인서트 후처리" 절 참고(위 표의 시각은 배속 전 v2 기준).
 
 원고는 **영어 1벌만** 만든다. 언어별 촬영은 제작·용량이 2배가 되는데 얻는 게 없다.
 캡션만 `index.html` / `ko.html`에서 각각 쓴다.
@@ -162,6 +219,13 @@ v1(~22초)에서 세 가지가 바뀌었다: **파일타입을 고르는 오프�
    (`click.js`의 park 좌표가 먹었는지).
 10. **산출물** — mp4가 1400×900 / 2MB 이하 / 오디오 트랙 없음.
 11. **육안 확인** — 사용자의 실제 파일명·문서가 한 프레임도 들어가지 않았는가.
+12. **줌 인서트(v3)** — 세 확대 구간이 각각 클릭 타깃(픽커 팝업 / `Editor` 칩)을
+    프레임 안에 담는가, 확대·축소가 튀지 않는가, 확대 중 텍스트가 읽히는가.
+    타임스탬프가 v2와 어긋나면(재촬영 등) 구석만 확대해 보이거나 빈 배경만 확대해
+    보인다 — "줌 인서트 후처리" 절의 재실측 절차를 따를 것.
+13. **배속(v3)** — `ZOOM_SPEED`로 압축한 뒤에도 산문·Mermaid 타이핑이 읽히는
+    속도인가(너무 빠르면 `ZOOM_SPEED`를 낮춰 재렌더). 줌 인서트 구간에서도 라벨
+    전환(`Editor 107%`↔`Editor off`, `Markdown` 하이라이트)이 그대로 보이는가.
 
 ## 리포 README 반영 — GIF로 따로 변환한다
 
@@ -173,17 +237,20 @@ v1(~22초)에서 세 가지가 바뀌었다: **파일타입을 고르는 오프�
 - 이슈 댓글에 mp4를 드래그해 얻는 `user-attachments` URL. 진짜 플레이어가 붙지만
   브라우저 수동 작업이 필요하고 github.com 밖에서는 링크로만 보인다.
 
-화면이 대부분 정적인 UI라 GIF 압축이 잘 먹는다 — 38.5초 전체가 900px·10fps에서
-1.2MB다. 재촬영하면 아래로 다시 만들어 `docs/`에 덮어쓰고 README의 파일명을 맞춘다.
-**`.git`은 LFS를 안 쓰므로 한 번 커밋한 GIF는 히스토리에 영구히 남는다** — 크기를
-키우기 전에 한 번 더 생각할 것.
+화면이 대부분 정적인 UI라 GIF 압축이 잘 먹는다 — v2(38.5초) 기준 900px·10fps에서
+1.2MB였다(v3은 27.5초로 배속됐으니 다시 뽑으면 더 작아진다). 재촬영·재편집하면
+아래로 다시 만들어 `docs/`에 덮어쓰고 README의 파일명을 맞춘다(리포 루트
+`README.md`가 `docs/md-preview-*.gif`를 직접 참조한다). **`.git`은 LFS를 안 쓰므로
+한 번 커밋한 GIF는 히스토리에 영구히 남는다** — 크기를 키우기 전에 한 번 더 생각할
+것. `docs/md-preview-v2.gif`는 아직 v2(줌 인서트·배속 없는 원본) 기준이다 — v3
+반영은 별도 판단 사항으로 남겨 뒀다.
 
 ```bash
-V=site/assets/md-preview-v2.mp4
+V=site/assets/md-preview-v3.mp4
 ffmpeg -y -i "$V" -vf "fps=10,scale=900:-1:flags=lanczos,palettegen=stats_mode=diff" /tmp/pal.png
 ffmpeg -y -i "$V" -i /tmp/pal.png \
   -lavfi "fps=10,scale=900:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=3" \
-  docs/md-preview-v2.gif
+  docs/md-preview-v3.gif
 ```
 
 README에서는 홈페이지로 링크를 건다 — GIF에는 정지 수단이 없으니(WCAG 2.2.2),
@@ -191,14 +258,15 @@ README에서는 홈페이지로 링크를 건다 — GIF에는 정지 수단이 
 
 ## 사이트 반영 (검증 통과 후)
 
-`site/index.html:79-82` 와 `site/ko.html:75-78` 의 lead shot `figure` 하나만 교체한다.
+`site/index.html`과 `site/ko.html`의 lead shot `figure`(`class="lead-shot"`) 하나만
+교체한다 — 정확한 줄 번호는 편집이 쌓이며 흔들리니 검색으로 찾을 것.
 스텝 탭·크로스페이드는 넣지 않는다 — 영상이 1개면 오버엔지니어링이다.
 
 ```html
 <figure class="lead-shot">
   <video
-    src="/assets/md-preview-v2.mp4"
-    poster="/assets/md-preview-v2-poster.jpg"
+    src="/assets/md-preview-v3.mp4"
+    poster="/assets/md-preview-v3-poster.jpg"
     preload="auto" autoplay loop muted playsinline controls
     aria-label="Typing Markdown in UniNotepad while the preview pane renders it live"
   ></video>
@@ -236,6 +304,15 @@ README에서는 홈페이지로 링크를 건다 — GIF에는 정지 수단이 
   되돌릴 수 없다. 커밋 전에 영상이 확정됐는지 확인할 것.
 
 ## 검증 이력
+
+**v3 (2026-08-14) — 체크리스트 13항목 전부 통과.** `md-preview-v2.mp4`를
+`zoom-punch.sh`로 후처리(재촬영 아님) — 줌 인서트 + `ZOOM_SPEED=1.4`(기본값) 전체
+배속. 처음엔 1.25×(30.8s)로 반영했다가 사용자 요청으로 1.4×까지 올렸다 — 배속은
+crop 타이밍과 독립이라 재실측 없이 값만 바꿔 재렌더했다. 산출물
+`out/md-preview-v3.mp4` (1400×900 · 27.5s · 420KB · h264 · 오디오 없음) +
+`out/md-preview-v3-poster.jpg`. 사이트의 lead shot을 이것으로 교체했고 v2 자산
+(`site/assets/`)은 지웠다 — `out/md-preview-v2.mp4`는 줌 인서트의 원본 소스이므로
+로컬에 남겨 둔다.
 
 **v2 (2026-08-11) — 체크리스트 11항목 전부 통과.** 산출물 `out/md-preview-v2.mp4`
 (1400×900 · 38.5s · 335KB · h264 · 오디오 없음) + `out/md-preview-v2-poster.jpg`.
