@@ -1,5 +1,36 @@
 # UniNotepad 릴리즈 노트
 
+## v0.9.2
+
+### 테마가 10가지로 늘고, 밝기를 따로 고릅니다
+
+- 색조합 **10가지** — Dracula · GitHub · Solarized · Gruvbox · Catppuccin ·
+  Nord · Tokyo Night · One Half · Rosé Pine · Kanagawa.
+- **테마와 밝기가 분리됐습니다.** 예전에는 `Light`를 고르면 색조합까지 함께
+  바뀌었습니다. 이제 `View ▸ Theme` 위쪽에서 색조합을, 아래쪽에서 밝기를 각각
+  고릅니다 — 좋아하는 색을 정해 두고 밝기만 그날그날 바꿀 수 있습니다.
+  설정 화면(`Ctrl/Cmd+,`)의 **Theme** · **Appearance** 두 줄도 같습니다.
+- 메뉴에 **지금 고른 값이 체크로 표시**됩니다.
+- **System이 OS 설정을 즉시 따라갑니다** — 시스템이 어두워지면 앱도 그 자리에서
+  어두워집니다 (예전에는 앱을 다시 켜야 했습니다).
+- 쓰던 설정은 이어집니다: `Dark` → **Dracula + Dark**(화면 그대로),
+  `Light` → **GitHub + Light**. `System`을 쓰셨다면 밝을 때의 색이
+  GitHub Light에서 **Dracula Light로 바뀝니다.**
+
+```mermaid
+graph LR
+  T["테마 축<br/>Dracula · GitHub · …10종"] --> P["실제 화면 색"]
+  M["밝기 축<br/>Light · Dark · System"] --> P
+  M -. "System이면" .-> OS["OS 밝기 설정"]
+  OS -. "바뀌는 즉시" .-> P
+```
+
+### VS Code 확장 (0.7.5)
+
+- 우클릭 **Open Preview**가 첫 실행 시 분할창 대신 같은 컬럼에 열리던 문제를
+  고쳤습니다.
+- 설치: [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview)
+
 ## v0.9.1
 
 ### 미리보기가 창 폭을 제대로 씁니다
