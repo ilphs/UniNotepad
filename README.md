@@ -117,6 +117,13 @@ VS Code 기본 Markdown 미리보기를 **대체하는 게 아니라 나란히**
 테마와 밝기는 **따로 고릅니다.** 좋아하는 색조합을 정해 두고, 밝게 볼지 어둡게 볼지는
 그날그날 바꿀 수 있습니다.
 
+| |
+|:--|
+| [![View 메뉴의 Theme 하위 메뉴가 펼쳐져 색조합 10종과 밝기 3종이 구분선으로 나뉘어 있고, Gruvbox와 Dark에 체크가 붙어 있는 화면](docs/theme-menu.png)](https://uninotepad-xi.vercel.app/) |
+| 고르는 곳 — `View ▸ Theme` 한 메뉴 안에서 위쪽은 **색조합 10종**, 구분선 아래는 **밝기 3종**입니다. 지금 고른 값에 체크가 붙습니다 (여기서는 **Gruvbox** · **Dark**) |
+| [![Gruvbox 다크 테마가 적용되어 편집기와 Markdown 미리보기가 모두 따뜻한 색조로 바뀐 화면](docs/theme-gruvbox.png)](https://uninotepad-xi.vercel.app/) |
+| 고른 결과 — **Gruvbox + Dark**를 적용한 모습입니다. 편집기 배경과 구문 강조는 물론 오른쪽 미리보기와 다이어그램까지 한꺼번에 따라옵니다 |
+
 | 하고 싶은 것 | 방법 |
 |:--|:--|
 | 색조합 고르기 | `View ▸ Theme` 위쪽 — Dracula · GitHub · Solarized · Gruvbox · Catppuccin · Nord · Tokyo Night · One Half · Rosé Pine · Kanagawa |
