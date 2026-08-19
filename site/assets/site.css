@@ -229,7 +229,9 @@ h2 {
    본문 폭의 좁은 카드로. .mac-guide와 같은 왼쪽 강조선 어법.
    설명은 왼쪽, 마켓플레이스로 가는 버튼은 오른쪽에 따로 세운다 — 문장 속 인라인
    링크는 같은 줄의 "자세히"(#preview)와 경쟁해 클릭이 페이지 안쪽으로 샜다. */
-.hero .ext-strip {
+/* .hero 밖에서도 같은 어법을 쓸 수 있도록 .hero로 스코프하지 않는다 —
+   원래 히어로 전용이었지만 지금은 공용 "안내 카드" 클래스. */
+.ext-strip {
   display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
   max-width: 40rem; margin: 1.75rem auto 0; padding: 0.85rem 0.95rem;
   border: 3px solid var(--border); border-left: 10px solid var(--accent);
@@ -237,13 +239,29 @@ h2 {
   text-align: left;
 }
 /* 16rem 아래로는 줄바꿈이 너무 잦아진다 — 그 전에 버튼을 아랫줄로 내린다. */
-.hero .ext-strip .txt { flex: 1 1 16rem; min-width: 0; margin: 0; font-size: 0.95rem; line-height: 1.65; color: var(--fg-soft); }
-.hero .ext-strip .btn { flex: 0 0 auto; }
-.hero .ext-strip b { color: var(--fg); font-weight: 800; }
+.ext-strip .txt { flex: 1 1 16rem; min-width: 0; margin: 0; font-size: 0.95rem; line-height: 1.65; color: var(--fg-soft); }
+.ext-strip .btn { flex: 0 0 auto; }
+.ext-strip b { color: var(--fg); font-weight: 800; }
 /* 좁은 화면에서 버튼이 아랫줄로 내려가면 탭 대상으로 넓게 편다. */
 @media (max-width: 560px) {
-  .hero .ext-strip .btn { flex: 1 1 100%; justify-content: center; }
+  .ext-strip .btn { flex: 1 1 100%; justify-content: center; }
 }
+
+/* 같은 패밀리 앱 배지 — UniFinder 랜딩이 UniNotepad를 가리킬 때 쓰는 것과 같은
+   자리(히어로 CTA 바로 아래)·같은 알약 배지 어법. 톤이 전부 보라 accent인 이 페이지
+   안에서 눈에 띄어야 하므로 라이트/다크 공통으로 고정된 amber를 쓴다 — --accent를
+   쓰면 다른 보라색 요소들 사이에 묻힌다. */
+.family-card {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  margin: 1.5rem auto 0; padding: 0.55rem 1.2rem;
+  border: 3px solid var(--border); border-radius: 999px;
+  background: #ffd966; color: #1a1a1a;
+  font-weight: 800; font-size: 0.9rem; text-decoration: none;
+  box-shadow: var(--shadow);
+}
+.family-card:hover { background: #ffcc33; box-shadow: var(--shadow-lg); transform: translate(-2px, -2px); }
+.family-card:active { box-shadow: none; transform: translate(2px, 2px); }
+.family-icon { font-size: 1.05rem; }
 
 .hero .shot { margin: 2.5rem auto 0; max-width: 56rem; }
 .hero .shot img { width: 100%; border-radius: var(--radius); border: 3px solid var(--border); box-shadow: var(--shadow-lg); }
