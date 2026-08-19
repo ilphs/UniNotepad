@@ -25,8 +25,33 @@
 //! hint text, and the two never double-fire because they are separated by
 //! focus. Keep the fallback table in sync when touching accelerators here.
 
-use tauri::menu::{Menu, MenuItemBuilder, PredefinedMenuItem, Submenu};
+use tauri::menu::{CheckMenuItemBuilder, Menu, MenuItemBuilder, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Runtime};
+
+/// The built-in theme families, in menu order. Each id is the suffix of the
+/// menu id (`view.theme.<id>`) *and* the value stored by the frontend as
+/// `uninotepad.theme`, so the two lists must stay in sync with `src/themes.ts`.
+const THEME_FAMILIES: &[(&str, &str)] = &[
+    ("dracula", "Dracula"),
+    ("github", "GitHub"),
+    ("solarized", "Solarized"),
+    ("gruvbox", "Gruvbox"),
+    ("catppuccin", "Catppuccin"),
+    ("nord", "Nord"),
+    ("tokyo-night", "Tokyo Night"),
+    ("one-half", "One Half"),
+    ("rose-pine", "Rosé Pine"),
+    ("kanagawa", "Kanagawa"),
+];
+
+/// The lightness axis, orthogonal to the family above (`view.themeMode.<id>`,
+/// stored as `uninotepad.themeMode`). "system" follows the OS, which the
+/// frontend resolves in JS rather than with a media query.
+const THEME_MODES: &[(&str, &str)] = &[
+    ("light", "Light"),
+    ("dark", "Dark"),
+    ("system", "System"),
+];
 
 /// Label for one "Open Recent" entry: the file's basename plus a dir hint so
 /// two files with the same name are still tellable apart.
@@ -42,11 +67,20 @@ fn recent_label(path: &str) -> String {
     }
 }
 
-/// Build the native menu. `recent` is the recent-files list (newest first) used
-/// to populate the File → Open Recent submenu; pass an empty slice for the
-/// initial build (the frontend re-invokes `set_recent_files` once it has read
-/// localStorage, which rebuilds the whole menu with a populated list).
-pub fn build<R: Runtime>(app: &AppHandle<R>, recent: &[String]) -> tauri::Result<Menu<R>> {
+/// Build the native menu.
+///
+/// `recent` is the recent-files list (newest first) used to populate the
+/// File → Open Recent submenu; `family`/`mode` are the two theme axes and drive
+/// the check marks under View → Theme. All three live only in the webview's
+/// localStorage, so the initial build gets the defaults and the frontend
+/// re-invokes `set_recent_files` / `set_theme_menu` once it has read them —
+/// each of which rebuilds this whole menu (see `MenuState` in `lib.rs`).
+pub fn build<R: Runtime>(
+    app: &AppHandle<R>,
+    recent: &[String],
+    family: &str,
+    mode: &str,
+) -> tauri::Result<Menu<R>> {
     let menu = Menu::new(app)?;
 
     // macOS convention: a leading application menu named after the app, carrying
@@ -389,13 +423,32 @@ pub fn build<R: Runtime>(app: &AppHandle<R>, recent: &[String]) -> tauri::Result
         MenuItemBuilder::with_id("view.prevTab", "Previous Tab (Ctrl+Shift+Tab)").build(app)?;
     view_menu.append_items(&[&next_tab, &prev_tab, &PredefinedMenuItem::separator(app)?])?;
 
-    // Theme — manual light/dark selection; "System" follows the OS.
+    // Theme — two independent axes in one submenu, split by a separator: the
+    // palette family on top, the light/dark/system mode below. Entries are
+    // `CheckMenuItem`s used as radio groups (muda has no native radio item), so
+    // exactly one per group is checked and the rest are cleared.
+    //
+    // Nothing here toggles its own state usefully: clicking a check item lets
+    // the OS flip that one mark, but the click only *requests* a change. The
+    // frontend applies it and calls back into `set_theme_menu`, which rebuilds
+    // this menu with the authoritative marks — so a rejected or coalesced
+    // change can never leave two families ticked. Same reason the submenu is
+    // attached to View before its items are appended (module header).
     let theme_menu = Submenu::new(app, "Theme", true)?;
     view_menu.append(&theme_menu)?;
-    let theme_light = MenuItemBuilder::with_id("view.themeLight", "Light").build(app)?;
-    let theme_dark = MenuItemBuilder::with_id("view.themeDark", "Dark").build(app)?;
-    let theme_system = MenuItemBuilder::with_id("view.themeSystem", "System").build(app)?;
-    theme_menu.append_items(&[&theme_light, &theme_dark, &theme_system])?;
+    for (id, label) in THEME_FAMILIES {
+        let item = CheckMenuItemBuilder::with_id(format!("view.theme.{id}"), *label)
+            .checked(*id == family)
+            .build(app)?;
+        theme_menu.append(&item)?;
+    }
+    theme_menu.append(&PredefinedMenuItem::separator(app)?)?;
+    for (id, label) in THEME_MODES {
+        let item = CheckMenuItemBuilder::with_id(format!("view.themeMode.{id}"), *label)
+            .checked(*id == mode)
+            .build(app)?;
+        theme_menu.append(&item)?;
+    }
 
     // Help — macOS already carries About in its application menu.
     #[cfg(not(target_os = "macos"))]

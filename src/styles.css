@@ -1,111 +1,9 @@
-/* Light palette (default, and when Light is explicitly chosen). */
-:root,
-:root[data-theme="light"] {
-  --bg: #ffffff;
-  --fg: #1e1e1e;
-  --chrome-bg: #f3f3f3;
-  --chrome-fg: #333;
-  --border: #d0d0d0;
-  --tab-active-bg: #ffffff;
-  --tab-inactive-bg: #e7e7e7;
-  --accent: #0a66c2;
-  --banner-conflict: #fff4e5;
-  --banner-deleted: #fde8e8;
-
-  /* Syntax highlighting (light) */
-  --cm-comment: #6a737d;
-  --cm-keyword: #d73a49;
-  --cm-string: #22863a;
-  --cm-number: #005cc5;
-  --cm-function: #6f42c1;
-  --cm-type: #953800;
-  --cm-property: #005cc5;
-  --cm-operator: #24292e;
-  --cm-variable: #24292e;
-  --cm-invalid: #b31d28;
-
-  /* Editor chrome (gutter / active line / caret / selection) */
-  --gutter-bg: #f3f3f3;
-  --gutter-fg: #9aa0a6;
-  --gutter-active-fg: #24292e;
-  --active-line-bg: rgba(0, 0, 0, 0.04);
-  --caret: #1e1e1e;
-  --selection-bg: #b3d4fc;
-}
-
-/* Dark palette. Applied when Dark is explicitly chosen, and (via the media
-   query below) when the choice is "system" and the OS prefers dark. Keep both
-   blocks in sync. */
-:root[data-theme="dark"] {
-  /* Dracula palette. Keep in sync with the system-dark block below. */
-  --bg: #282a36;
-  --fg: #f8f8f2;
-  --chrome-bg: #21222c;
-  --chrome-fg: #f8f8f2;
-  --border: #44475a;
-  --tab-active-bg: #282a36;
-  --tab-inactive-bg: #21222c;
-  --accent: #bd93f9;
-  --banner-conflict: #3a3320;
-  --banner-deleted: #3a2330;
-
-  /* Syntax highlighting (Dracula) */
-  --cm-comment: #6272a4;
-  --cm-keyword: #ff79c6;
-  --cm-string: #f1fa8c;
-  --cm-number: #bd93f9;
-  --cm-function: #50fa7b;
-  --cm-type: #8be9fd;
-  --cm-property: #50fa7b;
-  --cm-operator: #f8f8f2;
-  --cm-variable: #f8f8f2;
-  --cm-invalid: #ff5555;
-
-  /* Editor chrome (Dracula) */
-  --gutter-bg: #282a36;
-  --gutter-fg: #6272a4;
-  --gutter-active-fg: #f8f8f2;
-  --active-line-bg: rgba(255, 255, 255, 0.055);
-  --caret: #f8f8f2;
-  --selection-bg: #44475a;
-}
-
-/* "System" choice = no data-theme attribute → follow the OS preference. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) {
-    /* Dracula palette — mirror of the :root[data-theme="dark"] block above. */
-    --bg: #282a36;
-    --fg: #f8f8f2;
-    --chrome-bg: #21222c;
-    --chrome-fg: #f8f8f2;
-    --border: #44475a;
-    --tab-active-bg: #282a36;
-    --tab-inactive-bg: #21222c;
-    --accent: #bd93f9;
-    --banner-conflict: #3a3320;
-    --banner-deleted: #3a2330;
-
-    /* Syntax highlighting (Dracula) */
-    --cm-comment: #6272a4;
-    --cm-keyword: #ff79c6;
-    --cm-string: #f1fa8c;
-    --cm-number: #bd93f9;
-    --cm-function: #50fa7b;
-    --cm-type: #8be9fd;
-    --cm-property: #50fa7b;
-    --cm-operator: #f8f8f2;
-    --cm-variable: #f8f8f2;
-    --cm-invalid: #ff5555;
-
-    /* Editor chrome (Dracula) */
-    --gutter-bg: #282a36;
-    --gutter-fg: #6272a4;
-    --gutter-active-fg: #f8f8f2;
-    --active-line-bg: rgba(255, 255, 255, 0.055);
-    --caret: #f8f8f2;
-    --selection-bg: #44475a;
-  }
-}
+/* Palette definitions live in themes.css — one :root[data-theme="<family>-<dark|light>"]
+   block per bundled theme. Imported here (Vite inlines it) so the whole stylesheet
+   still ships as a single file, and so nothing below has to care which theme is
+   active: every rule reads the variables those blocks define.
+   NOTE: @import must stay first — CSS requires it to precede all other rules. */
+@import "./themes.css";
 
 * {
   box-sizing: border-box;
@@ -745,33 +643,49 @@ body {
   margin: 0 2px;
 }
 
-/* Whitespace display (Show Whitespace Characters). The rendered space dot and
-   tab arrow use the muted gutter foreground so they read as chrome, not text;
-   trailing runs get a low-alpha warning wash that stays legible in both themes. */
+/* Whitespace display (Show Whitespace Characters). The space dot and tab arrow
+   are drawn in --ws-mark (a muted chrome tone, so they read as chrome and not
+   as text); trailing runs get a low-alpha wash of --trailing-mark.
+   Both variables are per-palette, which is the point: this used to be three
+   copies of the same rules selected by [data-theme="dark"] / the OS media
+   query, and with 20 palettes that approach does not scale. One rule each now,
+   values supplied by themes.css. */
+.cm-editor .cm-highlightSpace {
+  /* CM ≥6.4 paints the space dot as a radial-gradient with a hardcoded #aaa
+     (see @codemirror/view .cm-highlightSpace); re-declare it with our variable. */
+  background-image: radial-gradient(circle at 50% 55%, var(--ws-mark) 20%, transparent 5%);
+  background-position: center;
+}
+/* Older CM builds rendered the dot as a ::before glyph instead — harmless to
+   keep, and it means the marker stays themed if CM reverts the technique. */
 .cm-editor .cm-highlightSpace:before {
-  color: var(--gutter-fg);
+  color: var(--ws-mark);
 }
-/* Re-tint CM's default tab arrow (a fixed #888 SVG) to the light-theme gutter
-   foreground; the dark blocks below swap the stroke for the dark palette. */
+/* CM's tab arrow is an inline SVG data URI, and a data URI cannot reference
+   var(). So the SVG is used as a *mask* (only its alpha matters — the stroke
+   color is irrelevant, hence plain black) over a --ws-mark fill. The three
+   mask-* values mirror CM's own background-size/position/repeat defaults;
+   omitting them would stretch and tile the arrow. */
 .cm-editor .cm-highlightTab {
-  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="20"><path stroke="%239aa0a6" stroke-width="1" fill="none" d="M1 10H196L190 5M190 15L196 10"/></svg>');
+  background-image: none;
+  background-color: var(--ws-mark);
+  -webkit-mask-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="20"><path stroke="black" stroke-width="1" fill="none" d="M1 10H196L190 5M190 15L196 10"/></svg>');
+  mask-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="20"><path stroke="black" stroke-width="1" fill="none" d="M1 10H196L190 5M190 15L196 10"/></svg>');
+  -webkit-mask-size: auto 100%;
+  mask-size: auto 100%;
+  -webkit-mask-position: right 90%;
+  mask-position: right 90%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }
+/* --trailing-mark is a solid color; the alpha is applied here so every palette
+   only has to pick a hue, and the wash strength stays consistent across themes.
+   28% is not arbitrary: it is the alpha the dark palette used before this rule
+   was unified, and design §9-1 requires dracula-dark to stay pixel-identical.
+   Note that this constant lives outside themes.css, so audit.py's golden check
+   cannot see it — changing it silently breaks that guarantee. */
 .cm-editor .cm-trailingSpace {
-  background: color-mix(in srgb, #e5534b 22%, transparent);
-}
-:root[data-theme="dark"] .cm-editor .cm-highlightTab {
-  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="20"><path stroke="%236272a4" stroke-width="1" fill="none" d="M1 10H196L190 5M190 15L196 10"/></svg>');
-}
-:root[data-theme="dark"] .cm-editor .cm-trailingSpace {
-  background: color-mix(in srgb, #ff5555 28%, transparent);
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) .cm-editor .cm-highlightTab {
-    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="20"><path stroke="%236272a4" stroke-width="1" fill="none" d="M1 10H196L190 5M190 15L196 10"/></svg>');
-  }
-  :root:not([data-theme]) .cm-editor .cm-trailingSpace {
-    background: color-mix(in srgb, #ff5555 28%, transparent);
-  }
+  background: color-mix(in srgb, var(--trailing-mark) 28%, transparent);
 }
 
 /* ---- Status bar ---- */

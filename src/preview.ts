@@ -23,7 +23,7 @@ import { currentDoc, getView } from "./editor";
 import { ipc } from "./ipc";
 import { effectiveFileType, highlightStyle } from "./language";
 import { refreshStatusBar } from "./statusbar";
-import { themeChoice } from "./theme";
+import { resolvedMode } from "./theme";
 import {
   mountMermaidView,
   frameDiagram,
@@ -157,12 +157,12 @@ function ensureMermaid(): Promise<MermaidMod> {
   return mermaidLoading;
 }
 
-/** Resolve the effective dark/light mode: explicit data-theme, else the OS. */
+/** Resolve the effective dark/light mode for mermaid's baked-in SVG colors.
+ *  Delegated to theme.ts rather than read off `data-theme`: that attribute now
+ *  holds a composed "<family>-<mode>" value, and theme.ts is the one place that
+ *  knows how "system" resolves. */
 function effectiveDark(): boolean {
-  const t = document.documentElement.dataset.theme;
-  if (t === "dark") return true;
-  if (t === "light") return false;
-  return matchMedia("(prefers-color-scheme: dark)").matches;
+  return resolvedMode() === "dark";
 }
 
 // ---- Visibility / render ---------------------------------------------------
@@ -732,12 +732,11 @@ export function mountPreview(
   getView().scrollDOM.addEventListener("scroll", syncPreviewScroll, { passive: true });
 
   // Re-render when the theme changes so mermaid diagrams (baked-in SVG colors)
-  // follow light/dark. Explicit menu choices fire "uninotepad:themechange";
-  // an OS change only matters while the app is following "system".
+  // follow light/dark. This one event covers both causes now: explicit picks
+  // *and* an OS light/dark flip while the mode is "system" — theme.ts owns the
+  // matchMedia subscription and fires the same event after re-applying, so the
+  // separate media listener that used to live here would only double-render.
   window.addEventListener("uninotepad:themechange", () => {
     if (!previewHost.hidden) void renderNow();
-  });
-  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-    if (themeChoice() === "system" && !previewHost.hidden) void renderNow();
   });
 }

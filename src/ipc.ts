@@ -103,6 +103,7 @@ export const ipc = {
   // (newest first). Best-effort: a failure just leaves the last-good menu.
   setRecentFiles: (paths: string[]) =>
     invoke<void>("set_recent_files", { paths }).catch(() => {}),
+  syncThemeMenu,
 
   loadSession: () => invoke<LoadedSession | null>("load_session"),
   persistSession: (manifestJson: string, dirtyBackups: [string, string][]) =>
@@ -111,6 +112,15 @@ export const ipc = {
 
   frontendReady: () => invoke<void>("frontend_ready"),
 };
+
+/** Rebuild the native menu so View ▸ Theme's check marks show `family` (e.g.
+ *  "dracula") and `mode` ("light" | "dark" | "system"). The theme itself is
+ *  owned by the frontend, so this only mirrors an already-applied change.
+ *  Best-effort and fire-and-forget: a failure just leaves the last-good menu,
+ *  and callers must not have to await a cosmetic update. */
+export function syncThemeMenu(family: string, mode: string): void {
+  void invoke<void>("set_theme_menu", { family, mode }).catch(() => {});
+}
 
 export function onOpenPaths(cb: (paths: string[]) => void): Promise<UnlistenFn> {
   return listen<string[]>("open-paths", (e) => cb(e.payload));

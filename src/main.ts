@@ -23,7 +23,8 @@ import { initWindowTitle, refreshWindowTitle } from "./title";
 import { syncRecentMenu } from "./recent";
 import { checkForUpdates } from "./updater";
 
-// Apply the saved theme before first paint (system mode falls back to CSS).
+// Apply the saved theme before first paint. "system" is resolved here too (JS
+// reads prefers-color-scheme), so there is no CSS fallback and no flash.
 applyStoredTheme();
 
 async function bootstrap(): Promise<void> {

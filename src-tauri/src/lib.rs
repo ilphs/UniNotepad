@@ -56,14 +56,84 @@ fn deliver_paths<R: Runtime>(app: &AppHandle<R>, paths: Vec<String>) {
     }
 }
 
-/// Rebuild the whole native menu with a fresh recent-files list and swap it in.
-/// The JS-side recent list lives in localStorage, so the frontend drives this
-/// after every change (and once at startup). Best-effort on the JS side.
-#[tauri::command]
-fn set_recent_files(app: AppHandle, paths: Vec<String>) -> tauri::Result<()> {
-    let menu = menu::build(&app, &paths)?;
+/// Everything the native menu is built from that the *frontend* owns.
+///
+/// There is no cheap "flip one item" path here: changing the menu means
+/// rebuilding it and swapping the whole thing in via `set_menu`. So if each
+/// command only knew its own input, the rebuilds would clobber each other —
+/// updating the recent-files list would reset the theme check marks, and
+/// picking a theme would empty Open Recent. Keeping every input in one place
+/// means any single-field update still produces a menu that reflects
+/// everything the frontend has told us so far.
+#[derive(Default)]
+struct MenuState(Mutex<MenuInputs>);
+
+struct MenuInputs {
+    /// Recent files, newest first (File → Open Recent).
+    recent: Vec<String>,
+    /// Theme family id, e.g. "dracula" (View → Theme, upper group).
+    family: String,
+    /// Theme mode: "light" | "dark" | "system" (View → Theme, lower group).
+    mode: String,
+}
+
+impl Default for MenuInputs {
+    fn default() -> Self {
+        Self {
+            recent: Vec::new(),
+            // Mirrors the frontend's own defaults, so the menu built during
+            // setup already shows the right marks for a first run — before the
+            // webview has read localStorage and synced back.
+            family: "dracula".to_string(),
+            mode: "dark".to_string(),
+        }
+    }
+}
+
+/// Rebuild the whole native menu from `MenuState` and swap it in.
+///
+/// The state is copied out and the lock dropped *before* building: menu
+/// construction re-enters Tauri (and hops to the main thread on some
+/// platforms), so holding the lock across it risks a deadlock the day any of
+/// that path reads `MenuState` again.
+fn rebuild_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
+    let (recent, family, mode) = {
+        let state = app.state::<MenuState>();
+        // Recover from a poisoned lock rather than panicking, as elsewhere.
+        let s = state.0.lock().unwrap_or_else(|e| e.into_inner());
+        (s.recent.clone(), s.family.clone(), s.mode.clone())
+    };
+    let menu = menu::build(app, &recent, &family, &mode)?;
     app.set_menu(menu)?;
     Ok(())
+}
+
+/// Update the recent-files list and rebuild the menu. The JS-side recent list
+/// lives in localStorage, so the frontend drives this after every change (and
+/// once at startup). Best-effort on the JS side.
+#[tauri::command]
+fn set_recent_files(app: AppHandle, paths: Vec<String>) -> tauri::Result<()> {
+    {
+        let state = app.state::<MenuState>();
+        let mut s = state.0.lock().unwrap_or_else(|e| e.into_inner());
+        s.recent = paths;
+    }
+    rebuild_menu(&app)
+}
+
+/// Update the theme check marks and rebuild the menu. The frontend owns the
+/// theme (localStorage + `<html data-theme>`) and calls this after applying a
+/// change from any entry point — menu, Preferences, or a restored session — so
+/// the marks follow rather than lead. Best-effort on the JS side.
+#[tauri::command]
+fn set_theme_menu(app: AppHandle, family: String, mode: String) -> tauri::Result<()> {
+    {
+        let state = app.state::<MenuState>();
+        let mut s = state.0.lock().unwrap_or_else(|e| e.into_inner());
+        s.family = family;
+        s.mode = mode;
+    }
+    rebuild_menu(&app)
 }
 
 /// Whether this process is running from a Linux AppImage. Only AppImage bundles
@@ -114,10 +184,12 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .manage(PendingOpen::default())
+        .manage(MenuState::default())
         .manage(watcher::WatcherState::default())
         .invoke_handler(tauri::generate_handler![
             frontend_ready,
             set_recent_files,
+            set_theme_menu,
             is_appimage,
             commands::file::open_file,
             commands::file::open_file_as,
@@ -131,10 +203,11 @@ pub fn run() {
         ])
         .setup(|app| {
             let handle = app.handle();
-            // Empty recent list at first build; the frontend calls
-            // set_recent_files once it has read localStorage.
-            let menu = menu::build(handle, &[])?;
-            app.set_menu(menu)?;
+            // First build uses the `MenuInputs` defaults (empty recent list,
+            // dracula/dark) — the frontend calls set_recent_files and
+            // set_theme_menu once it has read localStorage, each of which
+            // rebuilds through the same path.
+            rebuild_menu(handle)?;
 
             // Route menu clicks to the frontend as a `menu` event.
             app.on_menu_event(|app, event| {

@@ -1,0 +1,992 @@
+/*
+ * themes.css — the palette data file for UniNotepad's two-axis theme model.
+ *
+ * WHAT THIS FILE IS
+ * -----------------
+ * The theme system has two independent axes (see Ref-docs/specs/design/theme-multi-palette.md):
+ *
+ *     axis 1 — family : dracula | github | solarized | gruvbox | catppuccin
+ *                       nord | tokyo-night | one-half | rose-pine | kanagawa
+ *     axis 2 — mode   : dark | light | system
+ *
+ * A family and a mode are composed into a single attribute on <html>, e.g.
+ * `data-theme="dracula-dark"`. This file holds exactly 10 x 2 = 20 selector blocks,
+ * one per (family, mode) pair. Every block defines the SAME 28 custom properties,
+ * so switching `data-theme` swaps the entire look of the editor, the tab bar, the
+ * status bar and the Markdown preview in one attribute write. No JS runs, no
+ * CodeMirror extension is reconfigured, no stylesheet is loaded — the browser just
+ * re-resolves `var()` references. That is why the whole feature costs 0 at runtime.
+ *
+ * WHY THERE IS NO @media (prefers-color-scheme)
+ * ---------------------------------------------
+ * The `system` mode is resolved in JavaScript, not in CSS. `theme.ts` subscribes to
+ * `matchMedia("(prefers-color-scheme: dark)")` and always writes a CONCRETE
+ * `data-theme="<family>-<mode>"` value; when the OS appearance flips, the listener
+ * rewrites the attribute. Consequently this file must contain NO conditional blocks
+ * at all — no media queries, no `:root:not([data-theme])` fallbacks.
+ *
+ * The previous implementation did the opposite: a `@media (prefers-color-scheme: dark)`
+ * block hand-duplicated the dark palette, with a "keep in sync" comment guarding it.
+ * With 10 families that duplication would have become 10 blocks of copy-paste that
+ * silently drift. Resolving `system` in JS deletes the entire class of bug. If you
+ * ever feel tempted to add a media query here, you are re-introducing it.
+ *
+ * WHY THE VALUES LOOK ARBITRARY (they are not — a script enforces them)
+ * --------------------------------------------------------------------
+ * Palette curation is the real bulk of this feature, and eyeballing it does not
+ * scale to 20 blocks. `scripts/themes/audit.py` is the gate; it parses THIS file and
+ * fails on:
+ *
+ *   1. contrast floors, computed with the WCAG relative-luminance formula against
+ *      each block's own `--bg`:
+ *        --fg                                         >= 4.5:1
+ *        --cm-keyword/string/number/function/
+ *          type/property                              >= 3.0:1
+ *        --cm-comment                                 >= 2.5:1
+ *   2. chrome separation: `--chrome-bg != --bg` (otherwise the tab bar dissolves into
+ *      the editor) and `--tab-active-bg != --tab-inactive-bg` (otherwise you cannot
+ *      tell which tab is focused).
+ *   3. missing variables: all 20 blocks must define all 28 properties. A single
+ *      omission does not fall back to a sane default — it inherits whatever the
+ *      previously applied theme left behind, which looks like a random bug.
+ *   4. the golden `dracula-dark` block, asserted value-by-value against the palette
+ *      that shipped before this refactor.
+ *
+ * Where an upstream accent failed a floor (this happens almost exclusively in the
+ * light variants, where saturated brand accents cannot reach 3:1 on a near-white
+ * background) the colour was corrected by moving ONLY its HSL lightness, leaving hue
+ * and saturation intact, so the token keeps the family's identity. Each such value is
+ * flagged with an inline `corrected` comment naming the upstream colour it came from.
+ *
+ * dracula-dark IS FROZEN
+ * ----------------------
+ * It is the default theme, so every existing user lands on it after upgrading. Its 26
+ * pre-existing values are copied verbatim from the old styles.css and must not be
+ * "improved" — the migration promise is that the default user sees no pixel change.
+ * Only `--ws-mark` and `--trailing-mark` are new there, and both were lifted from the
+ * hard-coded `[data-theme="dark"]` rules they replace, so they are not new colours
+ * either.
+ *
+ * ADDING A FAMILY
+ * ---------------
+ * Add both modes (never one), register it in `src/themes.ts`, and run the audit. Take
+ * accents from the family's official spec; do not invent hex values.
+ */
+
+/* ------------------------------------------------------------------ *
+ * 1. Dracula
+ * ------------------------------------------------------------------ */
+
+/* Dracula — https://spec.draculatheme.com/  (GOLDEN: frozen, see header)
+   Doubles as the bare-:root fallback. main.ts sets data-theme from a deferred
+   module script, so the document can in principle paint one frame before any
+   attribute exists; without a fallback every var() would be invalid at computed
+   value time and that frame would render unstyled (white page, black text). The
+   old stylesheet had the same safety net — its unqualified :root carried the
+   light palette. Pointing it at the default theme instead means the untouched
+   majority never sees a mismatched frame. Any [data-theme] block outrides it on
+   specificity, so this only ever applies before the attribute lands. */
+:root,
+:root[data-theme="dracula-dark"] {
+  /* App chrome */
+  --bg: #282a36;
+  --fg: #f8f8f2;
+  --chrome-bg: #21222c;
+  --chrome-fg: #f8f8f2;
+  --border: #44475a;
+  --tab-active-bg: #282a36;
+  --tab-inactive-bg: #21222c;
+  --accent: #bd93f9;
+  --banner-conflict: #3a3320;
+  --banner-deleted: #3a2330;
+
+  /* Syntax */
+  --cm-comment: #6272a4;
+  --cm-keyword: #ff79c6;
+  --cm-string: #f1fa8c;
+  --cm-number: #bd93f9;
+  --cm-function: #50fa7b;
+  --cm-type: #8be9fd;
+  --cm-property: #50fa7b;
+  --cm-operator: #f8f8f2;
+  --cm-variable: #f8f8f2;
+  --cm-invalid: #ff5555;
+
+  /* Editor chrome */
+  --gutter-bg: #282a36;
+  --gutter-fg: #6272a4;
+  --gutter-active-fg: #f8f8f2;
+  --active-line-bg: rgba(255, 255, 255, 0.055);
+  --caret: #f8f8f2;
+  --selection-bg: #44475a;
+
+  /* Whitespace markers */
+  --ws-mark: #6272a4;
+  --trailing-mark: #ff5555;
+}
+
+/*
+ * Dracula Light — NOT AN OFFICIAL DRACULA THEME. Dracula's own light counterpart is
+ * "Alucard", which ships only inside the paid Dracula PRO product and is absent from
+ * the public spec, so it cannot be bundled. This block is an in-house derivation:
+ * every accent keeps the HUE of its Dracula counterpart to the nearest 0.5 degree and
+ * only lightness/saturation were re-tuned for a light background, preserving the
+ * role mapping (keyword=pink, string=yellow, number/accent=purple, function=green,
+ * type=cyan, invalid=red). The yellow string is the one that moves furthest: #f1fa8c
+ * is unreadable on a light surface, so it becomes a deep olive of the same hue.
+ * `--bg` and `--fg` are the official Dracula foreground/background swapped, so even
+ * the surface colours stay inside the official palette. Label it as a derivation in
+ * UI and docs; never present it as "Dracula official".
+ */
+:root[data-theme="dracula-light"] {
+  /* App chrome */
+  --bg: #f8f8f2;
+  --fg: #282a36;
+  --chrome-bg: #ecebe2;
+  --chrome-fg: #282a36;
+  --border: #d6d4e0;
+  --tab-active-bg: #f8f8f2;
+  --tab-inactive-bg: #ecebe2;
+  --accent: #8a4fde; /* derived from purple #bd93f9, hue 264.7 preserved */
+  --banner-conflict: #faf3cf;
+  --banner-deleted: #fbdedd;
+
+  /* Syntax */
+  --cm-comment: #6272a4; /* official Dracula comment, readable as-is on light */
+  --cm-keyword: #cf2687; /* derived from pink #ff79c6, hue 325.5 preserved */
+  --cm-string: #6e7616; /* derived from yellow #f1fa8c, hue 65.0 preserved */
+  --cm-number: #8a4fde; /* derived from purple #bd93f9 */
+  --cm-function: #198133; /* derived from green #50fa7b, hue 135.1 preserved */
+  --cm-type: #1b7b8f; /* derived from cyan #8be9fd, hue 190.4 preserved */
+  --cm-property: #198133; /* green, mirroring dracula-dark where property == function */
+  --cm-operator: #282a36;
+  --cm-variable: #282a36;
+  --cm-invalid: #d72b2b; /* derived from red #ff5555, hue 0 preserved */
+
+  /* Editor chrome */
+  --gutter-bg: #f8f8f2;
+  --gutter-fg: #7b86b3;
+  --gutter-active-fg: #282a36;
+  --active-line-bg: rgba(40, 42, 54, 0.05);
+  --caret: #282a36;
+  --selection-bg: #dcdae8;
+
+  /* Whitespace markers */
+  --ws-mark: #7b86b3;
+  --trailing-mark: #d72b2b;
+}
+
+/* ------------------------------------------------------------------ *
+ * 2. GitHub
+ * ------------------------------------------------------------------ */
+
+/* GitHub Dark Default — https://github.com/primer/github-vscode-theme (Primer primitives) */
+:root[data-theme="github-dark"] {
+  /* App chrome */
+  --bg: #0d1117;
+  --fg: #e6edf3;
+  --chrome-bg: #010409;
+  --chrome-fg: #e6edf3;
+  --border: #30363d;
+  --tab-active-bg: #0d1117;
+  --tab-inactive-bg: #010409;
+  --accent: #2f81f7;
+  --banner-conflict: #33280f;
+  --banner-deleted: #3d1719;
+
+  /* Syntax */
+  --cm-comment: #8b949e;
+  --cm-keyword: #ff7b72;
+  --cm-string: #a5d6ff;
+  --cm-number: #79c0ff;
+  --cm-function: #d2a8ff;
+  --cm-type: #ffa657;
+  --cm-property: #79c0ff;
+  --cm-operator: #e6edf3;
+  --cm-variable: #ffa657;
+  --cm-invalid: #f85149;
+
+  /* Editor chrome */
+  --gutter-bg: #0d1117;
+  --gutter-fg: #6e7681;
+  --gutter-active-fg: #e6edf3;
+  --active-line-bg: rgba(110, 118, 129, 0.1);
+  --caret: #2f81f7;
+  --selection-bg: rgba(47, 129, 247, 0.3);
+
+  /* Whitespace markers */
+  --ws-mark: #6e7681;
+  --trailing-mark: #f85149;
+}
+
+/*
+ * GitHub Light Default — https://github.com/primer/github-vscode-theme
+ * This block also carries the migration promise for users whose stored theme was the
+ * old "light": those syntax colours are GitHub Light's own earlier accent set and are
+ * kept verbatim here so the switch is visually continuous. Only `--fg` is refreshed
+ * from #1e1e1e to Primer's current `fg.default` #1f2328, a difference below the
+ * perceptual threshold.
+ */
+:root[data-theme="github-light"] {
+  /* App chrome */
+  --bg: #ffffff;
+  --fg: #1f2328;
+  --chrome-bg: #f3f3f3;
+  --chrome-fg: #333333;
+  --border: #d0d0d0;
+  --tab-active-bg: #ffffff;
+  --tab-inactive-bg: #e7e7e7;
+  --accent: #0a66c2;
+  --banner-conflict: #fff4e5;
+  --banner-deleted: #fde8e8;
+
+  /* Syntax */
+  --cm-comment: #6a737d;
+  --cm-keyword: #d73a49;
+  --cm-string: #22863a;
+  --cm-number: #005cc5;
+  --cm-function: #6f42c1;
+  --cm-type: #953800;
+  --cm-property: #005cc5;
+  --cm-operator: #24292e;
+  --cm-variable: #24292e;
+  --cm-invalid: #b31d28;
+
+  /* Editor chrome */
+  --gutter-bg: #f3f3f3;
+  --gutter-fg: #9aa0a6;
+  --gutter-active-fg: #24292e;
+  --active-line-bg: rgba(0, 0, 0, 0.04);
+  --caret: #1e1e1e;
+  --selection-bg: #b3d4fc;
+
+  /* Whitespace markers */
+  --ws-mark: #9aa0a6;
+  --trailing-mark: #b31d28;
+}
+
+/* ------------------------------------------------------------------ *
+ * 3. Solarized
+ * ------------------------------------------------------------------ */
+
+/*
+ * Solarized Dark — https://ethanschoonover.com/solarized/
+ * Solarized is defined as eight monotones (base03..base3) plus eight accents shared by
+ * both modes. base03 is the background, base0 the body text and base01 the comment
+ * tone; both clear their floors on base03 unmodified, so this block needs no
+ * correction at all.
+ */
+:root[data-theme="solarized-dark"] {
+  /* App chrome */
+  --bg: #002b36;
+  --fg: #839496;
+  --chrome-bg: #073642;
+  --chrome-fg: #93a1a1;
+  --border: #586e75;
+  --tab-active-bg: #002b36;
+  --tab-inactive-bg: #073642;
+  --accent: #268bd2;
+  --banner-conflict: #3b3520;
+  --banner-deleted: #3c2229;
+
+  /* Syntax */
+  --cm-comment: #586e75; /* base01 */
+  --cm-keyword: #859900; /* green */
+  --cm-string: #2aa198; /* cyan */
+  --cm-number: #d33682; /* magenta */
+  --cm-function: #268bd2; /* blue */
+  --cm-type: #b58900; /* yellow */
+  --cm-property: #6c71c4; /* violet */
+  --cm-operator: #859900;
+  --cm-variable: #839496; /* base0 */
+  --cm-invalid: #dc322f; /* red */
+
+  /* Editor chrome */
+  --gutter-bg: #002b36;
+  --gutter-fg: #586e75;
+  --gutter-active-fg: #93a1a1;
+  --active-line-bg: rgba(147, 161, 161, 0.06);
+  --caret: #93a1a1;
+  --selection-bg: rgba(38, 139, 210, 0.3);
+
+  /* Whitespace markers */
+  --ws-mark: #586e75;
+  --trailing-mark: #dc322f;
+}
+
+/*
+ * Solarized Light — https://ethanschoonover.com/solarized/
+ * The light mode is where Solarized's shared accents run out of headroom: green,
+ * cyan and yellow all land just under 3:1 on base3, so each was darkened by a hair
+ * with hue and saturation untouched. The monotones were re-picked rather than
+ * corrected: `--fg` uses base01 (the spec's "emphasised content" tone) instead of
+ * base00, and the comment uses base00 instead of base1, both still official values.
+ */
+:root[data-theme="solarized-light"] {
+  /* App chrome */
+  --bg: #fdf6e3;
+  --fg: #586e75; /* base01; base00 #657b83 reaches only 4.13:1 on base3 */
+  --chrome-bg: #eee8d5;
+  --chrome-fg: #586e75;
+  --border: #93a1a1;
+  --tab-active-bg: #fdf6e3;
+  --tab-inactive-bg: #eee8d5;
+  --accent: #268bd2;
+  --banner-conflict: #fcefd0;
+  --banner-deleted: #fbe3de;
+
+  /* Syntax */
+  --cm-comment: #839496; /* base0; base1 #93a1a1 reaches only 2.48:1 */
+  --cm-keyword: #839600; /* corrected from green #859900 (2.97:1) */
+  --cm-string: #299d95; /* corrected from cyan #2aa198 (2.93:1) */
+  --cm-number: #d33682; /* magenta */
+  --cm-function: #268bd2; /* blue */
+  --cm-type: #b28700; /* corrected from yellow #b58900 (2.98:1) */
+  --cm-property: #6c71c4; /* violet */
+  --cm-operator: #839600;
+  --cm-variable: #586e75;
+  --cm-invalid: #dc322f; /* red */
+
+  /* Editor chrome */
+  --gutter-bg: #eee8d5;
+  --gutter-fg: #93a1a1;
+  --gutter-active-fg: #073642;
+  --active-line-bg: rgba(0, 43, 54, 0.05);
+  --caret: #586e75;
+  --selection-bg: rgba(38, 139, 210, 0.25);
+
+  /* Whitespace markers */
+  --ws-mark: #93a1a1;
+  --trailing-mark: #dc322f;
+}
+
+/* ------------------------------------------------------------------ *
+ * 4. Gruvbox
+ * ------------------------------------------------------------------ */
+
+/*
+ * Gruvbox Dark — https://github.com/morhetz/gruvbox
+ * Role mapping taken from gruvbox.vim's own highlight links: Statement/Keyword=red,
+ * String/Function=green, Constant/Number=purple, Type=yellow, Identifier=blue.
+ * String and function sharing green is upstream behaviour, not an oversight.
+ */
+:root[data-theme="gruvbox-dark"] {
+  /* App chrome */
+  --bg: #282828;
+  --fg: #ebdbb2;
+  --chrome-bg: #1d2021;
+  --chrome-fg: #ebdbb2;
+  --border: #504945;
+  --tab-active-bg: #282828;
+  --tab-inactive-bg: #1d2021;
+  --accent: #fabd2f;
+  --banner-conflict: #3d3220;
+  --banner-deleted: #3b2222;
+
+  /* Syntax */
+  --cm-comment: #928374;
+  --cm-keyword: #fb4934;
+  --cm-string: #b8bb26;
+  --cm-number: #d3869b;
+  --cm-function: #b8bb26;
+  --cm-type: #fabd2f;
+  --cm-property: #83a598;
+  --cm-operator: #ebdbb2;
+  --cm-variable: #83a598;
+  --cm-invalid: #fb4934;
+
+  /* Editor chrome */
+  --gutter-bg: #282828;
+  --gutter-fg: #7c6f64;
+  --gutter-active-fg: #ebdbb2;
+  --active-line-bg: rgba(235, 219, 178, 0.05);
+  --caret: #ebdbb2;
+  --selection-bg: #504945;
+
+  /* Whitespace markers */
+  --ws-mark: #7c6f64;
+  --trailing-mark: #fb4934;
+}
+
+/*
+ * Gruvbox Light — https://github.com/morhetz/gruvbox
+ * Same role mapping, using gruvbox's `faded_*` accent ramp, which the upstream theme
+ * substitutes wholesale when `background=light`. Every accent clears its floor on
+ * light0 unmodified.
+ */
+:root[data-theme="gruvbox-light"] {
+  /* App chrome */
+  --bg: #fbf1c7;
+  --fg: #3c3836;
+  --chrome-bg: #f2e5bc;
+  --chrome-fg: #3c3836;
+  --border: #d5c4a1;
+  --tab-active-bg: #fbf1c7;
+  --tab-inactive-bg: #ebdbb2;
+  --accent: #b57614;
+  --banner-conflict: #f5e3b3;
+  --banner-deleted: #f7ddd6;
+
+  /* Syntax */
+  --cm-comment: #928374;
+  --cm-keyword: #9d0006;
+  --cm-string: #79740e;
+  --cm-number: #8f3f71;
+  --cm-function: #79740e;
+  --cm-type: #b57614;
+  --cm-property: #076678;
+  --cm-operator: #3c3836;
+  --cm-variable: #076678;
+  --cm-invalid: #9d0006;
+
+  /* Editor chrome */
+  --gutter-bg: #f2e5bc;
+  --gutter-fg: #a89984;
+  --gutter-active-fg: #3c3836;
+  --active-line-bg: rgba(60, 56, 54, 0.06);
+  --caret: #3c3836;
+  --selection-bg: #d5c4a1;
+
+  /* Whitespace markers */
+  --ws-mark: #a89984;
+  --trailing-mark: #9d0006;
+}
+
+/* ------------------------------------------------------------------ *
+ * 5. Catppuccin
+ * ------------------------------------------------------------------ */
+
+/* Catppuccin Mocha — https://github.com/catppuccin/catppuccin (palette.json) */
+:root[data-theme="catppuccin-dark"] {
+  /* App chrome */
+  --bg: #1e1e2e; /* base */
+  --fg: #cdd6f4; /* text */
+  --chrome-bg: #181825; /* mantle */
+  --chrome-fg: #cdd6f4;
+  --border: #313244; /* surface0 */
+  --tab-active-bg: #1e1e2e;
+  --tab-inactive-bg: #181825;
+  --accent: #cba6f7; /* mauve */
+  --banner-conflict: #3a3327;
+  --banner-deleted: #3a2530;
+
+  /* Syntax */
+  --cm-comment: #6c7086; /* overlay0 */
+  --cm-keyword: #cba6f7; /* mauve */
+  --cm-string: #a6e3a1; /* green */
+  --cm-number: #fab387; /* peach */
+  --cm-function: #89b4fa; /* blue */
+  --cm-type: #f9e2af; /* yellow */
+  --cm-property: #94e2d5; /* teal */
+  --cm-operator: #89dceb; /* sky */
+  --cm-variable: #cdd6f4; /* text */
+  --cm-invalid: #f38ba8; /* red */
+
+  /* Editor chrome */
+  --gutter-bg: #1e1e2e;
+  --gutter-fg: #6c7086;
+  --gutter-active-fg: #b4befe; /* lavender */
+  --active-line-bg: rgba(205, 214, 244, 0.05);
+  --caret: #f5e0dc; /* rosewater */
+  --selection-bg: #45475a; /* surface1 */
+
+  /* Whitespace markers */
+  --ws-mark: #6c7086;
+  --trailing-mark: #f38ba8;
+}
+
+/*
+ * Catppuccin Latte — https://github.com/catppuccin/catppuccin (palette.json)
+ * Latte's green, peach and yellow are tuned for chips and badges rather than for text
+ * on `base`, so three accents were darkened; hue and saturation are unchanged. The
+ * comment uses overlay1 instead of overlay0 because overlay0 sits at 2.30:1 — a
+ * neighbouring official token, so still no invented colour.
+ */
+:root[data-theme="catppuccin-light"] {
+  /* App chrome */
+  --bg: #eff1f5; /* base */
+  --fg: #4c4f69; /* text */
+  --chrome-bg: #e6e9ef; /* mantle */
+  --chrome-fg: #4c4f69;
+  --border: #ccd0da; /* surface0 */
+  --tab-active-bg: #eff1f5;
+  --tab-inactive-bg: #e6e9ef;
+  --accent: #8839ef; /* mauve */
+  --banner-conflict: #f9ecd2;
+  --banner-deleted: #f9dfe3;
+
+  /* Syntax */
+  --cm-comment: #8c8fa1; /* overlay1; overlay0 #9ca0b0 reaches only 2.30:1 */
+  --cm-keyword: #8839ef; /* mauve */
+  --cm-string: #3f9d2a; /* corrected from green #40a02b (2.96:1) */
+  --cm-number: #ef5801; /* corrected from peach #fe640b (2.64:1) */
+  --cm-function: #1e66f5; /* blue */
+  --cm-type: #c07a19; /* corrected from yellow #df8e1d (2.31:1) */
+  --cm-property: #179299; /* teal */
+  --cm-operator: #0b8fc4; /* corrected from sky #04a5e5 (2.47:1) */
+  --cm-variable: #4c4f69; /* text */
+  --cm-invalid: #d20f39; /* red */
+
+  /* Editor chrome */
+  --gutter-bg: #e6e9ef;
+  --gutter-fg: #9ca0b0; /* overlay0 */
+  --gutter-active-fg: #4c4f69;
+  --active-line-bg: rgba(76, 79, 105, 0.05);
+  --caret: #dc8a78; /* rosewater */
+  --selection-bg: #bcc0cc; /* surface1 */
+
+  /* Whitespace markers */
+  --ws-mark: #9ca0b0;
+  --trailing-mark: #d20f39;
+}
+
+/* ------------------------------------------------------------------ *
+ * 6. Nord
+ * ------------------------------------------------------------------ */
+
+/*
+ * Nord (Polar Night) — https://www.nordtheme.com/docs/colors-and-palettes
+ * Role mapping from arcticicestudio/nord-visual-studio-code: keyword/operator=nord9,
+ * string=nord14, number=nord15, function=nord8, type=nord7, variable=nord4. The
+ * comment tone #616e88 is Nord's own out-of-palette comment colour and lands at
+ * 2.43:1, marginally under the floor, so it is nudged one step lighter.
+ */
+:root[data-theme="nord-dark"] {
+  /* App chrome */
+  --bg: #2e3440; /* nord0 */
+  --fg: #d8dee9; /* nord4 */
+  --chrome-bg: #3b4252; /* nord1 */
+  --chrome-fg: #d8dee9;
+  --border: #4c566a; /* nord3 */
+  --tab-active-bg: #2e3440;
+  --tab-inactive-bg: #3b4252;
+  --accent: #88c0d0; /* nord8 */
+  --banner-conflict: #423f33;
+  --banner-deleted: #402f36;
+
+  /* Syntax */
+  --cm-comment: #64728c; /* corrected from Nord comment #616e88 (2.43:1) */
+  --cm-keyword: #81a1c1; /* nord9 */
+  --cm-string: #a3be8c; /* nord14 */
+  --cm-number: #b48ead; /* nord15 */
+  --cm-function: #88c0d0; /* nord8 */
+  --cm-type: #8fbcbb; /* nord7 */
+  --cm-property: #d8dee9; /* nord4 */
+  --cm-operator: #81a1c1; /* nord9 */
+  --cm-variable: #d8dee9; /* nord4 */
+  --cm-invalid: #bf616a; /* nord11 */
+
+  /* Editor chrome */
+  --gutter-bg: #2e3440;
+  --gutter-fg: #64728c;
+  --gutter-active-fg: #d8dee9;
+  --active-line-bg: rgba(216, 222, 233, 0.05);
+  --caret: #d8dee9;
+  --selection-bg: #434c5e; /* nord2 */
+
+  /* Whitespace markers */
+  --ws-mark: #64728c;
+  --trailing-mark: #bf616a;
+}
+
+/*
+ * Nord (Snow Storm) — https://www.nordtheme.com/docs/colors-and-palettes
+ * Nord ships no official light syntax theme; the surfaces here are the official Snow
+ * Storm tones (nord6/nord5/nord4) with Polar Night as text, and the Frost/Aurora
+ * accents were darkened to clear 3:1 on nord6. Hue and saturation are preserved, so
+ * the family still reads as Nord, but this is the most heavily adjusted block in the
+ * file — nord7/nord8/nord14 start below 1.9:1 as text on a Snow Storm background.
+ */
+:root[data-theme="nord-light"] {
+  /* App chrome */
+  --bg: #eceff4; /* nord6 */
+  --fg: #2e3440; /* nord0 */
+  --chrome-bg: #e5e9f0; /* nord5 */
+  --chrome-fg: #2e3440;
+  --border: #d8dee9; /* nord4 */
+  --tab-active-bg: #eceff4;
+  --tab-inactive-bg: #e5e9f0;
+  --accent: #5e81ac; /* nord10 */
+  --banner-conflict: #f6ecd5;
+  --banner-deleted: #f6e0e2;
+
+  /* Syntax */
+  --cm-comment: #4c566a; /* nord3 */
+  --cm-keyword: #5e81ac; /* nord10 */
+  --cm-string: #709253; /* corrected from nord14 #a3be8c (1.77:1) */
+  --cm-number: #a77a9f; /* corrected from nord15 #b48ead (2.46:1) */
+  --cm-function: #4392a9; /* corrected from nord8 #88c0d0 (1.74:1) */
+  --cm-type: #589291; /* corrected from nord7 #8fbcbb (1.81:1) */
+  --cm-property: #2e3440; /* nord0, mirroring nord-dark where property == fg */
+  --cm-operator: #5e81ac; /* nord10 */
+  --cm-variable: #2e3440; /* nord0 */
+  --cm-invalid: #bf616a; /* nord11 */
+
+  /* Editor chrome */
+  --gutter-bg: #e5e9f0;
+  --gutter-fg: #7b88a1;
+  --gutter-active-fg: #2e3440;
+  --active-line-bg: rgba(46, 52, 64, 0.05);
+  --caret: #2e3440;
+  --selection-bg: #d8dee9; /* nord4 */
+
+  /* Whitespace markers */
+  --ws-mark: #7b88a1;
+  --trailing-mark: #bf616a;
+}
+
+/* ------------------------------------------------------------------ *
+ * 7. Tokyo Night
+ * ------------------------------------------------------------------ */
+
+/* Tokyo Night (Night) — https://github.com/folke/tokyonight.nvim (extras/lua/tokyonight_night.lua) */
+:root[data-theme="tokyo-night-dark"] {
+  /* App chrome */
+  --bg: #1a1b26;
+  --fg: #a9b1d6;
+  --chrome-bg: #16161e; /* bg_dark */
+  --chrome-fg: #a9b1d6;
+  --border: #292e42; /* bg_highlight */
+  --tab-active-bg: #1a1b26;
+  --tab-inactive-bg: #16161e;
+  --accent: #7aa2f7; /* blue */
+  --banner-conflict: #35301f;
+  --banner-deleted: #3a2129;
+
+  /* Syntax */
+  --cm-comment: #565f89;
+  --cm-keyword: #bb9af7; /* magenta */
+  --cm-string: #9ece6a; /* green */
+  --cm-number: #ff9e64; /* orange */
+  --cm-function: #7aa2f7; /* blue */
+  --cm-type: #2ac3de; /* blue1 */
+  --cm-property: #73daca; /* green1 */
+  --cm-operator: #89ddff; /* blue5 */
+  --cm-variable: #c0caf5; /* fg bright */
+  --cm-invalid: #f7768e; /* red */
+
+  /* Editor chrome */
+  --gutter-bg: #1a1b26;
+  --gutter-fg: #565f89;
+  --gutter-active-fg: #a9b1d6;
+  --active-line-bg: rgba(192, 202, 245, 0.05);
+  --caret: #c0caf5;
+  --selection-bg: #283457; /* bg_visual */
+
+  /* Whitespace markers */
+  --ws-mark: #565f89;
+  --trailing-mark: #f7768e;
+}
+
+/*
+ * Tokyo Night (Day) — https://github.com/folke/tokyonight.nvim (extras/lua/tokyonight_day.lua)
+ * Day is the maintained light variant and is already contrast-tuned upstream, so all
+ * accents are used unmodified. Note that its `--fg` (#3760bf) clears the 4.5:1 floor
+ * with little headroom by design — it is a blue, not a neutral.
+ */
+:root[data-theme="tokyo-night-light"] {
+  /* App chrome */
+  --bg: #e1e2e7;
+  --fg: #3760bf;
+  --chrome-bg: #d0d5e3; /* bg_dark */
+  --chrome-fg: #3760bf;
+  --border: #b4b5b9; /* border */
+  --tab-active-bg: #e1e2e7;
+  --tab-inactive-bg: #d0d5e3;
+  --accent: #2e7de9; /* blue */
+  --banner-conflict: #eee3c9;
+  --banner-deleted: #eed6d9;
+
+  /* Syntax */
+  --cm-comment: #848cb5;
+  --cm-keyword: #9854f1; /* magenta */
+  --cm-string: #587539; /* green */
+  --cm-number: #b15c00; /* orange */
+  --cm-function: #2e7de9; /* blue */
+  --cm-type: #188092; /* blue1 */
+  --cm-property: #387068; /* green1 */
+  --cm-operator: #006a83; /* blue5 */
+  --cm-variable: #3760bf; /* fg */
+  --cm-invalid: #f52a65; /* red */
+
+  /* Editor chrome */
+  --gutter-bg: #d0d5e3;
+  --gutter-fg: #8990b3; /* dark3 */
+  --gutter-active-fg: #3760bf;
+  --active-line-bg: rgba(55, 96, 191, 0.06);
+  --caret: #3760bf;
+  --selection-bg: #b7c1e3; /* bg_visual */
+
+  /* Whitespace markers */
+  --ws-mark: #8990b3;
+  --trailing-mark: #f52a65;
+}
+
+/* ------------------------------------------------------------------ *
+ * 8. One Half
+ * ------------------------------------------------------------------ */
+
+/*
+ * One Half Dark — https://github.com/sonph/onehalf (sublimetext/OneHalfDark.tmTheme)
+ * Type and number both use #e5c07b upstream (Classes and Integers share a colour);
+ * kept as-is. The theme's comment #5c6370 sits at 2.32:1 and is lifted one step.
+ */
+:root[data-theme="one-half-dark"] {
+  /* App chrome */
+  --bg: #282c34;
+  --fg: #dcdfe4;
+  --chrome-bg: #21252b;
+  --chrome-fg: #dcdfe4;
+  --border: #3e4451;
+  --tab-active-bg: #282c34;
+  --tab-inactive-bg: #21252b;
+  --accent: #61afef;
+  --banner-conflict: #3a3421;
+  --banner-deleted: #3a2528;
+
+  /* Syntax */
+  --cm-comment: #626a78; /* corrected from #5c6370 (2.32:1) */
+  --cm-keyword: #c678dd;
+  --cm-string: #98c379;
+  --cm-number: #e5c07b;
+  --cm-function: #61afef;
+  --cm-type: #e5c07b;
+  --cm-property: #e06c75;
+  --cm-operator: #56b6c2;
+  --cm-variable: #e06c75;
+  --cm-invalid: #be5046;
+
+  /* Editor chrome */
+  --gutter-bg: #282c34;
+  --gutter-fg: #636d83;
+  --gutter-active-fg: #dcdfe4;
+  --active-line-bg: rgba(220, 223, 228, 0.05);
+  --caret: #a3b3cc;
+  --selection-bg: #474e5d;
+
+  /* Whitespace markers */
+  --ws-mark: #636d83;
+  --trailing-mark: #e06c75;
+}
+
+/*
+ * One Half Light — https://github.com/sonph/onehalf (sublimetext/OneHalfLight.tmTheme)
+ * All accents clear their floors unmodified; only the very pale comment #a0a1a7
+ * (2.47:1) needed a nudge.
+ */
+:root[data-theme="one-half-light"] {
+  /* App chrome */
+  --bg: #fafafa;
+  --fg: #383a42;
+  --chrome-bg: #eaeaeb;
+  --chrome-fg: #383a42;
+  --border: #d4d4d4;
+  --tab-active-bg: #fafafa;
+  --tab-inactive-bg: #eaeaeb;
+  --accent: #0184bc;
+  --banner-conflict: #fcf0d9;
+  --banner-deleted: #fbe2e0;
+
+  /* Syntax */
+  --cm-comment: #9c9da4; /* corrected from #a0a1a7 (2.47:1) */
+  --cm-keyword: #a626a4;
+  --cm-string: #50a14f;
+  --cm-number: #c18401;
+  --cm-function: #0184bc;
+  --cm-type: #c18401;
+  --cm-property: #e45649;
+  --cm-operator: #0997b3;
+  --cm-variable: #e45649;
+  --cm-invalid: #ca1243;
+
+  /* Editor chrome */
+  --gutter-bg: #eaeaeb;
+  --gutter-fg: #9d9d9f;
+  --gutter-active-fg: #383a42;
+  --active-line-bg: rgba(56, 58, 66, 0.05);
+  --caret: #383a42;
+  --selection-bg: #bfceff;
+
+  /* Whitespace markers */
+  --ws-mark: #9d9d9f;
+  --trailing-mark: #ca1243;
+}
+
+/* ------------------------------------------------------------------ *
+ * 9. Rosé Pine
+ * ------------------------------------------------------------------ */
+
+/* Rosé Pine — https://rosepinetheme.com/ (rose-pine/vscode rose-pine-color-theme.json) */
+:root[data-theme="rose-pine-dark"] {
+  /* App chrome */
+  --bg: #191724; /* base */
+  --fg: #e0def4; /* text */
+  --chrome-bg: #1f1d2e; /* surface */
+  --chrome-fg: #e0def4;
+  --border: #26233a; /* overlay */
+  --tab-active-bg: #191724;
+  --tab-inactive-bg: #1f1d2e;
+  --accent: #c4a7e7; /* iris */
+  --banner-conflict: #3b3327;
+  --banner-deleted: #382431;
+
+  /* Syntax */
+  --cm-comment: #6e6a86; /* muted */
+  --cm-keyword: #31748f; /* pine */
+  --cm-string: #f6c177; /* gold */
+  --cm-number: #ebbcba; /* rose */
+  --cm-function: #ebbcba; /* rose */
+  --cm-type: #9ccfd8; /* foam */
+  --cm-property: #c4a7e7; /* iris */
+  --cm-operator: #908caa; /* subtle */
+  --cm-variable: #e0def4; /* text */
+  --cm-invalid: #eb6f92; /* love */
+
+  /* Editor chrome */
+  --gutter-bg: #191724;
+  --gutter-fg: #6e6a86;
+  --gutter-active-fg: #e0def4;
+  --active-line-bg: rgba(224, 222, 244, 0.05);
+  --caret: #908caa;
+  --selection-bg: #403d52; /* highlight med */
+
+  /* Whitespace markers */
+  --ws-mark: #6e6a86;
+  --trailing-mark: #eb6f92;
+}
+
+/*
+ * Rosé Pine Dawn — https://rosepinetheme.com/ (rose-pine/vscode rose-pine-dawn-color-theme.json)
+ * Dawn's gold and rose are deliberately soft and fall below 3:1 on `base`, so both
+ * were darkened along their own hue. `--chrome-bg` uses `overlay` rather than Dawn's
+ * `surface`, which is lighter than `base` and would make the tab bar float above the
+ * editor instead of framing it.
+ */
+:root[data-theme="rose-pine-light"] {
+  /* App chrome */
+  --bg: #faf4ed; /* base */
+  --fg: #575279; /* text */
+  --chrome-bg: #f2e9e1; /* overlay */
+  --chrome-fg: #575279;
+  --border: #dfdad9; /* highlight med */
+  --tab-active-bg: #faf4ed;
+  --tab-inactive-bg: #f2e9e1;
+  --accent: #907aa9; /* iris */
+  --banner-conflict: #f7e8cf;
+  --banner-deleted: #f6dfe0;
+
+  /* Syntax */
+  --cm-comment: #9893a5; /* muted */
+  --cm-keyword: #286983; /* pine */
+  --cm-string: #c77b15; /* corrected from gold #ea9d34 (2.05:1) */
+  --cm-number: #d1706c; /* corrected from rose #d7827e (2.60:1) */
+  --cm-function: #d1706c; /* corrected from rose #d7827e (2.60:1) */
+  --cm-type: #56949f; /* foam */
+  --cm-property: #907aa9; /* iris */
+  --cm-operator: #797593; /* subtle */
+  --cm-variable: #575279; /* text */
+  --cm-invalid: #b4637a; /* love */
+
+  /* Editor chrome */
+  --gutter-bg: #f2e9e1;
+  --gutter-fg: #9893a5;
+  --gutter-active-fg: #575279;
+  --active-line-bg: rgba(87, 82, 121, 0.05);
+  --caret: #797593;
+  --selection-bg: #dfdad9;
+
+  /* Whitespace markers */
+  --ws-mark: #9893a5;
+  --trailing-mark: #b4637a;
+}
+
+/* ------------------------------------------------------------------ *
+ * 10. Kanagawa
+ * ------------------------------------------------------------------ */
+
+/*
+ * Kanagawa Wave — https://github.com/rebelot/kanagawa.nvim (colors.lua + themes.lua)
+ * Role mapping is read straight from themes.lua's `syn` table. The banner colours are
+ * upstream too: winterYellow and winterRed exist precisely as muted warning washes.
+ * `--ws-mark` uses sumiInk6, which upstream assigns to `ui.whitespace`.
+ */
+:root[data-theme="kanagawa-dark"] {
+  /* App chrome */
+  --bg: #1f1f28; /* sumiInk3 */
+  --fg: #dcd7ba; /* fujiWhite */
+  --chrome-bg: #181820; /* sumiInk1 */
+  --chrome-fg: #dcd7ba;
+  --border: #2a2a37; /* sumiInk4 */
+  --tab-active-bg: #1f1f28;
+  --tab-inactive-bg: #181820;
+  --accent: #7e9cd8; /* crystalBlue */
+  --banner-conflict: #49443c; /* winterYellow */
+  --banner-deleted: #43242b; /* winterRed */
+
+  /* Syntax */
+  --cm-comment: #727169; /* fujiGray */
+  --cm-keyword: #957fb8; /* oniViolet */
+  --cm-string: #98bb6c; /* springGreen */
+  --cm-number: #d27e99; /* sakuraPink */
+  --cm-function: #7e9cd8; /* crystalBlue */
+  --cm-type: #7aa89f; /* waveAqua2 */
+  --cm-property: #e6c384; /* carpYellow */
+  --cm-operator: #c0a36e; /* boatYellow2 */
+  --cm-variable: #dcd7ba; /* fujiWhite */
+  --cm-invalid: #e82424; /* samuraiRed */
+
+  /* Editor chrome */
+  --gutter-bg: #1f1f28;
+  --gutter-fg: #54546d; /* sumiInk6 */
+  --gutter-active-fg: #dcd7ba;
+  --active-line-bg: rgba(220, 215, 186, 0.05);
+  --caret: #c8c093; /* oldWhite */
+  --selection-bg: #223249; /* waveBlue1 */
+
+  /* Whitespace markers */
+  --ws-mark: #54546d;
+  --trailing-mark: #e82424;
+}
+
+/*
+ * Kanagawa Lotus — https://github.com/rebelot/kanagawa.nvim (colors.lua + themes.lua)
+ * Lotus is a first-class upstream light theme with its own `lotus*` ramp, so no
+ * contrast correction was required anywhere in this block.
+ */
+:root[data-theme="kanagawa-light"] {
+  /* App chrome */
+  --bg: #f2ecbc; /* lotusWhite3 */
+  --fg: #545464; /* lotusInk1 */
+  --chrome-bg: #dcd5ac; /* lotusWhite1 */
+  --chrome-fg: #545464;
+  --border: #d5cea3; /* lotusWhite0 */
+  --tab-active-bg: #f2ecbc;
+  --tab-inactive-bg: #dcd5ac;
+  --accent: #4d699b; /* lotusBlue4 */
+  --banner-conflict: #f9d791; /* lotusYellow4 */
+  --banner-deleted: #d9a594; /* lotusRed4 */
+
+  /* Syntax */
+  --cm-comment: #8a8980; /* lotusGray3 */
+  --cm-keyword: #624c83; /* lotusViolet4 */
+  --cm-string: #6f894e; /* lotusGreen */
+  --cm-number: #b35b79; /* lotusPink */
+  --cm-function: #4d699b; /* lotusBlue4 */
+  --cm-type: #597b75; /* lotusAqua */
+  --cm-property: #77713f; /* lotusYellow */
+  --cm-operator: #836f4a; /* lotusYellow2 */
+  --cm-variable: #545464; /* lotusInk1 */
+  --cm-invalid: #c84053; /* lotusRed */
+
+  /* Editor chrome */
+  --gutter-bg: #e7dba0; /* lotusWhite4 (upstream bg_gutter) */
+  --gutter-fg: #a09cac; /* lotusViolet1 */
+  --gutter-active-fg: #545464;
+  --active-line-bg: rgba(84, 84, 100, 0.06);
+  --caret: #545464;
+  --selection-bg: #c9cbd1; /* lotusViolet3 */
+
+  /* Whitespace markers */
+  --ws-mark: #a09cac;
+  --trailing-mark: #c84053;
+}

@@ -41,7 +41,8 @@ import {
   applyWhitespace,
   applyIndent,
 } from "./editor";
-import { setTheme, themeChoice } from "./theme";
+import { setThemeFamily, setThemeMode, themeFamily, themeMode } from "./theme";
+import { isThemeFamily, isThemeMode, THEMES } from "./themes";
 
 /** Font-size input bounds — mirror settings.ts's persisted zoom range. */
 const FONT_SIZE_MIN = 8;
@@ -224,16 +225,47 @@ export function openPreferences(): void {
   ]);
 
   // ---- Appearance ----
-  const themeOptions: SelectOption[] = [
+  // Two independent axes: which palette (Theme) and how light it is
+  // (Appearance). Both mirror the native View → Theme submenu; the setters push
+  // the new value back to the menu so the two views never drift.
+  const themeOptions: SelectOption[] = THEMES.map((t) => ({
+    label: t.label,
+    value: t.id,
+  }));
+  const modeOptions: SelectOption[] = [
     { label: "Light", value: "light" },
     { label: "Dark", value: "dark" },
     { label: "System", value: "system" },
   ];
-  section(box, "Appearance", [
-    selectRow("Theme", themeOptions, themeChoice(), (v) =>
-      setTheme(v as "light" | "dark" | "system"),
-    ),
-  ]);
+  // The guards are belt-and-braces: the <select> can only yield values we put
+  // in it, but they narrow the string back to the union the setters expect.
+  const familyRow = selectRow("Theme", themeOptions, themeFamily(), (v) => {
+    if (isThemeFamily(v)) setThemeFamily(v);
+  });
+  const modeRow = selectRow("Appearance", modeOptions, themeMode(), (v) => {
+    if (isThemeMode(v)) setThemeMode(v);
+  });
+  section(box, "Appearance", [familyRow, modeRow]);
+
+  // selectRow snapshots its value at build time, but this modal is not the only
+  // way to change a theme: the native View → Theme submenu stays live while an
+  // HTML modal is up, so a menu pick would leave these two dropdowns showing
+  // stale labels. Follow the same event the preview listens to.
+  //
+  // Self-unsubscribing on the first event after the modal is gone: openModal
+  // exposes no close hook, and the rows leave the document when it closes, so
+  // isConnected is the cheapest reliable liveness test.
+  const syncSelects = (): void => {
+    if (!familyRow.isConnected) {
+      window.removeEventListener("uninotepad:themechange", syncSelects);
+      return;
+    }
+    const fam = familyRow.querySelector("select");
+    const mode = modeRow.querySelector("select");
+    if (fam) fam.value = themeFamily();
+    if (mode) mode.value = themeMode();
+  };
+  window.addEventListener("uninotepad:themechange", syncSelects);
 
   const row = document.createElement("div");
   row.className = "modal-actions";

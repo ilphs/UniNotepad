@@ -38,7 +38,8 @@ import { openRecentDialog, openAbout } from "./dialogs";
 import { checkForUpdates } from "./updater";
 import { openPreferences } from "./preferences";
 import { clearRecent } from "./recent";
-import { setTheme } from "./theme";
+import { setThemeFamily, setThemeMode } from "./theme";
+import { isThemeFamily, isThemeMode } from "./themes";
 import { togglePreview, exportPreviewHtml, printPreview } from "./preview";
 import { handleZoomShortcut } from "./mermaid-view";
 import {
@@ -60,6 +61,21 @@ export function handleMenu(id: string): void {
   // prefix before the fixed-id switch below.
   if (id.startsWith("file.recent:")) {
     void openPath(id.slice("file.recent:".length));
+    return;
+  }
+  // The View → Theme submenu carries the two theme axes as id prefixes rather
+  // than a fixed case each: ten families × three modes would be thirteen cases
+  // that all say the same thing, and the family list is data (themes.ts), not
+  // code. The guards reject ids that no longer exist after a registry change
+  // instead of writing an unknown value into `data-theme`.
+  if (id.startsWith("view.theme.")) {
+    const family = id.slice("view.theme.".length);
+    if (isThemeFamily(family)) setThemeFamily(family);
+    return;
+  }
+  if (id.startsWith("view.themeMode.")) {
+    const mode = id.slice("view.themeMode.".length);
+    if (isThemeMode(mode)) setThemeMode(mode);
     return;
   }
   switch (id) {
@@ -203,15 +219,6 @@ export function handleMenu(id: string): void {
       break;
     case "view.zoomReset":
       if (!handleZoomShortcut(0)) zoomReset();
-      break;
-    case "view.themeLight":
-      setTheme("light");
-      break;
-    case "view.themeDark":
-      setTheme("dark");
-      break;
-    case "view.themeSystem":
-      setTheme("system");
       break;
     case "view.gotoTab1": activateTabByIndex(0); break;
     case "view.gotoTab2": activateTabByIndex(1); break;
