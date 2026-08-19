@@ -30,9 +30,10 @@ UniNotepad에서는 그런 일이 생기지 않습니다. 열어둔 탭은 **저
 그리고 **Markdown과 Mermaid는 쓰는 즉시 오른쪽에서 그려집니다.** 표도, 코드블록도,
 순서도도 인터넷 없이 앱 안에서 바로 렌더됩니다 — 맨 위 영상이 그 모습입니다.
 
-**화면은 라이트·다크 두 가지 테마로 씁니다.** 시스템 설정을 그대로 따라가게 두거나
-(`View ▸ Theme ▸ System`), 원하는 쪽으로 직접 고정할 수 있고 — 편집기뿐 아니라
-구문 강조 색과 Markdown·Mermaid 미리보기까지 함께 바뀝니다.
+**색조합 10가지를 담았습니다.** Dracula · GitHub · Solarized · Gruvbox · Catppuccin ·
+Nord · Tokyo Night · One Half · Rosé Pine · Kanagawa 중에 고르고, 밝게 볼지 어둡게 볼지는
+따로 정합니다 — 시스템 설정을 그대로 따라가게 둘 수도 있습니다(`View ▸ Theme ▸ System`).
+편집기뿐 아니라 구문 강조 색과 Markdown·Mermaid 미리보기까지 함께 바뀝니다.
 
 **바로가기** — [무엇이 다른가요](#-무엇이-다른가요) · [VS Code 확장](#-vs-code-확장) · [테마](#-테마) · [화면](#-화면) · [설치](#-설치) · [자주 묻는 질문](#-자주-묻는-질문)
 
@@ -51,7 +52,7 @@ UniNotepad에서는 그런 일이 생기지 않습니다. 열어둔 탭은 **저
 | 📋 **웹에서 복사 → Markdown으로 붙여넣기** | 챗봇 답변이나 웹 문서를 복사해 **Markdown 탭**에 붙이면 제목 · 목록 · 표 · 코드블록이 Markdown 문법 그대로 들어옵니다. 다른 형식 탭(`.ts`, `.log` 등)은 예전처럼 원문 그대로 — `Preferences ▸ Editor ▸ Paste HTML as Markdown`에서 끌 수 있어요 |
 | 🧩 **VS Code 확장** | 같은 Mermaid 미리보기를 VS Code 안에서도 — [UniNotepad Markdown Preview](https://marketplace.visualstudio.com/items?itemName=ilphs.uninotepad-markdown-preview). 기본 미리보기를 대체하지 않고 나란히 놓입니다 |
 | 🎨 **구문 강조** | 143개 언어를 파일 이름만 보고 자동 판별 |
-| 🌗 **라이트·다크 테마** | `View ▸ Theme`에서 **Light · Dark · System** 중 선택 — System은 OS의 밝은/어두운 모드를 그대로 따라갑니다. 편집기·구문 강조·미리보기 색이 한꺼번에 바뀌고, 고른 테마는 다음에 켤 때도 유지됩니다 |
+| 🌗 **테마 10종 × 밝기** | `View ▸ Theme`에서 색조합 10가지(Dracula · GitHub · Solarized · Gruvbox · Catppuccin · Nord · Tokyo Night · One Half · Rosé Pine · Kanagawa)와 밝기(**Light · Dark · System**)를 **따로** 고릅니다 — System은 OS의 밝은/어두운 모드를 그대로 따라갑니다. 편집기·구문 강조·미리보기 색이 한꺼번에 바뀌고, 고른 값은 다음에 켤 때도 유지됩니다 |
 | ✂️ **줄 편집 도구** | 정렬 · 중복/빈 줄 제거 · 공백 정리 · 대소문자 · 줄 이동 (`Edit ▸ Line Operations`) |
 | ⌨️ **다중 커서 · 코드 폴딩** | 같은 단어를 한꺼번에 선택해 고치고(Cmd/Ctrl+D), 긴 코드는 접어서 봅니다 — 공백 문자 표시 토글도 (`View` 메뉴) |
 | 🇰🇷 **옛 인코딩 파일** | UTF-8·UTF-16은 물론 EUC-KR/CP949 · Shift-JIS · GBK · Big5도 판별해서 엽니다 — 표현할 수 없는 문자는 저장 전에 미리 경고 |
@@ -113,13 +114,18 @@ VS Code 기본 Markdown 미리보기를 **대체하는 게 아니라 나란히**
 | [![라이트 테마에서 편집 창을 닫고 미리보기만 켠 화면](docs/syntax-markdown-light.png)](https://uninotepad-xi.vercel.app/) |
 | 라이트 테마 — 맨 위 영상과 같은 문서를 밝은 테마로 본 모습입니다. 여기서는 **편집 창을 닫아** 미리보기가 창 전체 폭을 쓰고 있습니다 (상태 표시줄의 `Editor`가 `off`) |
 
+테마와 밝기는 **따로 고릅니다.** 좋아하는 색조합을 정해 두고, 밝게 볼지 어둡게 볼지는
+그날그날 바꿀 수 있습니다.
+
 | 하고 싶은 것 | 방법 |
 |:--|:--|
-| 테마 바꾸기 | `View ▸ Theme ▸ Light / Dark / System` |
-| 설정 화면에서 바꾸기 | `Ctrl/Cmd + ,` ▸ **Theme** |
-| OS 설정 따라가기 | **System** 선택 — 시스템이 밤에 어두워지면 앱도 같이 어두워집니다 |
+| 색조합 고르기 | `View ▸ Theme` 위쪽 — Dracula · GitHub · Solarized · Gruvbox · Catppuccin · Nord · Tokyo Night · One Half · Rosé Pine · Kanagawa |
+| 밝기 고르기 | `View ▸ Theme` 아래쪽 — **Light / Dark / System** |
+| 설정 화면에서 바꾸기 | `Ctrl/Cmd + ,` ▸ **Theme**(색조합) · **Appearance**(밝기) |
+| OS 설정 따라가기 | 밝기를 **System**으로 — 시스템이 밤에 어두워지면 앱도 같이 어두워집니다 |
 
-- 고른 테마는 저장되어 다음에 앱을 열어도 그대로입니다 (기본값은 **System**)
+- 10가지 색조합에 각각 밝은 판과 어두운 판이 있습니다 (기본값은 **Dracula + Dark**)
+- 고른 값은 저장되어 다음에 앱을 열어도 그대로입니다
 - 편집기 배경·줄번호·선택 영역은 물론 **143개 언어의 구문 강조 색**이 테마에 맞춰 바뀝니다
 - **Markdown·Mermaid 미리보기도 함께** 바뀝니다 — 다이어그램은 테마가 바뀔 때 다시 그려집니다
 - 다만 **인쇄와 HTML 내보내기는 항상 밝은 배경**으로 나갑니다 (종이·공유 문서에서 읽기 좋도록)
