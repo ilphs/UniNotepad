@@ -2,6 +2,7 @@ import { open, save, message } from "@tauri-apps/plugin-dialog";
 import { store, newId, type Tab, type EncodingId, type EolId, type FileTypeId } from "./state";
 import { ipc } from "./ipc";
 import { makeState, showTab, syncTabFromView, reconfigureLanguage } from "./editor";
+import { detectFileType } from "./language";
 import { flushNow, dropPending, markBackupDirty, basename } from "./session";
 import { recordRecent } from "./recent";
 import {
@@ -15,6 +16,13 @@ import { openModal, button, type ModalHandle } from "./modal";
 
 function platformEol(): EolId {
   return navigator.userAgent.includes("Windows") ? "crlf" : "lf";
+}
+
+/** Markdown/Mermaid files open preview-only until the user reveals the editor;
+ *  everything else opens with the editor visible (preview stays capability-gated). */
+function initialEditorVisible(path: string, fileType: FileTypeId | null): boolean {
+  const ft = fileType ?? detectFileType(path);
+  return ft !== "markdown" && ft !== "mermaid";
 }
 
 // ---- Tab lifecycle ---------------------------------------------------------
@@ -99,7 +107,7 @@ export async function openPath(path: string, fileType: FileTypeId | null = null)
       previewRatio: previewRatio(),
       editorFontSize: editorFontSize(),
       previewZoomExp: 0,
-      editorVisible: true,
+      editorVisible: initialEditorVisible(path, fileType),
       previewVisible: isPreviewEnabled(),
       notice: opened.lossy ? lossyNotice() : null,
     };
