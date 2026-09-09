@@ -1,9 +1,9 @@
 // UniNotepad 랜딩 페이지 공용 스크립트.
-// index.html(영어)과 ko.html(한국어)이 이 파일 하나를 공유한다. 본문 문구는
+// index.html(한국어)과 en.html(영어)이 이 파일 하나를 공유한다. 본문 문구는
 // 각 HTML에 있고, 여기에는 JS가 만들어 내는 문구만 사전(T)으로 들어 있다.
 // 고칠 때는 두 HTML의 ?v= 숫자를 함께 올릴 것 — Vercel 엣지가 자산을 캐시한다.
 //
-// 언어는 URL이 정한다(/ = 영어, /ko = 한국어). 이 파일은 언어를 저장하지도,
+// 언어는 URL이 정한다(/ = 한국어(기본), /en = 영어). 이 파일은 언어를 저장하지도,
 // 자동으로 페이지를 바꾸지도 않는다 — 열린 주소가 곧 언어다.
 
 (function () {
@@ -39,8 +39,8 @@
   }[LANG];
 
   // ---- 언어 전환 -------------------------------------------------------
-  // 스위처와 안내 줄 모두 [data-lang]을 달고 있어 한 곳에서 처리한다. 하는 일은
-  // 해시 유지뿐 — 어떤 선택도 저장하지 않으므로 다음 방문도 연 주소 그대로다.
+  // 스위처 링크는 [data-lang]을 달고 있다. 하는 일은 해시 유지뿐 — 어떤 선택도
+  // 저장하지 않으므로 다음 방문도 연 주소 그대로다.
   (function () {
     var links = document.querySelectorAll("[data-lang]");
 
@@ -53,17 +53,6 @@
     }
     syncHash();
     window.addEventListener("hashchange", syncHash);
-
-    // 한국어 브라우저 방문자에게만 한 줄 안내 (영어 페이지에만 존재).
-    // 안내일 뿐 자동 전환은 하지 않는다 — 이동은 클릭한 사람만 한다.
-    var nudge = document.getElementById("langNudge");
-    if (!nudge) return;
-    var list = navigator.languages && navigator.languages.length
-      ? navigator.languages
-      : [navigator.language || ""];
-    for (var j = 0; j < list.length; j++) {
-      if (String(list[j]).toLowerCase().indexOf("ko") === 0) { nudge.hidden = false; return; }
-    }
   })();
 
   // ---- 방문 OS 추정 + 최신 버전 ----------------------------------------

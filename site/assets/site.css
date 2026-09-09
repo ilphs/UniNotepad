@@ -1,5 +1,5 @@
 /* UniNotepad 랜딩 페이지 공용 스타일.
-   index.html(영어)과 ko.html(한국어)이 이 파일 하나를 공유한다.
+   index.html(한국어)과 en.html(영어)이 이 파일 하나를 공유한다.
    고칠 때는 두 HTML의 ?v= 숫자를 함께 올릴 것 — Vercel 엣지가 자산을 캐시한다. */
 
 :root {
@@ -68,7 +68,7 @@ body {
    CJK에만 의미가 있는 규칙이라 한국어 페이지로 한정한다. */
 html[lang="ko"] body { word-break: keep-all; }
 
-/* display를 지정한 요소(.lang-nudge)가 hidden 속성을 이겨 버리지 않도록. */
+/* display를 지정한 요소(#macHint 등)가 hidden 속성을 이겨 버리지 않도록. */
 [hidden] { display: none !important; }
 
 /* 가운뎃점으로 이어 붙인 나열(Windows · macOS · Linux)이 점에서 끊기지 않도록. */
@@ -115,22 +115,10 @@ h2 {
 .lang-switch a[aria-current="page"] { background: var(--accent); color: var(--accent-fg); }
 .lang-switch a:not([aria-current="page"]):hover { background: var(--bg); }
 
-/* 한국어 브라우저 방문자에게만 노출되는 한 줄 안내 (영어 페이지 전용).
-   .ext-strip과 같은 왼쪽 강조선 어법. 위 여백은 고정된 스위처를 피하기 위한 것. */
-.lang-nudge {
-  display: block; max-width: var(--page); margin: 3.25rem auto 0;
-  padding: 0.55rem 0.9rem;
-  border: 3px solid var(--border); border-left: 10px solid var(--accent);
-  border-radius: var(--radius); background: var(--card); box-shadow: var(--shadow);
-  font-size: 0.9rem; font-weight: 700; color: var(--fg); text-decoration: none;
-}
-.lang-nudge:hover { background: var(--accent); color: var(--accent-fg); }
-
 @media (max-width: 560px) {
   .lang-switch { top: 0.5rem; right: 0.5rem; border-width: 2px; box-shadow: 2px 2px 0 var(--border); }
   .lang-switch a { padding: 0.25rem 0.5rem; font-size: 0.72rem; }
   .lang-switch a + a { border-left-width: 2px; }
-  .lang-nudge { margin-top: 2.75rem; font-size: 0.85rem; }
 }
 
 /* ---- Hero ---------------------------------------------------------- */

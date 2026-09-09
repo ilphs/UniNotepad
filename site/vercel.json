@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "cleanUrls": true,
-  "rewrites": [{ "source": "/download/:os", "destination": "/api/download/:os" }]
+  "rewrites": [{ "source": "/download/:os", "destination": "/api/download/:os" }],
+  "redirects": [{ "source": "/ko", "destination": "/", "permanent": true }]
 }
