@@ -27,7 +27,7 @@
 | 개발 | `npm install` → `npm run tauri dev` |
 | 빌드 | `npm run tauri build` (release 바이너리 ~3.3MB) |
 | 테스트 | `cd src-tauri && cargo test` (인코딩·세션스토어) · `npm run build` (프론트 타입체크) |
-| 상태 | v1 구현 완료 (M1~M4) · 안정성/경량화/UX/업데이터 개선 구현 완료 — 플랫폼별 수동검증·Secrets 등록 대기 |
+| 상태 | **v0.9.3 배포 중** — 태그 push → CI가 4개 플랫폼(macOS arm64/x64 · Windows · Linux) 빌드·서명해 GitHub Release에 첨부(dmg·msi·exe·deb·AppImage·rpm + 업데이터용 `latest.json`). 릴리즈 절차는 `/release-app` |
 
 ### 아키텍처 요점
 
@@ -36,7 +36,7 @@
 - **핵심 파일** — Rust: `src-tauri/src/{lib.rs, encoding.rs, watcher.rs, session/store.rs, commands/}` / JS: `src/{session.ts, editor.ts, tabs.ts, state.ts, preferences.ts, updater.ts}`
 - **외부 변경 감시** — `watcher.rs`가 부모 디렉터리를 notify로 감시(파일 직접 감시 금지 — rename-over 시 watch 소멸). 자기 저장은 suppress map(mtime)으로 무시
 - **대용량 가드** — 10MB 경고/100MB 거부는 Rust `read_guarded`가 단일 집행. file-backed 대용량 탭은 세션 백업 제외
-- **업데이터** — 서명 키 `~/.tauri/uninotepad.key`(레포 밖). 릴리즈 전 GitHub Secrets(`TAURI_SIGNING_PRIVATE_KEY`(_PASSWORD)) 등록 필수
+- **업데이터** — 서명 키 `~/.tauri/uninotepad.key`(레포 밖). GitHub Secrets(`TAURI_SIGNING_PRIVATE_KEY`(_PASSWORD))는 등록돼 있고 CI가 이걸로 서명한다 — 키를 잃으면 기존 설치본이 업데이트를 못 받는다
 - 실행 안내: `README.md` · 릴리즈 노트: `release-note.md` · 사이트: `site/README.md`
 
 ### 문서 구조
