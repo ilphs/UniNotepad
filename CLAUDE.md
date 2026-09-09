@@ -1,7 +1,7 @@
 # Claude Code 개발 가이드
 
-> 공통 규칙(Agent Delegation, 커밋 정책, Context DB 등)은 글로벌 설정(`~/.claude/CLAUDE.md`)을 따릅니다.
-> 글로벌 미설치 시: `curl -fsSL https://raw.githubusercontent.com/leonardo204/dotclaude/main/install.sh | bash`
+> 이 파일이 유일한 프로젝트 지침입니다 — 글로벌 `~/.claude/CLAUDE.md`는 없습니다.
+> 커밋 컨벤션 등 공통 규칙은 [Ref-docs/claude/conventions.md](Ref-docs/claude/conventions.md).
 
 ---
 
@@ -37,22 +37,17 @@
 - **외부 변경 감시** — `watcher.rs`가 부모 디렉터리를 notify로 감시(파일 직접 감시 금지 — rename-over 시 watch 소멸). 자기 저장은 suppress map(mtime)으로 무시
 - **대용량 가드** — 10MB 경고/100MB 거부는 Rust `read_guarded`가 단일 집행. file-backed 대용량 탭은 세션 백업 제외
 - **업데이터** — 서명 키 `~/.tauri/uninotepad.key`(레포 밖). 릴리즈 전 GitHub Secrets(`TAURI_SIGNING_PRIVATE_KEY`(_PASSWORD)) 등록 필수
-- 상세 설계: `~/.claude/plans/notepad-dynamic-turtle.md`, 실행 안내: `README.md`
+- 실행 안내: `README.md` · 릴리즈 노트: `release-note.md` · 사이트: `site/README.md`
 
-### 문서 구조 (소유권 분리)
+### 문서 구조
 
-- **하니스 문서** (`Ref-docs/claude/` 하위) — 🔒 dotclaude 소유. `dotclaude-update`가 덮어쓰니 **수정 금지**.
-- **프로젝트 스펙** (`Ref-docs/specs/` 하위) — 📝 자유롭게 작성. → [SDD 가이드라인](Ref-docs/claude/sdd.md) · `/spec-guard`로 정합성 분석
+- **프로젝트 스펙** (`Ref-docs/specs/`) — 📝 자유롭게 작성 → [SDD 가이드라인](Ref-docs/claude/sdd.md)
+- **지금 유효한 참고 문서** — [컨벤션](Ref-docs/claude/conventions.md)(커밋·주석·로깅) · [SDD 가이드라인](Ref-docs/claude/sdd.md), 둘 다 이 리포가 소유하니 자유롭게 고친다
+- **미설치 하니스 설명서 (보관용)** — `Ref-docs/claude/`의 `context-db` · `context-monitor` · `hooks` · `setup` · `agent-delegation`은 dotclaude 하니스 문서다. **이 환경에 하니스가 없다** (글로벌 CLAUDE.md·helper.sh·등록된 hook 모두 없음) — 문서에 적힌 DB 핸드오프·HUD·Hook 절차를 실행하려 하지 말 것
 
-### 하니스 상세 문서 (Ref-docs/claude/)
+### 로컬 Claude 설정
 
-- [Context DB](Ref-docs/claude/context-db.md) — SQLite 기반 세션/태스크/결정 저장소
-- [Context Monitor](Ref-docs/claude/context-monitor.md) — HUD + compaction 감지/복구
-- [Hooks](Ref-docs/claude/hooks.md) — 자동 실행 Hook 상세
-- [컨벤션](Ref-docs/claude/conventions.md) — 커밋, 주석, 로깅 규칙
-- [셋업](Ref-docs/claude/setup.md) — 새 환경 초기 설정
-- [Agent Delegation](Ref-docs/claude/agent-delegation.md) — 에이전트 위임/파이프라인 상세
-- [SDD 가이드라인](Ref-docs/claude/sdd.md) — 스펙 문서 작성/관리 규약
+- `.claude/`는 `.gitignore` 대상이라 리포에 올라가지 않는다 — 지금은 `commands/release-app.md`(릴리즈 파이프라인 `/release-app`) 하나뿐이고, 다른 환경에는 없다
 
 ### 핵심 규칙
 
@@ -63,4 +58,4 @@
 
 ---
 
-*최종 업데이트: 2026-08-12*
+*최종 업데이트: 2026-09-09*
