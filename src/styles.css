@@ -142,8 +142,16 @@ body {
   background: var(--banner-deleted);
 }
 
+/* A link notice carries a full path, which has no spaces to wrap at: let it
+   break anywhere rather than push the buttons out of the banner. */
+.banner > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .banner-actions {
   display: flex;
+  flex: none;
   gap: 8px;
 }
 

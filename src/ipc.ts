@@ -33,6 +33,16 @@ export interface FileStat {
   mtimeMs: number | null;
 }
 
+/** Verdict on a link target found inside a document (see resolve_link). */
+export interface ResolvedLink {
+  /** Absolute path the link points at, canonicalized when it exists. */
+  path: string;
+  exists: boolean;
+  isDir: boolean;
+  /** True when the file looks binary (NUL in its first bytes). */
+  binary: boolean;
+}
+
 /** Emitted by the backend when a watched file changes on disk. `path` echoes
  *  the exact string passed to watchFile, so it matches a tab's `path`. */
 export interface FileChangedPayload {
@@ -93,6 +103,11 @@ export const ipc = {
     allowLossy: boolean,
   ) => invoke<SavedFile>("save_file", { path, content, encoding, eol, allowLossy }),
   statFile: (path: string) => invoke<FileStat>("stat_file", { path }),
+
+  /** Resolve a document link target against the file that contains it. `href`
+   *  must already be fragment-free, unwrapped and percent-decoded. */
+  resolveLink: (base: string, href: string) =>
+    invoke<ResolvedLink>("resolve_link", { base, href }),
 
   // Watch/unwatch are best-effort: a failed watch just means no live updates
   // (the focus-mtime fallback still catches changes), so errors are swallowed.

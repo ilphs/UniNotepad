@@ -20,7 +20,8 @@ import { highlightCode } from "@lezer/highlight";
 import { StyleModule } from "style-mod";
 import { store } from "./state";
 import { currentDoc, getView } from "./editor";
-import { ipc } from "./ipc";
+import { ipc, type ResolvedLink } from "./ipc";
+import { openPath, showLinkNotice } from "./tabs";
 import { effectiveFileType, highlightStyle } from "./language";
 import { refreshStatusBar } from "./statusbar";
 import { resolvedMode } from "./theme";
@@ -60,6 +61,7 @@ function ensureMods(): Promise<{ marked: Marked; DOMPurify: Purify }> {
     loading = Promise.all([import("marked"), import("dompurify")]).then(
       ([{ marked }, { default: DOMPurify }]) => {
         marked.setOptions({ gfm: true, breaks: false });
+        marked.use({ renderer: { heading: headingWithId } });
         // Fenced code is left as plain `<pre><code class="language-…">` by marked;
         // it's syntax-highlighted after sanitize by reusing CodeMirror's own
         // grammars + HighlightStyle (highlightCodeBlocks), so the preview shares
@@ -71,6 +73,58 @@ function ensureMods(): Promise<{ marked: Marked; DOMPurify: Purify }> {
     );
   }
   return loading;
+}
+
+// ---- Heading anchors -------------------------------------------------------
+
+/**
+ * Slug counts for the parse in flight, so a document with two "## 개요" gets
+ * `개요` and `개요-1` the way GitHub numbers duplicates. The renderer marked
+ * holds outlives individual parses, hence the explicit reset before each one.
+ */
+const slugCounts = new Map<string, number>();
+
+/**
+ * Prefix on every generated heading id. DOMPurify's DOM-clobbering guard drops
+ * an `id` whose value names a property of `document` or of a form element, so
+ * an unprefixed slug loses its anchor for a whole class of ordinary headings —
+ * "Links", "Title", "Body", "Method", "Target". GitHub prefixes for the same
+ * reason, and with the same string.
+ */
+const ANCHOR_PREFIX = "user-content-";
+
+type MarkedRenderer = import("marked").Renderer;
+type HeadingToken = import("marked").Tokens.Heading;
+
+/** GitHub-style slug: lowercased, spaces to dashes, punctuation dropped.
+ *  `\p{L}` keeps non-ASCII letters — these documents link to `#라우팅`. */
+function slugify(text: string): string {
+  const slug = text
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^\p{L}\p{N}\-_]/gu, "");
+  return slug || "section";
+}
+
+/** `heading` renderer that gives every heading an id, so `#anchor` links (both
+ *  a document's own table of contents and `other.md#anchor` from elsewhere)
+ *  have something to scroll to. The exported HTML inherits them too. */
+function headingWithId(this: MarkedRenderer, { tokens, depth }: HeadingToken): string {
+  const html = this.parser.parseInline(tokens);
+  // The slug reads the heading as plain text: `## \`code\` 제목` must not slug
+  // its own markup. textRenderer still leaves inline HTML and escaped entities
+  // in place, and both would slug as literal letters (`&amp;` → "amp"), so
+  // they come out here — the punctuation they stand for would be dropped anyway.
+  const plain = this.parser
+    .parseInline(tokens, this.parser.textRenderer)
+    .replace(/<[^>]*>/g, "")
+    .replace(/&(?:#\d+|#x[\da-f]+|[a-z]+);/gi, "");
+  const base = slugify(plain);
+  const seen = slugCounts.get(base) ?? 0;
+  slugCounts.set(base, seen + 1);
+  const id = seen === 0 ? base : `${base}-${seen}`;
+  return `<h${depth} id="${ANCHOR_PREFIX}${id}">${html}</h${depth}>\n`;
 }
 
 // ---- Fenced code highlighting (reuses the editor's CM grammars) ------------
@@ -254,11 +308,25 @@ async function renderNow(): Promise<void> {
   if (ft !== "markdown") return;
   const doc = currentDoc();
   const mdBody = ensureMdBody();
+  slugCounts.clear(); // duplicate numbering is per-document, not per-session
   mdBody.innerHTML = DOMPurify.sanitize(marked.parse(doc) as string);
+  prefixAnchorLinks(mdBody);
   wrapTables(mdBody);
   await highlightCodeBlocks(mdBody, myRun);
   if (renderSeq !== myRun || previewHost.hidden) return;
   await renderMermaid(mdBody, myRun);
+}
+
+/** Point a document's own `#anchor` links at the prefixed heading ids, so the
+ *  exported HTML navigates by itself in a browser. In the app the click handler
+ *  tries both spellings anyway, since a link from *another* file carries the
+ *  fragment as its author wrote it. */
+function prefixAnchorLinks(mdBody: HTMLElement): void {
+  for (const a of Array.from(mdBody.querySelectorAll<HTMLAnchorElement>('a[href^="#"]'))) {
+    const frag = decodeFragment((a.getAttribute("href") ?? "").slice(1));
+    if (!frag || frag.startsWith(ANCHOR_PREFIX)) continue;
+    a.setAttribute("href", `#${ANCHOR_PREFIX}${frag}`);
+  }
 }
 
 /** Give every table its own horizontal scroll viewport.
@@ -457,6 +525,132 @@ function syncPreviewScroll(): void {
  *  address expects the mail client, not silence. */
 const OPENABLE_SCHEME = /^(?:https?|mailto):/i;
 
+/** Any URL scheme. Two or more characters before the colon so a Windows drive
+ *  letter (`C:\docs\x.md`) stays a path rather than becoming a "c:" scheme. */
+const HAS_SCHEME = /^[a-z][a-z0-9+.-]+:/i;
+
+/** A local link target, split the way a URL is: path part and fragment.
+ *  `path` is percent-decoded; `raw` keeps the escapes for the fallback below. */
+interface LocalHref {
+  path: string;
+  raw: string;
+  fragment: string;
+}
+
+/** Split a non-http href into a filesystem path and a fragment, or null when
+ *  it is a scheme this app does not route (`slack:`, `vscode:`, …) — those get
+ *  dropped rather than guessed at. `file://` URLs come back as plain paths. */
+function parseLocalHref(href: string): LocalHref | null {
+  const hash = href.indexOf("#");
+  let pathPart = hash === -1 ? href : href.slice(0, hash);
+  const fragment = hash === -1 ? "" : decodeFragment(href.slice(hash + 1));
+
+  if (/^file:/i.test(pathPart)) {
+    try {
+      pathPart = new URL(pathPart).pathname;
+    } catch {
+      return null;
+    }
+    // file:///C:/x → /C:/x; drop the leading slash so it is a Windows path again.
+    if (/^\/[a-z]:/i.test(pathPart)) pathPart = pathPart.slice(1);
+  } else if (HAS_SCHEME.test(pathPart)) {
+    return null;
+  }
+  if (pathPart === "") return null;
+
+  // `./a%20b.md` is the usual spelling for a space, so the decoded form is
+  // tried first; `raw` covers the file whose name really does contain a `%`.
+  let decoded = pathPart;
+  try {
+    decoded = decodeURIComponent(pathPart);
+  } catch {
+    // Malformed escape: take the href literally.
+  }
+  return { path: decoded, raw: pathPart, fragment };
+}
+
+/** Percent-decode a fragment, leaving it as written if that fails. */
+function decodeFragment(frag: string): string {
+  try {
+    return decodeURIComponent(frag);
+  } catch {
+    return frag;
+  }
+}
+
+/** The element a fragment points at. Prefixed first (that is what a heading
+ *  carries), then verbatim — which covers both an id the document author wrote
+ *  in raw HTML and a link prefixAnchorLinks has already rewritten. */
+function anchorTarget(id: string): Element | null {
+  return (
+    previewHost.querySelector(`[id="${CSS.escape(ANCHOR_PREFIX + id)}"]`) ??
+    previewHost.querySelector(`[id="${CSS.escape(id)}"]`)
+  );
+}
+
+/** Scroll to an id inside the preview, retrying for a short while: after a link
+ *  opens a new tab the document is still rendering (marked and mermaid load
+ *  lazily), so the heading may be a few frames away. Giving up quietly matches
+ *  what an anchor that resolves to nothing has always done. */
+function scrollToAnchor(id: string, framesLeft = 30): void {
+  const el = anchorTarget(id);
+  if (el) {
+    el.scrollIntoView({ block: "start" });
+    return;
+  }
+  if (framesLeft > 0) requestAnimationFrame(() => scrollToAnchor(id, framesLeft - 1));
+}
+
+/**
+ * Follow a link that points at a file rather than a web page: resolve it
+ * against the document that contains it and open it as a tab.
+ *
+ * The resolution runs in Rust (`resolve_link`), which joins the href to the
+ * linking file's directory, folds `.`/`..`, canonicalizes, and reports whether
+ * the target exists, is a directory, or looks binary. Everything it refuses is
+ * reported in the tab banner — a click that does nothing at all is
+ * indistinguishable from a dead app.
+ *
+ * Only text files are opened, and only inside UniNotepad. Handing an arbitrary
+ * document-supplied path to the OS opener would make `[x](./setup.command)` a
+ * one-click execution, which is not a trade a text editor should make.
+ */
+async function openDocumentLink(href: string): Promise<void> {
+  const link = parseLocalHref(href);
+  if (!link) return;
+  const base = store.activeTab?.path;
+  if (!base) {
+    showLinkNotice(
+      "Relative links can only be followed from a saved file — save this document first.",
+    );
+    return;
+  }
+  let target: ResolvedLink;
+  try {
+    target = await ipc.resolveLink(base, link.path);
+    if (!target.exists && link.raw !== link.path) {
+      target = await ipc.resolveLink(base, link.raw);
+    }
+  } catch (err) {
+    showLinkNotice(`Could not resolve ${href}: ${err}`);
+    return;
+  }
+  if (!target.exists) {
+    showLinkNotice(`Link target not found: ${target.path}`);
+    return;
+  }
+  if (target.isDir) {
+    showLinkNotice(`Link target is a folder: ${target.path}`);
+    return;
+  }
+  if (target.binary) {
+    showLinkNotice(`Link target is not a text file: ${target.path}`);
+    return;
+  }
+  await openPath(target.path);
+  if (link.fragment) scrollToAnchor(link.fragment);
+}
+
 /**
  * Clicks on links inside the rendered document. Delegated to the host so the
  * handler survives the re-renders that rebuild `.md-body`.
@@ -468,16 +662,14 @@ const OPENABLE_SCHEME = /^(?:https?|mailto):/i;
  * action.
  *
  * What happens instead depends on the href:
- *  - `#anchor` → scroll within this DOM. marked emits no heading ids by default,
- *    so most of these find nothing today; that is a miss, not a navigation.
+ *  - `#anchor` → scroll within this DOM, to the heading ids headingWithId emits.
  *  - http(s)/mailto → the OS default app, which is the "open elsewhere" a
  *    webview cannot offer on its own. Matches the VS Code extension, which
  *    routes the same click through its host (`vscode-ext/webview/preview.ts`).
- *  - anything else, including the relative paths a document uses to point at its
- *    neighbours → dropped. The webview's origin is the app bundle, so resolving
- *    a relative path here would produce an app-internal URL that means nothing
- *    to the browser. Resolving those against the tab's own file (and opening
- *    them as tabs) would be a real feature; guessing is worse than doing nothing.
+ *  - anything else → treated as a path to a neighbouring document and opened as
+ *    a tab (openDocumentLink). Resolving it in the webview would be meaningless
+ *    — the origin is the app bundle — so it is resolved against the linking
+ *    file's own directory in Rust instead.
  */
 function onPreviewLinkClick(e: MouseEvent): void {
   // Element, not HTMLAnchorElement: mermaid diagrams can carry SVG <a> nodes.
@@ -486,15 +678,16 @@ function onPreviewLinkClick(e: MouseEvent): void {
   e.preventDefault();
   const href = a.getAttribute("href") ?? "";
   if (href.startsWith("#")) {
-    previewHost
-      .querySelector(`[id="${CSS.escape(href.slice(1))}"]`)
-      ?.scrollIntoView({ block: "start" });
+    scrollToAnchor(decodeFragment(href.slice(1)), 0);
     return;
   }
-  if (!OPENABLE_SCHEME.test(href)) return;
-  // Surface failures: a scope rejection is otherwise indistinguishable from a
-  // dead link, since nothing visible happens either way.
-  void openUrl(href).catch((err) => console.error("openUrl failed", err));
+  if (OPENABLE_SCHEME.test(href)) {
+    // Surface failures: a scope rejection is otherwise indistinguishable from a
+    // dead link, since nothing visible happens either way.
+    void openUrl(href).catch((err) => console.error("openUrl failed", err));
+    return;
+  }
+  void openDocumentLink(href);
 }
 
 // ---- Export / print --------------------------------------------------------

@@ -195,6 +195,7 @@ pub fn run() {
             commands::file::open_file_as,
             commands::file::save_file,
             commands::file::stat_file,
+            commands::file::resolve_link,
             commands::session::load_session,
             commands::session::persist_session,
             commands::session::delete_backup,

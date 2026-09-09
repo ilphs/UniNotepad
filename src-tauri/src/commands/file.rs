@@ -1,6 +1,7 @@
 //! File I/O commands: open, save, and stat with encoding + EOL handling.
 
-use std::path::Path;
+use std::io::Read;
+use std::path::{Component, Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
 use serde::Serialize;
@@ -56,6 +57,19 @@ pub struct FileStat {
     pub exists: bool,
     #[serde(rename = "mtimeMs")]
     pub mtime_ms: Option<u64>,
+}
+
+#[derive(Serialize)]
+pub struct ResolvedLink {
+    /// Absolute path the link points at: canonicalized when the target exists,
+    /// lexically normalized otherwise (a miss still has a path worth showing).
+    pub path: String,
+    pub exists: bool,
+    #[serde(rename = "isDir")]
+    pub is_dir: bool,
+    /// True when the first bytes hold a NUL — the cheap heuristic git uses to
+    /// tell text from binary. Only meaningful for a file that exists.
+    pub binary: bool,
 }
 
 fn mtime_ms(path: &Path) -> Option<u64> {
@@ -203,6 +217,96 @@ pub fn stat_file(path: String) -> Result<FileStat, String> {
     })
 }
 
+// ---- Document link resolution ----------------------------------------------
+
+/// Bytes sniffed when deciding text vs. binary. One page is plenty: a binary
+/// file that hides every NUL for 8 KB is rare enough to let through.
+const SNIFF_BYTES: usize = 8192;
+
+/// Resolve `.` and `..` without touching the disk, so a link to a file that
+/// does not exist still yields a clean absolute path to report. A `..` that
+/// would climb past the root is kept verbatim rather than silently dropped.
+fn lexical_normalize(p: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for comp in p.components() {
+        match comp {
+            Component::CurDir => {}
+            Component::ParentDir => match out.components().next_back() {
+                Some(Component::Normal(_)) => {
+                    out.pop();
+                }
+                _ => out.push(comp.as_os_str()),
+            },
+            _ => out.push(comp.as_os_str()),
+        }
+    }
+    out
+}
+
+/// Windows' `canonicalize` hands back an extended-length `\\?\C:\…` path, which
+/// would then differ from the plain paths every tab carries (breaking the
+/// already-open dedupe in openPath and reading badly in the title bar). Strip
+/// the prefix. Harmless elsewhere: a canonicalized POSIX path starts with `/`.
+fn strip_verbatim(p: PathBuf) -> PathBuf {
+    let stripped = p.to_str().and_then(|s| {
+        s.strip_prefix(r"\\?\UNC\")
+            .map(|rest| PathBuf::from(format!(r"\\{rest}")))
+            .or_else(|| s.strip_prefix(r"\\?\").map(PathBuf::from))
+    });
+    stripped.unwrap_or(p)
+}
+
+/// Whether the file's first page contains a NUL byte. Unreadable → false: the
+/// open attempt that follows will surface the real error.
+fn looks_binary(path: &Path) -> bool {
+    let Ok(mut f) = std::fs::File::open(path) else {
+        return false;
+    };
+    let mut buf = [0u8; SNIFF_BYTES];
+    match f.read(&mut buf) {
+        Ok(n) => buf[..n].contains(&0),
+        Err(_) => false,
+    }
+}
+
+/// Resolve a link target found inside a document against the document's own
+/// path, and report enough for the frontend to decide what to do with it.
+///
+/// `base` is the linking file's path; `href` is the link's path part, with the
+/// fragment stripped, any `file://` wrapper removed and percent-escapes decoded
+/// by the caller (those are URL concerns, and the href comes from the DOM).
+/// Nothing is opened here — this only stats and sniffs, leaving the open policy
+/// to one place in the frontend.
+#[tauri::command]
+pub fn resolve_link(base: String, href: String) -> Result<ResolvedLink, String> {
+    let href_path = Path::new(&href);
+    let joined = if href_path.is_absolute() {
+        href_path.to_path_buf()
+    } else {
+        let dir = Path::new(&base)
+            .parent()
+            .ok_or_else(|| format!("{base}: no parent directory to resolve against"))?;
+        dir.join(href_path)
+    };
+    let normalized = lexical_normalize(&joined);
+    let meta = std::fs::metadata(&normalized).ok();
+    let exists = meta.is_some();
+    let is_dir = meta.as_ref().is_some_and(|m| m.is_dir());
+    // canonicalize errors on a missing path, so it only runs when the target is
+    // there; a failure (permissions, a broken symlink) keeps the lexical form.
+    let path = if exists {
+        strip_verbatim(std::fs::canonicalize(&normalized).unwrap_or(normalized))
+    } else {
+        normalized
+    };
+    Ok(ResolvedLink {
+        binary: exists && !is_dir && looks_binary(&path),
+        path: path.to_string_lossy().into_owned(),
+        exists,
+        is_dir,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -277,6 +381,115 @@ mod tests {
         assert!(!opened.large);
         assert_eq!(opened.content, "hello\nworld\n");
         assert_eq!(opened.size_bytes, 12);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// The link target as the frontend will see it, for comparison against a
+    /// path the test built itself (macOS canonicalizes /var → /private/var).
+    fn canon(p: &Path) -> String {
+        strip_verbatim(std::fs::canonicalize(p).unwrap())
+            .to_string_lossy()
+            .into_owned()
+    }
+
+    #[test]
+    fn resolve_link_joins_against_the_linking_document() {
+        let dir = temp_dir();
+        let doc = dir.join("index.md");
+        let target = dir.join("aia-control.md");
+        std::fs::write(&doc, b"# index\n").unwrap();
+        std::fs::write(&target, b"# control\n").unwrap();
+        let r = resolve_link(
+            doc.to_string_lossy().into_owned(),
+            "./aia-control.md".to_string(),
+        )
+        .unwrap();
+        assert!(r.exists);
+        assert!(!r.is_dir);
+        assert!(!r.binary);
+        assert_eq!(r.path, canon(&target));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn resolve_link_walks_up_out_of_the_documents_directory() {
+        let dir = temp_dir();
+        let docs = dir.join("docs");
+        std::fs::create_dir_all(&docs).unwrap();
+        let doc = docs.join("index.md");
+        let target = dir.join("README.md");
+        std::fs::write(&doc, b"# index\n").unwrap();
+        std::fs::write(&target, b"# readme\n").unwrap();
+        let r = resolve_link(
+            doc.to_string_lossy().into_owned(),
+            "../README.md".to_string(),
+        )
+        .unwrap();
+        assert!(r.exists);
+        assert_eq!(r.path, canon(&target));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn resolve_link_reports_a_missing_target_with_its_resolved_path() {
+        let dir = temp_dir();
+        let doc = dir.join("index.md");
+        std::fs::write(&doc, b"# index\n").unwrap();
+        let r = resolve_link(
+            doc.to_string_lossy().into_owned(),
+            "./nope/../gone.md".to_string(),
+        )
+        .unwrap();
+        assert!(!r.exists);
+        // `.` and `..` are folded even though nothing on disk could be consulted.
+        assert_eq!(r.path, dir.join("gone.md").to_string_lossy());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn resolve_link_flags_a_directory() {
+        let dir = temp_dir();
+        let doc = dir.join("index.md");
+        let sub = dir.join("assets");
+        std::fs::write(&doc, b"# index\n").unwrap();
+        std::fs::create_dir_all(&sub).unwrap();
+        let r = resolve_link(doc.to_string_lossy().into_owned(), "assets".to_string()).unwrap();
+        assert!(r.exists);
+        assert!(r.is_dir);
+        assert!(!r.binary); // never sniffed for a directory
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn resolve_link_flags_a_binary_target() {
+        let dir = temp_dir();
+        let doc = dir.join("index.md");
+        let bin = dir.join("logo.png");
+        let text = dir.join("notes.txt");
+        std::fs::write(&doc, b"# index\n").unwrap();
+        std::fs::write(&bin, b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR").unwrap();
+        std::fs::write(&text, "한글 텍스트\n".as_bytes()).unwrap();
+        let base = doc.to_string_lossy().into_owned();
+        assert!(resolve_link(base.clone(), "./logo.png".to_string()).unwrap().binary);
+        // Multi-byte UTF-8 must not read as binary — only a NUL counts.
+        assert!(!resolve_link(base, "./notes.txt".to_string()).unwrap().binary);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn resolve_link_takes_an_absolute_href_as_given() {
+        let dir = temp_dir();
+        let doc = dir.join("index.md");
+        let target = dir.join("elsewhere.md");
+        std::fs::write(&doc, b"# index\n").unwrap();
+        std::fs::write(&target, b"# elsewhere\n").unwrap();
+        let r = resolve_link(
+            doc.to_string_lossy().into_owned(),
+            target.to_string_lossy().into_owned(),
+        )
+        .unwrap();
+        assert!(r.exists);
+        assert_eq!(r.path, canon(&target));
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

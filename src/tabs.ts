@@ -647,6 +647,17 @@ export async function reconcileExternalChange(
   await reloadFromDisk(tab.id);
 }
 
+/** Show an informational notice on the active tab. Used by the preview when a
+ *  document link resolves to something it will not open (missing, a folder, a
+ *  binary): the click has to say *something*, and a banner beats silence
+ *  without stealing focus the way a modal would. */
+export function showLinkNotice(message: string): void {
+  const tab = store.activeTab;
+  if (!tab) return;
+  tab.notice = { kind: "link", message };
+  store.emit();
+}
+
 /** Clear a tab's notice with no disk-reconciliation side effects (used for the
  *  purely-informational lossy-decode notice). */
 export function clearNotice(id: string): void {
@@ -828,7 +839,7 @@ function renderBanner(): void {
     actions.appendChild(button("Save As…", () => void saveTabAs(tab)));
     actions.appendChild(button("Dismiss", () => dismissNotice(tab.id)));
   } else {
-    // lossy: nothing to reconcile against disk — just let the user dismiss.
+    // lossy / link: nothing to reconcile against disk — just let it be dismissed.
     actions.appendChild(button("Dismiss", () => clearNotice(tab.id)));
   }
   bannerEl.appendChild(actions);

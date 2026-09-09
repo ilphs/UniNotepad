@@ -73,12 +73,12 @@ export interface Tab {
    *  the same way: only Markdown/Mermaid tabs that aren't in large-file mode
    *  can actually show it. Seeded from the global default at creation. */
   previewVisible: boolean;
-  /** Non-blocking notice to show in this tab (conflict/deletion). */
+  /** Non-blocking notice to show in this tab (conflict/deletion/link). */
   notice: TabNotice | null;
 }
 
 export interface TabNotice {
-  kind: "conflict" | "deleted" | "lossy";
+  kind: "conflict" | "deleted" | "lossy" | "link";
   message: string;
 }
 
