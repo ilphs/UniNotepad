@@ -1,6 +1,5 @@
 # Claude Code 개발 가이드
 
-
 > 이 파일이 유일한 프로젝트 지침입니다 — 글로벌 `~/.claude/CLAUDE.md`는 없습니다.
 > 커밋 컨벤션 등 공통 규칙은 [Ref-docs/claude/conventions.md](Ref-docs/claude/conventions.md).
 
