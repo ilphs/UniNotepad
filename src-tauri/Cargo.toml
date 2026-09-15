@@ -1,6 +1,6 @@
 [package]
 name = "uninotepad"
-version = "0.9.3"
+version = "0.10.0"
 description = "Lightweight cross-platform plain-text editor"
 authors = ["UniNotepad"]
 edition = "2021"
