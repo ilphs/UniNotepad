@@ -280,12 +280,16 @@ body {
      stays readable while a diagram gets the full pane. */
   max-width: none;
   margin: 0;
-  /* Side padding scales with the pane so a wide window gets breathing room
-     instead of text pinned to the edge. `%` (not `vw`) on purpose: it resolves
-     against the containing block — the preview pane — so a 50/50 split gets
-     pane-appropriate margins rather than window-sized ones. Floor keeps the old
-     32px on a narrow pane; ceiling stops the gutters from eating the text. */
-  padding: 28px clamp(32px, 5%, 120px) 48px;
+  /* The same padding the editor gives its text: CodeMirror's `.cm-content` is
+     `4px 0` and its `.cm-line` adds `0 2px 0 6px`. Deliberately NOT the editor's
+     gutter width — the gutter is chrome, not margin, and matching it made the
+     preview's left gap wider than the one being complained about.
+
+     This replaced a `clamp(32px, 5%, 120px)` that scaled with the pane: it read
+     as "breathing room" beside the editor but drifted up to 120px on a wide
+     window, which just looked like a lot of empty space. Bottom padding stays
+     generous so the last line can be scrolled clear of the pane edge. */
+  padding: 4px 6px 48px;
   line-height: 1.7;
   /* Per-tab preview zoom sets --preview-font-size on #preview-host (preview.ts);
      the 15px fallback is the 100% base used before any zoom is applied. */
