@@ -1,13 +1,14 @@
 /**
- * Markdown preview pane. Renders the active tab in a right-hand pane split from
- * the editor by a draggable divider: Markdown → sanitized HTML injected into a
+ * Preview pane. Renders the active tab in a right-hand pane split from the
+ * editor by a draggable divider: Markdown → sanitized HTML injected into a
  * `.md-body` div, with ```mermaid fenced blocks rendered as diagrams. A
- * standalone `.mmd`/`.mermaid` file is rendered whole as a single diagram.
+ * standalone `.mmd`/`.mermaid` file is rendered whole as a single diagram, and
+ * a JSON file as a collapsible tree (see json-view.ts).
  *
- * The pane shows when the active tab's effective type is Markdown or Mermaid —
- * from its extension, or from an explicit pick in the status bar — AND that
- * tab's preview pane is open. Both panes are per-tab and either can be closed
- * (never both: `paneVisibility()` guarantees one survives), so a tab can be
+ * The pane shows when the active tab's effective type is Markdown, Mermaid or
+ * JSON — from its extension, or from an explicit pick in the status bar — AND
+ * that tab's preview pane is open. Both panes are per-tab and either can be
+ * closed (never both: `paneVisibility()` guarantees one survives), so a tab can be
  * preview-only or editor-only while its neighbours are split.
  * `marked`/`DOMPurify` and `mermaid` load lazily on first use so app start and
  * non-preview use pay nothing (see plan: 무게 검토).
@@ -36,6 +37,7 @@ import {
   setPreviewZoomHandler,
 } from "./mermaid-view";
 import { setPreviewEnabled, previewRatio, previewContentWidth } from "./settings";
+import { parseJsonDocument, renderJsonTree } from "./json-view";
 
 let splitEl: HTMLElement;
 let editorHost: HTMLElement;
@@ -221,16 +223,17 @@ function effectiveDark(): boolean {
 
 // ---- Visibility / render ---------------------------------------------------
 
-/** Whether the active tab *can* show a preview at all: a Markdown document or a
- *  standalone Mermaid diagram — by extension, or by an explicit pick in the
- *  status-bar type picker. Independent of whether the pane is currently open, so
- *  the status bar can offer a "Preview off" chip to turn it back on. */
+/** Whether the active tab *can* show a preview at all: a Markdown document, a
+ *  standalone Mermaid diagram, or a JSON document — by extension, or by an
+ *  explicit pick in the status-bar type picker. Independent of whether the pane
+ *  is currently open, so the status bar can offer a "Preview off" chip to turn
+ *  it back on. */
 export function isPreviewCapable(): boolean {
   // Large files run in reduced mode with no highlighting; rendering a multi-MB
-  // Markdown/Mermaid preview would defeat that, so suppress it entirely.
+  // Markdown/Mermaid/JSON preview would defeat that, so suppress it entirely.
   if (store.activeTab?.largeFile) return false;
   const ft = effectiveFileType(store.activeTab);
-  return ft === "markdown" || ft === "mermaid";
+  return ft === "markdown" || ft === "mermaid" || ft === "json";
 }
 
 /**
@@ -298,6 +301,22 @@ async function renderNow(): Promise<void> {
     pre.appendChild(code);
     mdBody.replaceChildren(pre);
     await renderMermaid(mdBody, myRun);
+    return;
+  }
+
+  // JSON: a tree, not prose. Handled here (before ensureMods) so a JSON preview
+  // never pays for the marked/DOMPurify load, and synchronously — the parser is
+  // local, so there is no await for a stale run to resume past.
+  if (ft === "json") {
+    const mdBody = ensureMdBody();
+    const tab = store.activeTab;
+    const result = parseJsonDocument(currentDoc());
+    mdBody.replaceChildren(
+      renderJsonTree(result, {
+        tabId: tab?.id ?? "",
+        onJump: jumpEditorTo,
+      }),
+    );
     return;
   }
 
@@ -491,6 +510,23 @@ export function revealEditorPane(): void {
   if (!tab || isEditorPaneVisible()) return;
   tab.editorVisible = true;
   updatePanes();
+}
+
+/**
+ * Put the cursor on a 1-based line/column and scroll it into view — the click
+ * target of the JSON preview's parse-error panel. Reveals the editor first:
+ * with a JSON tab opened preview-only the pane is hidden, and moving a
+ * selection inside a `display:none` editor would look like nothing happened.
+ */
+function jumpEditorTo(line: number, column: number): void {
+  revealEditorPane();
+  const view = getView();
+  const doc = view.state.doc;
+  const lineNo = Math.min(Math.max(line, 1), doc.lines);
+  const lineInfo = doc.line(lineNo);
+  const pos = Math.min(lineInfo.from + Math.max(column - 1, 0), lineInfo.to);
+  view.dispatch({ selection: { anchor: pos }, scrollIntoView: true });
+  view.focus();
 }
 
 /** Flip the active tab's editor pane. Only possible while the preview is up —
@@ -703,7 +739,7 @@ function renderedHtml(): string | null {
 export async function exportPreviewHtml(): Promise<void> {
   const body = renderedHtml();
   if (body === null) {
-    await message("Open the preview (Markdown/Mermaid) before exporting.", {
+    await message("Open the preview (Markdown/Mermaid/JSON) before exporting.", {
       title: "UniNotepad",
       kind: "info",
     });
@@ -739,7 +775,38 @@ function htmlDocument(title: string, body: string): string {
      diagram gets the whole page. */
   body { margin: 2rem auto; padding: 0 1rem; max-width: 1600px;
     font: 16px/1.6 -apple-system, "Segoe UI", Roboto, sans-serif; color: #1a1a1a; }
-  body > *:not(.mermaid-frame) { max-width: 44rem; margin-inline: auto; }
+  body > *:not(.mermaid-frame):not(.json-view) { max-width: 44rem; margin-inline: auto; }
+  /* JSON tree. Built from <details>, so collapsing keeps working in the exported
+     file with no script; the colours are spelled out here because the pane's
+     --cm-* theme variables don't travel with the export. */
+  .json-view { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 14px;
+    line-height: 1.55; overflow-x: auto; }
+  .jt-root { white-space: nowrap; padding-left: 1.1em; }
+  .jt-notice { margin-bottom: 0.9em; padding: 6px 10px; border-left: 3px solid #b58900;
+    background: #fdf6e3; border-radius: 3px; font-size: 0.9em; }
+  .jt-children { margin-left: 0.55em; padding-left: 1.1em; border-left: 1px solid #ddd; }
+  .jt-summary { cursor: pointer; list-style: none; padding-left: 0.15em; }
+  .jt-summary::-webkit-details-marker { display: none; }
+  .jt-summary::before { content: "\\25b8"; display: inline-block; width: 1em;
+    margin-left: -1em; color: #999; }
+  .jt-node[open] > .jt-summary::before { transform: rotate(90deg); }
+  .jt-node[open] > .jt-summary .jt-hint { display: none; }
+  .jt-count { margin-left: 0.6em; color: #999; font-style: italic; font-size: 0.9em; }
+  .jt-ellipsis { color: #999; padding: 0 0.25em; }
+  .jt-key { color: #268bd2; }
+  .jt-key-bare { font-style: italic; text-decoration: underline dotted; }
+  .jt-index { color: #999; font-size: 0.9em; }
+  .jt-colon, .jt-comma, .jt-brace { color: #586e75; }
+  .jt-colon { padding-right: 0.4em; }
+  .jt-string { color: #2aa198; white-space: pre-wrap; }
+  .jt-number { color: #d33682; }
+  .jt-boolean { color: #859900; }
+  .jt-null { color: #859900; font-style: italic; }
+  .jt-literal { color: #dc322f; font-style: italic; }
+  .jt-error { padding: 12px 14px; border-left: 3px solid #dc322f; background: #fdf0ef;
+    border-radius: 3px; }
+  .jt-error-title { color: #dc322f; font-weight: 600; margin-bottom: 0.4em; }
+  .jt-error-jump { display: none; } /* the editor it jumps to isn't there */
   pre { background: #f5f5f5; padding: 1rem; overflow-x: auto; border-radius: 6px; }
   code { font-family: ui-monospace, "SF Mono", Menlo, monospace; }
   blockquote { border-left: 4px solid #ddd; margin: 0; padding-left: 1rem; color: #555; }
@@ -763,7 +830,7 @@ ${body}
  *  everything except the preview body, so "Save as PDF" yields the document. */
 export function printPreview(): void {
   if (previewHost.hidden) {
-    void message("Open the preview (Markdown/Mermaid) before printing.", {
+    void message("Open the preview (Markdown/Mermaid/JSON) before printing.", {
       title: "UniNotepad",
       kind: "info",
     });

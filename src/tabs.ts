@@ -3,6 +3,7 @@ import { store, newId, type Tab, type EncodingId, type EolId, type FileTypeId } 
 import { ipc } from "./ipc";
 import { makeState, showTab, syncTabFromView, reconfigureLanguage } from "./editor";
 import { detectFileType } from "./language";
+import { forgetJsonViewState } from "./json-view";
 import { flushNow, dropPending, markBackupDirty, basename } from "./session";
 import { recordRecent } from "./recent";
 import {
@@ -305,7 +306,7 @@ export function setActiveFileType(ft: FileTypeId): void {
   // An explicit pick beats a stale closed pane; otherwise picking Markdown on a
   // tab whose preview is switched off makes the picker look broken. The global
   // flag is only the seed for *new* tabs now, so this tab needs setting too.
-  if (ft === "markdown" || ft === "mermaid") {
+  if (ft === "markdown" || ft === "mermaid" || ft === "json") {
     t.previewVisible = true;
     setPreviewEnabled(true);
   }
@@ -427,6 +428,7 @@ export async function closeTab(id: string): Promise<boolean> {
   if (store.activeTab?.id === id) syncTabFromView(tab);
   pushClosed(tab);
   if (tab.path) void ipc.unwatchFile(tab.path); // stop live watching
+  forgetJsonViewState(id); // JSON preview's remembered collapse state
   dropPending(id);
   await ipc.deleteBackup(id).catch(() => {});
   store.state.tabs.splice(idx, 1);

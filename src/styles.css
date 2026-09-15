@@ -307,10 +307,13 @@ body {
    width setting scaled by the preview zoom (applyPreviewZoom). The `none`
    fallback matches the default setting (fill the pane) and only applies for the
    instant before preview.ts first writes the variable. */
-.md-body > *:not(.mermaid-frame) {
+.md-body > *:not(.mermaid-frame):not(.json-view) {
   max-width: var(--md-col, none);
   margin-inline: auto;
 }
+/* `.json-view` opts out alongside `.mermaid-frame`: a tree is indented
+   structure, not prose, so a readable-prose column would just force horizontal
+   scrolling on every nested branch. */
 
 /* `#preview-host.pane-only` used to override the cap to `none` here, so closing
    the editor filled the pane. That existed to rescue the old capped default,
@@ -393,6 +396,107 @@ body {
   height: auto;
   background: var(--mmd-bg, transparent);
 }
+
+/* ---- JSON tree preview ---- */
+/* Colours are the editor's own syntax variables (--cm-*, see language.ts), so
+   the tree tracks all ten theme families x light/dark with no palette of its
+   own — themes.css needs no new variables for this. */
+.json-view {
+  font-family: var(--editor-font-family, ui-monospace, "SF Mono", Menlo, monospace);
+  font-size: 0.95em;
+  line-height: 1.55;
+  /* Deeply nested structure can outgrow any pane; scroll it here rather than
+     letting it push the pane's own layout around. */
+  overflow-x: auto;
+}
+.jt-notice {
+  margin-bottom: 0.9em;
+  padding: 6px 10px;
+  border-left: 3px solid var(--cm-number);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--cm-number) 10%, transparent);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 0.9em;
+}
+/* The left padding is the room the root's disclosure triangle needs: it is drawn
+   with a negative margin so it hangs to the left of its summary, and the root
+   has no `.jt-children` indent above it to hang into. `.md-body`'s own 6px is
+   narrower than the triangle, so without this the root marker would be clipped. */
+.jt-root { white-space: nowrap; padding-left: 1.1em; }
+
+/* Each level indents by one step. The border is the guide line that makes a
+   long sibling list traceable back to its parent. */
+.jt-children {
+  margin-left: 0.55em;
+  padding-left: 1.1em;
+  border-left: 1px solid var(--border);
+}
+.jt-leaf,
+.jt-tail { padding: 0 0 0 0.15em; }
+
+.jt-summary {
+  cursor: pointer;
+  list-style: none; /* the default marker is replaced by ::before below */
+  padding-left: 0.15em;
+  border-radius: 3px;
+}
+.jt-summary::-webkit-details-marker { display: none; }
+.jt-summary::before {
+  content: "\25b8"; /* ▸ */
+  display: inline-block;
+  width: 1em;
+  margin-left: -1em;
+  color: var(--cm-comment);
+  transition: transform 0.12s ease;
+}
+.jt-node[open] > .jt-summary::before { transform: rotate(90deg); }
+.jt-summary:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.jt-summary:focus-visible { outline: 1px solid var(--accent); outline-offset: 1px; }
+
+/* The collapsed stand-in (`…} 3 items`) is only meaningful while closed. */
+.jt-node[open] > .jt-summary .jt-hint { display: none; }
+.jt-count {
+  margin-left: 0.6em;
+  color: var(--cm-comment);
+  font-style: italic;
+  font-size: 0.9em;
+}
+.jt-ellipsis { color: var(--cm-comment); padding: 0 0.25em; }
+
+.jt-key { color: var(--cm-property); }
+/* An unquoted key is valid JS but not valid JSON — mark it so the difference is
+   visible rather than silently normalised away. */
+.jt-key-bare { font-style: italic; text-decoration: underline dotted; }
+.jt-index { color: var(--cm-comment); font-size: 0.9em; }
+.jt-colon { color: var(--cm-operator); padding-right: 0.4em; }
+.jt-comma { color: var(--cm-operator); }
+.jt-brace { color: var(--cm-operator); }
+.jt-string { color: var(--cm-string); white-space: pre-wrap; }
+.jt-number { color: var(--cm-number); }
+.jt-boolean { color: var(--cm-keyword); }
+.jt-null { color: var(--cm-keyword); font-style: italic; }
+.jt-literal { color: var(--cm-invalid); font-style: italic; }
+
+.jt-error {
+  padding: 12px 14px;
+  border-left: 3px solid var(--cm-invalid);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--cm-invalid) 10%, transparent);
+  font-family: var(--editor-font-family, ui-monospace, "SF Mono", Menlo, monospace);
+}
+.jt-error-title { color: var(--cm-invalid); font-weight: 600; margin-bottom: 0.4em; }
+.jt-error-msg { color: var(--fg); margin-bottom: 0.6em; white-space: pre-wrap; }
+.jt-error-jump {
+  font: inherit;
+  color: var(--accent);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.jt-error-jump:hover { border-color: var(--accent); }
 
 /* ---- Mermaid: zoomed (scale !== 1) ---- */
 #preview-host.mmd-zoomed .mermaid-diagram {
@@ -1069,13 +1173,23 @@ body {
   .md-body {
     max-width: none;
     margin: 0;
-    /* The screen's pane-proportional side padding would double up with the
-       page margin on paper; the column cap below is what centers text here. */
+    /* On screen this padding lines the text up with the editor's; on paper
+       there is no editor to line up with and it would only double up with the
+       page margin. The column cap below is what centers text here. */
     padding-inline: 0;
   }
-  .md-body > *:not(.mermaid-frame) {
+  .md-body > *:not(.mermaid-frame):not(.json-view) {
     max-width: 72ch;
     margin-inline: auto;
+  }
+  /* A JSON tree is indented structure: a prose column would centre it and its
+     own scroll viewport, which cannot scroll on paper, would clip the rest. */
+  .json-view,
+  .jt-root {
+    overflow: visible;
+    /* `.jt-root` is nowrap on screen because the pane scrolls; paper doesn't,
+       so a long row has to wrap or it is simply lost off the edge. */
+    white-space: pre-wrap;
   }
   /* A scroll viewport clips on paper — let a wide table print in full and rely
      on the shrink-to-fit below rather than cutting it at the wrapper's edge. */
