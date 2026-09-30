@@ -6,7 +6,7 @@
  * is dropped on the floor — the host therefore holds the first `content` until
  * `ready` arrives.
  */
-import { initState, post } from "./host";
+import { initState, post, setLocked } from "./host";
 import { applySettings } from "./settings";
 import { applyMermaidBg, handleZoom } from "./mermaid-view";
 import {
@@ -44,6 +44,9 @@ window.addEventListener("message", (e: MessageEvent<HostToWebview>) => {
       // new setting at the current zoom factor.
       applyMermaidBg();
       applyPreviewZoom();
+      return;
+    case "lock":
+      setLocked(msg.locked);
       return;
     case "requestHtml":
       post({ type: "html", token: msg.token, html: renderedHtml() });

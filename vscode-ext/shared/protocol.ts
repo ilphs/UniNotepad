@@ -40,6 +40,10 @@ export type HostToWebview =
   /** 1 = in, -1 = out, 0 = reset to 100%. */
   | { type: "zoom"; dir: 1 | -1 | 0 }
   | { type: "settings"; settings: PreviewSettings }
+  /** Whether the panel is locked to its document. Sent on `ready` and on every
+   *  toggle; the webview only stores it in its persisted view state, which is
+   *  what the serializer reads after a window reload. */
+  | { type: "lock"; locked: boolean }
   /** Ask for the rendered `.md-body` innerHTML. `token` comes back on the reply
    *  so a second export started before the first answered can't be crossed. */
   | { type: "requestHtml"; token: number };

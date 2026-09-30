@@ -34,9 +34,12 @@ export interface ViewState {
   uri: string;
   /** Preview zoom held as an exponent — see mermaid-view.ts for why not a factor. */
   zoomExp: number;
+  /** Locked to `uri` rather than following the editor. Owned by the host (it
+   *  sends `lock`); kept here only so a reload restores the panel locked. */
+  locked: boolean;
 }
 
-let state: ViewState = { uri: "", zoomExp: 0 };
+let state: ViewState = { uri: "", zoomExp: 0, locked: false };
 
 /** Seed from whatever survived a reload, then overwrite `uri` from the DOM: the
  *  host re-renders the shell on restore, so the attribute is always current
@@ -46,6 +49,7 @@ export function initState(sourceUri: string): void {
   state = {
     uri: sourceUri,
     zoomExp: typeof saved?.zoomExp === "number" && Number.isFinite(saved.zoomExp) ? saved.zoomExp : 0,
+    locked: saved?.locked === true,
   };
   api.setState(state);
 }
@@ -57,6 +61,12 @@ export function sourceUri(): string {
 export function setSourceUri(uri: string): void {
   if (uri === state.uri) return;
   state.uri = uri;
+  api.setState(state);
+}
+
+export function setLocked(locked: boolean): void {
+  if (locked === state.locked) return;
+  state.locked = locked;
   api.setState(state);
 }
 

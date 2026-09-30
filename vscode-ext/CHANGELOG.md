@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- **Several previews at once: lock a preview to its document.** A focused
+  preview's title bar has a lock button (**UniNotepad: Lock Preview to This
+  Document**). A locked preview stays on its document instead of following the
+  active editor, and the next preview you open is a new panel — lock that too for
+  a third. Locked previews keep live-updating as their document is edited, keep
+  their last render when it is closed, and come back locked after a window
+  reload. **Unlock Preview** makes one the following preview again; only one can
+  follow, so any other following preview closes. Without locking, nothing
+  changes: there is still one preview and it follows the editor.
+
 ## 0.7.0 — 2026-08-12
 
 - **The preview now uses the width of the panel.** `uninotepadPreview.contentWidth`

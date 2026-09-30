@@ -74,8 +74,17 @@ const settle = () => new Promise((r) => setTimeout(r, 150));
   // Spread into this realm first: the object was built inside jsdom, so its
   // prototype is a different Object and deepStrictEqual would reject it on
   // identity alone.
-  assert.deepStrictEqual({ ...getState() }, { uri: MOUNT_URI, zoomExp: 0 });
+  assert.deepStrictEqual({ ...getState() }, { uri: MOUNT_URI, zoomExp: 0, locked: false });
   ok("view state seeded with the source URI from the data attribute");
+
+  // `lock` only lands in the persisted state — the serializer reads it back
+  // after a window reload to restore the panel locked.
+  send(w, { type: "lock", locked: true });
+  assert.strictEqual(getState().locked, true, "lock not persisted into view state");
+  send(w, { type: "lock", locked: false });
+  assert.strictEqual(getState().locked, false, "unlock not persisted into view state");
+  assert.strictEqual(getState().uri, MOUNT_URI, "lock clobbered the source URI");
+  ok("lock / unlock persist into the view state");
 
   assert.strictEqual(host.style.getPropertyValue("--preview-font-size"), "15px");
   assert.strictEqual(host.style.getPropertyValue("--mmd-zoom"), "1");
@@ -358,7 +367,7 @@ const settle = () => new Promise((r) => setTimeout(r, 150));
   // the stale data-source-uri would restore the wrong document after a reload.
   assert.deepStrictEqual(
     { ...getState() },
-    { uri: "file:///tmp/other.md", zoomExp: 0 },
+    { uri: "file:///tmp/other.md", zoomExp: 0, locked: false },
     "the persisted view state must follow the panel's new target",
   );
   ok("retarget re-stamps the persisted source URI");

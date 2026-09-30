@@ -9,12 +9,20 @@
  * shipping the document text across the process boundary, and re-pushing it on
  * the three events that invalidate a render (edit, theme, file type).
  *
- * There is exactly one panel, and it follows the active editor the way VS Code's
- * built-in preview does. Pinning it per-document was the first shape here, and it
- * was wrong twice over: switching editors left the preview showing the file you
- * had stopped looking at, and the only way to see the new one was to open a second
- * panel — so N Markdown files meant N preview tabs, each holding a retained
- * webview. Following the editor collapses that to one panel whose target moves.
+ * At most one panel follows the active editor, the way VS Code's built-in preview
+ * does; any number of others can be *locked* to one document each. Pinning every
+ * panel per-document was the first shape here, and it was wrong twice over:
+ * switching editors left the preview showing the file you had stopped looking at,
+ * and the only way to see the new one was to open a second panel — so N Markdown
+ * files meant N preview tabs, each holding a retained webview. Following the
+ * editor collapses that to one panel whose target moves.
+ *
+ * Locking (the built-in preview's "Toggle Preview Locking") brings back several
+ * previews side by side without reintroducing either problem: the following panel
+ * still follows, and a locked panel — the one kind that costs a retained webview
+ * per document — exists only because the user asked for it. Locking the
+ * following panel pins it where it is; the next "open" then creates a new
+ * following panel, which is how N previews come about.
  */
 import * as vscode from "vscode";
 import type { HostToWebview, PreviewFileType, PreviewSettings, WebviewToHost } from "../shared/protocol";
@@ -45,8 +53,17 @@ function previewable(doc: vscode.TextDocument): boolean {
   );
 }
 
-function titleFor(doc: vscode.TextDocument): string {
-  return `Preview ${doc.uri.path.split("/").pop() ?? ""}`;
+function titleFor(doc: vscode.TextDocument, locked: boolean): string {
+  const name = doc.uri.path.split("/").pop() ?? "";
+  return locked ? `[Locked] Preview ${name}` : `Preview ${name}`;
+}
+
+/** Context key read by the lock/unlock `when` clauses in package.json: whether
+ *  the *focused* preview is locked, so its title bar shows the right button. */
+const LOCKED_CONTEXT = "uninotepadPreview.activeLocked";
+
+function setLockedContext(locked: boolean): void {
+  void vscode.commands.executeCommand("setContext", LOCKED_CONTEXT, locked);
 }
 
 function readSettings(): PreviewSettings {
@@ -80,9 +97,12 @@ function nonce(): string {
 }
 
 export class PreviewPanel {
-  /** The one live preview, or nothing. Every entry point consults this before
-   *  creating a panel, so a second one can never appear. */
-  private static current: PreviewPanel | undefined;
+  /** The panel that follows the active editor, or nothing. Every "open" entry
+   *  point retargets it when it exists, so a second following panel can never
+   *  appear; locking it clears this slot (see `setLocked`). */
+  private static following: PreviewPanel | undefined;
+  /** Every live panel — the following one plus any locked ones. */
+  private static readonly all = new Set<PreviewPanel>();
 
   private readonly disposables: vscode.Disposable[] = [];
   private renderTimer: ReturnType<typeof setTimeout> | undefined;
@@ -96,10 +116,10 @@ export class PreviewPanel {
   private htmlWaiters = new Map<number, (html: string) => void>();
   private htmlToken = 0;
 
-  /** `column` only matters the first time a panel is created — once one exists,
-   *  every later call retargets in place and `reveal`s whatever column it is
-   *  already in, so a second file previewed from a different origin cannot
-   *  relocate it. Defaults to `Beside` for the editor-title button, which is
+  /** `column` only matters when a panel is created — while a following panel
+   *  exists, every later call retargets it in place and `reveal`s whatever column
+   *  it is already in, so a second file previewed from a different origin cannot
+   *  relocate it. Locked panels are never retargeted from here. Defaults to `Beside` for the editor-title button, which is
    *  explicitly labelled "to the Side"; the Explorer/tab context menu passes
    *  `Active` instead, so previewing a file it did not open a split for lands as
    *  another tab next to the source rather than spawning a new column. */
@@ -108,7 +128,7 @@ export class PreviewPanel {
     extensionUri: vscode.Uri,
     column: vscode.ViewColumn = vscode.ViewColumn.Beside,
   ): void {
-    const existing = PreviewPanel.current;
+    const existing = PreviewPanel.following;
     if (existing) {
       // Running the command from a different file is the same intent as switching
       // to it, so retarget rather than stack a panel.
@@ -118,17 +138,22 @@ export class PreviewPanel {
     }
     const panel = vscode.window.createWebviewPanel(
       VIEW_TYPE,
-      titleFor(doc),
+      titleFor(doc, false),
       { viewColumn: column, preserveFocus: true },
       PreviewPanel.webviewOptions(extensionUri),
     );
-    PreviewPanel.current = new PreviewPanel(panel, doc, extensionUri);
+    PreviewPanel.following = new PreviewPanel(panel, doc, extensionUri, false);
   }
 
   /** Rebuild a panel VS Code restored after a window reload. The source document
    *  may be gone (file deleted, folder closed), in which case there is nothing to
    *  preview and the panel is disposed rather than left showing a stale render. */
-  static async restore(panel: vscode.WebviewPanel, uri: vscode.Uri, extensionUri: vscode.Uri): Promise<void> {
+  static async restore(
+    panel: vscode.WebviewPanel,
+    uri: vscode.Uri,
+    extensionUri: vscode.Uri,
+    locked: boolean,
+  ): Promise<void> {
     let doc: vscode.TextDocument;
     try {
       doc = await vscode.workspace.openTextDocument(uri);
@@ -136,16 +161,17 @@ export class PreviewPanel {
       panel.dispose();
       return;
     }
-    // VS Code can hand back more than one serialized panel (a window saved before
-    // this became single-panel, or a split it restored). Keep the first, drop the
-    // rest — two panels would both follow the active editor and show the same
-    // thing twice.
-    if (PreviewPanel.current) {
+    // Locked panels all come back. Of the following ones, VS Code can hand back
+    // more than one (a window saved by a version where every panel was pinned, or
+    // a split it restored): keep the first, drop the rest — two following panels
+    // would show the same thing twice.
+    if (!locked && PreviewPanel.following) {
       panel.dispose();
       return;
     }
     panel.webview.options = PreviewPanel.webviewOptions(extensionUri);
-    PreviewPanel.current = new PreviewPanel(panel, doc, extensionUri);
+    const restored = new PreviewPanel(panel, doc, extensionUri, locked);
+    if (!locked) PreviewPanel.following = restored;
   }
 
   /** The panel the zoom/export commands act on, and only while it holds focus.
@@ -153,8 +179,13 @@ export class PreviewPanel {
    *  right after opening a preview — by design, since the keybindings that call it
    *  are gated on `activeWebviewPanelId` anyway. */
   static active(): PreviewPanel | undefined {
-    const p = PreviewPanel.current;
-    return p && p.panel.active ? p : undefined;
+    for (const p of PreviewPanel.all) if (p.panel.active) return p;
+    return undefined;
+  }
+
+  /** Lock or unlock the focused preview (the title-bar buttons). */
+  static setActiveLocked(locked: boolean): void {
+    PreviewPanel.active()?.setLocked(locked);
   }
 
   private static webviewOptions(extensionUri: vscode.Uri): vscode.WebviewOptions & vscode.WebviewPanelOptions {
@@ -163,8 +194,8 @@ export class PreviewPanel {
       // Zoom level, pan offset and scroll position are per-panel view state the
       // app kept per tab. Without this they reset every time the user switches
       // editor tabs, which reads as the preview losing its place. The documented
-      // cost is memory for a hidden webview; there is only ever one panel, so
-      // that cost is a constant.
+      // cost is memory for a hidden webview: a constant for the one following
+      // panel, plus one per panel the user explicitly locked.
       retainContextWhenHidden: true,
       localResourceRoots: [
         vscode.Uri.joinPath(extensionUri, "dist"),
@@ -175,10 +206,17 @@ export class PreviewPanel {
 
   private constructor(
     private readonly panel: vscode.WebviewPanel,
-    /** The document currently being previewed. Moves — see `retarget`. */
+    /** The document currently being previewed. Moves — see `retarget` — unless
+     *  the panel is locked. */
     private doc: vscode.TextDocument,
     extensionUri: vscode.Uri,
+    /** Pinned to `doc`: ignores editor switches. See `setLocked`. */
+    private locked: boolean,
   ) {
+    PreviewPanel.all.add(this);
+    // Set here rather than trusted from creation/restore: a restored panel comes
+    // back with whatever title it was serialized with.
+    this.panel.title = titleFor(doc, locked);
     // Tab icon. Not serialized across a window reload, so it is set here — the
     // constructor is the one path both `show` and `restore` go through.
     this.panel.iconPath = {
@@ -188,6 +226,14 @@ export class PreviewPanel {
     this.panel.webview.html = this.html(extensionUri);
 
     this.panel.onDidDispose(() => this.dispose(), null, this.disposables);
+    // Keep the lock/unlock button in step with whichever preview has focus.
+    this.panel.onDidChangeViewState(
+      (e) => {
+        if (e.webviewPanel.active) setLockedContext(this.locked);
+      },
+      null,
+      this.disposables,
+    );
     this.panel.webview.onDidReceiveMessage(
       (m: WebviewToHost) => this.onMessage(m),
       null,
@@ -239,7 +285,8 @@ export class PreviewPanel {
     // closing a file would take the preview down with it even though the next
     // Markdown file you open would have used it. Retarget if something previewable
     // is already focused; otherwise leave the last render up, which is what the
-    // built-in preview does too.
+    // built-in preview does too. A locked panel always keeps its last render —
+    // `follow` refuses to move it.
     vscode.workspace.onDidCloseTextDocument(
       (closed) => {
         if (closed.uri.toString() === this.doc.uri.toString()) {
@@ -253,8 +300,9 @@ export class PreviewPanel {
 
   // ---- Retargeting ---------------------------------------------------------
 
-  /** Decide whether an editor switch should move the preview. Three cases must
-   *  NOT retarget, and each is a bug if it slips through:
+  /** Decide whether an editor switch should move the preview. A locked panel
+   *  never moves. Otherwise three cases must NOT retarget, and each is a bug if
+   *  it slips through:
    *
    *  - `undefined` — focusing the webview itself clears `activeTextEditor` and
    *    fires this event. Following it would blank the preview the instant the
@@ -267,6 +315,7 @@ export class PreviewPanel {
    *    focus, which fires the event with the same document.
    */
   private follow(editor: vscode.TextEditor | undefined): void {
+    if (this.locked) return;
     if (!editor) return;
     const doc = editor.document;
     if (!previewable(doc)) return;
@@ -283,8 +332,30 @@ export class PreviewPanel {
       this.renderTimer = undefined;
     }
     this.doc = doc;
-    this.panel.title = titleFor(doc);
+    this.panel.title = titleFor(doc, this.locked);
     this.pushContent();
+  }
+
+  /** Pin this panel to its document, or let it follow the editor again.
+   *
+   *  Locking gives up the following slot, so the next "open" creates a fresh
+   *  following panel instead of retargeting this one. Unlocking takes the slot
+   *  back, and there can only be one follower: the current one, if any, is
+   *  closed. That loses nothing the user chose — it only ever showed whatever
+   *  editor was focused, which this panel will now do instead. */
+  private setLocked(locked: boolean): void {
+    if (locked === this.locked) return;
+    if (locked) {
+      if (PreviewPanel.following === this) PreviewPanel.following = undefined;
+    } else {
+      const previous = PreviewPanel.following;
+      if (previous && previous !== this) previous.panel.dispose();
+      PreviewPanel.following = this;
+    }
+    this.locked = locked;
+    this.panel.title = titleFor(this.doc, locked);
+    this.pushLock();
+    if (this.panel.active) setLockedContext(locked);
   }
 
   // ---- Outbound ------------------------------------------------------------
@@ -309,6 +380,14 @@ export class PreviewPanel {
       fileType: fileTypeOf(this.doc),
       uri: this.doc.uri.toString(),
     });
+  }
+
+  /** Mirror the lock into the webview's persisted state — the serializer only
+   *  gets that state back after a window reload, so it is where `locked` must
+   *  live for a locked panel to come back locked. */
+  private pushLock(): void {
+    if (!this.ready) return;
+    this.post({ type: "lock", locked: this.locked });
   }
 
   private pushSettings(): void {
@@ -364,6 +443,7 @@ export class PreviewPanel {
       case "ready":
         this.ready = true;
         this.pushSettings();
+        this.pushLock();
         // `ready` is the first moment the webview can receive anything, so the
         // initial render is owed unconditionally.
         this.pushContent();
@@ -456,7 +536,8 @@ export class PreviewPanel {
   // ---- Teardown ------------------------------------------------------------
 
   private dispose(): void {
-    if (PreviewPanel.current === this) PreviewPanel.current = undefined;
+    PreviewPanel.all.delete(this);
+    if (PreviewPanel.following === this) PreviewPanel.following = undefined;
     if (this.renderTimer !== undefined) clearTimeout(this.renderTimer);
     // Anything still waiting on renderedHtml() would otherwise hang until its
     // own timeout; the waiters' reject path is the timer, so just drop them.

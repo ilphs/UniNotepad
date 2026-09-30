@@ -72,6 +72,18 @@
         "command": "uninotepadPreview.exportHtml",
         "title": "Export Preview as HTML",
         "category": "UniNotepad"
+      },
+      {
+        "command": "uninotepadPreview.lock",
+        "title": "Lock Preview to This Document",
+        "category": "UniNotepad",
+        "icon": "$(unlock)"
+      },
+      {
+        "command": "uninotepadPreview.unlock",
+        "title": "Unlock Preview (Follow the Active Editor)",
+        "category": "UniNotepad",
+        "icon": "$(lock)"
       }
     ],
     "keybindings": [
@@ -105,6 +117,16 @@
         {
           "command": "uninotepadPreview.open",
           "when": "editorLangId == markdown || resourceExtname == .mmd || resourceExtname == .mermaid",
+          "group": "navigation"
+        },
+        {
+          "command": "uninotepadPreview.lock",
+          "when": "activeWebviewPanelId == 'uninotepad.markdownPreview' && !uninotepadPreview.activeLocked",
+          "group": "navigation"
+        },
+        {
+          "command": "uninotepadPreview.unlock",
+          "when": "activeWebviewPanelId == 'uninotepad.markdownPreview' && uninotepadPreview.activeLocked",
           "group": "navigation"
         }
       ],
@@ -142,6 +164,14 @@
         {
           "command": "uninotepadPreview.exportHtml",
           "when": "activeWebviewPanelId == 'uninotepad.markdownPreview'"
+        },
+        {
+          "command": "uninotepadPreview.lock",
+          "when": "activeWebviewPanelId == 'uninotepad.markdownPreview' && !uninotepadPreview.activeLocked"
+        },
+        {
+          "command": "uninotepadPreview.unlock",
+          "when": "activeWebviewPanelId == 'uninotepad.markdownPreview' && uninotepadPreview.activeLocked"
         }
       ]
     },

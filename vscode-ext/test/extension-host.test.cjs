@@ -21,6 +21,9 @@ let savedBytes = null;
 const registered = new Map();
 const openedUris = [];
 let serializerViewType = null;
+let serializer = null;
+/** Last value set per context key via `setContext`. */
+const contextKeys = new Map();
 const themeListeners = [];
 const docChangeListeners = [];
 const visibleRangeListeners = [];
@@ -84,6 +87,9 @@ function makePanel() {
   const self = {
     active: true,
     viewColumn: 2,
+    /** This panel's own outbound messages (the global `posted` mixes panels). */
+    posted: [],
+    viewStateListeners: [],
     webview: {
       html: "",
       options: {},
@@ -98,6 +104,7 @@ function makePanel() {
       },
       postMessage: (m) => {
         posted.push(m);
+        self.posted.push(m);
         return Promise.resolve(true);
       },
     },
@@ -108,14 +115,21 @@ function makePanel() {
       if (disposables) disposables.push(d);
       return d;
     },
+    onDidChangeViewState: undefined, // set below — needs `self.viewStateListeners`
     reveal() {
       self.reveals++;
+    },
+    /** Simulate VS Code moving focus to this panel. */
+    focus() {
+      for (const p of panels) p.active = p === self;
+      self.viewStateListeners.forEach((f) => f({ webviewPanel: self }));
     },
     reveals: 0,
     dispose() {
       if (self.disposeHandler) self.disposeHandler();
     },
   };
+  self.onDidChangeViewState = event(self.viewStateListeners);
   panels.push(self);
   panelStub = self;
   return self;
@@ -147,6 +161,10 @@ const vscode = {
       return { dispose() {} };
     },
     executeCommand(id, ...a) {
+      if (id === "setContext") {
+        contextKeys.set(a[0], a[1]);
+        return Promise.resolve();
+      }
       return registered.get(id)(...a);
     },
   },
@@ -158,8 +176,9 @@ const vscode = {
       p.title = title;
       return p;
     },
-    registerWebviewPanelSerializer(viewType) {
+    registerWebviewPanelSerializer(viewType, s) {
       serializerViewType = viewType;
+      serializer = s;
       return { dispose() {} };
     },
     onDidChangeActiveColorTheme: event(themeListeners),
@@ -228,10 +247,12 @@ for (const id of [
   "uninotepadPreview.zoomOut",
   "uninotepadPreview.zoomReset",
   "uninotepadPreview.exportHtml",
+  "uninotepadPreview.lock",
+  "uninotepadPreview.unlock",
 ]) {
   assert.ok(registered.has(id), "command not registered: " + id);
 }
-ok("all 6 commands registered");
+ok("all 8 commands registered");
 
 assert.strictEqual(serializerViewType, "uninotepad.markdownPreview");
 ok("serializer registered for the panel view type");
@@ -450,6 +471,118 @@ ok("setSetting reaches configuration");
   await new Promise((r) => setTimeout(r, 260));
   assert.strictEqual(posted.length, 0, "a disposed panel still receives pushes");
   ok("dispose unhooks the document listeners");
+
+  // ---- Locking: N previews = one following panel + any number of locked ones
+
+  const notesDoc = Object.assign({}, doc, { uri: mkUri("file:///tmp/notes.md") });
+  const chartDoc = Object.assign({}, doc, { uri: mkUri("file:///tmp/chart.mmd"), languageId: "plaintext" });
+  const switchEditor = (d) => {
+    vscode.window.activeTextEditor = { document: d };
+    activeEditorListeners.forEach((f) => f({ document: d }));
+  };
+  const contentUris = (p) => p.posted.filter((m) => m.type === "content").map((m) => m.uri);
+
+  // A following panel on sample.md, then lock it.
+  vscode.window.activeTextEditor = { document: doc };
+  createdPanels = 0;
+  vscode.commands.executeCommand("uninotepadPreview.open");
+  assert.strictEqual(createdPanels, 1, "no following panel after the last one was disposed");
+  const lockedP = panelStub;
+  lockedP.handler({ type: "ready" });
+  assert.deepStrictEqual(
+    lockedP.posted.filter((m) => m.type === "lock").map((m) => m.locked),
+    [false],
+    "ready must stamp the (unlocked) lock state into the webview",
+  );
+  lockedP.focus();
+  assert.strictEqual(contextKeys.get("uninotepadPreview.activeLocked"), false);
+  vscode.commands.executeCommand("uninotepadPreview.lock");
+  assert.strictEqual(lockedP.title, "[Locked] Preview sample.md");
+  assert.strictEqual(lockedP.posted.at(-1).type, "lock");
+  assert.strictEqual(lockedP.posted.at(-1).locked, true, "lock not persisted into the webview state");
+  assert.strictEqual(contextKeys.get("uninotepadPreview.activeLocked"), true, "title button not switched");
+  ok("lock retitles the panel, persists into view state, and flips the context key");
+
+  // Locked: switching editors leaves it alone.
+  lockedP.posted.length = 0;
+  switchEditor(notesDoc);
+  assert.deepStrictEqual(contentUris(lockedP), [], "a locked panel followed the editor");
+  ok("a locked panel does not follow the active editor");
+
+  // Opening now creates a second, following panel — that is how N come about.
+  createdPanels = 0;
+  vscode.commands.executeCommand("uninotepadPreview.open");
+  assert.strictEqual(createdPanels, 1, "open with only a locked panel must create a following one");
+  const followerP = panelStub;
+  followerP.handler({ type: "ready" });
+  assert.strictEqual(followerP.title, "Preview notes.md");
+  lockedP.posted.length = 0;
+  followerP.posted.length = 0;
+  switchEditor(chartDoc);
+  assert.deepStrictEqual(contentUris(followerP), ["file:///tmp/chart.mmd"], "the new panel does not follow");
+  assert.deepStrictEqual(contentUris(lockedP), [], "the locked panel moved with it");
+  createdPanels = 0;
+  vscode.commands.executeCommand("uninotepadPreview.open");
+  assert.strictEqual(createdPanels, 0, "a second following panel was stacked");
+  ok("after locking, open creates a new following panel; only that one moves");
+
+  // Edits still reach a locked panel (it is pinned, not frozen).
+  lockedP.posted.length = 0;
+  docChangeListeners.forEach((f) => f({ document: doc }));
+  await new Promise((r) => setTimeout(r, 260));
+  assert.deepStrictEqual(contentUris(lockedP), ["file:///tmp/sample.md"], "a locked panel stopped live-updating");
+  ok("a locked panel still re-renders on edits to its document");
+
+  // Closing a locked panel's document keeps its last render.
+  lockedP.posted.length = 0;
+  closeDocListeners.forEach((f) => f(doc));
+  assert.deepStrictEqual(contentUris(lockedP), [], "closing its document retargeted a locked panel");
+  ok("closing a locked panel's document keeps its last render");
+
+  // Focus drives the context key per panel.
+  followerP.focus();
+  assert.strictEqual(contextKeys.get("uninotepadPreview.activeLocked"), false);
+  lockedP.focus();
+  assert.strictEqual(contextKeys.get("uninotepadPreview.activeLocked"), true);
+  ok("the lock button follows whichever preview has focus");
+
+  // Zoom goes to the focused panel, whichever kind it is.
+  lockedP.posted.length = 0;
+  followerP.posted.length = 0;
+  vscode.commands.executeCommand("uninotepadPreview.zoomIn");
+  assert.strictEqual(lockedP.posted.filter((m) => m.type === "zoom").length, 1);
+  assert.strictEqual(followerP.posted.filter((m) => m.type === "zoom").length, 0);
+  ok("zoom targets the focused panel among several");
+
+  // Restore: locked panels all come back; a second following one is dropped.
+  const restoredLocked = makePanel();
+  await serializer.deserializeWebviewPanel(restoredLocked, { uri: "file:///tmp/sample.md", locked: true });
+  assert.strictEqual(restoredLocked.title, "[Locked] Preview sample.md", "locked panel not restored locked");
+  let droppedFollower = false;
+  const extraFollower = makePanel();
+  extraFollower.dispose = () => {
+    droppedFollower = true;
+  };
+  await serializer.deserializeWebviewPanel(extraFollower, { uri: "file:///tmp/sample.md" });
+  assert.ok(droppedFollower, "a second following panel survived restore");
+  ok("restore keeps every locked panel and at most one following panel");
+
+  // Unlock while another panel follows: that one gives way, this one follows.
+  let secondClosed = false;
+  const secondDispose = followerP.dispose;
+  followerP.dispose = () => {
+    secondClosed = true;
+    secondDispose();
+  };
+  lockedP.focus();
+  vscode.commands.executeCommand("uninotepadPreview.unlock");
+  assert.ok(secondClosed, "two panels were left following the editor");
+  assert.strictEqual(lockedP.title, "Preview sample.md");
+  assert.strictEqual(contextKeys.get("uninotepadPreview.activeLocked"), false);
+  lockedP.posted.length = 0;
+  switchEditor(notesDoc);
+  assert.deepStrictEqual(contentUris(lockedP), ["file:///tmp/notes.md"], "unlocked panel does not follow");
+  ok("unlock closes the other follower and resumes following");
 
   console.log("\n" + pass.length + " checks passed");
 })().catch((e) => {

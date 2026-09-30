@@ -50,16 +50,22 @@ export function activate(context: vscode.ExtensionContext): void {
 
     vscode.commands.registerCommand("uninotepadPreview.exportHtml", () => exportHtml()),
 
+    // Title-bar buttons of a focused preview; package.json shows whichever one
+    // applies via the `uninotepadPreview.activeLocked` context key.
+    vscode.commands.registerCommand("uninotepadPreview.lock", () => PreviewPanel.setActiveLocked(true)),
+    vscode.commands.registerCommand("uninotepadPreview.unlock", () => PreviewPanel.setActiveLocked(false)),
+
     vscode.window.registerWebviewPanelSerializer(VIEW_TYPE, {
       async deserializeWebviewPanel(panel: vscode.WebviewPanel, state: unknown): Promise<void> {
-        const uri = (state as { uri?: unknown } | null)?.uri;
+        const saved = state as { uri?: unknown; locked?: unknown } | null;
+        const uri = saved?.uri;
         if (typeof uri !== "string") {
           // Nothing to re-attach to. Leaving the panel up would show an empty
           // shell that never renders, so close it.
           panel.dispose();
           return;
         }
-        await PreviewPanel.restore(panel, vscode.Uri.parse(uri), extensionUri);
+        await PreviewPanel.restore(panel, vscode.Uri.parse(uri), extensionUri, saved?.locked === true);
       },
     }),
   );

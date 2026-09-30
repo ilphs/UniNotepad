@@ -28,11 +28,19 @@ full-bleed layout for a standalone `.mmd` file that *is* one diagram.
 
 Works on `.md` and on standalone `.mmd` / `.mermaid` files.
 
-There is one preview panel and it **follows the active editor**, like the built-in
-one: switch to another Markdown file and the preview switches with you, scrolled
-back to the top. Editors it cannot render — a `.ts` file, an output channel, or
-the preview itself taking focus — leave the last render in place rather than
-blanking the pane.
+The preview **follows the active editor**, like the built-in one: switch to
+another Markdown file and the preview switches with you, scrolled back to the top.
+Editors it cannot render — a `.ts` file, an output channel, or the preview itself
+taking focus — leave the last render in place rather than blanking the pane.
+
+To keep several previews open side by side, **lock** one: the lock button in a
+focused preview's title bar pins it to its document (the tab reads
+`[Locked] Preview …`), and the next preview you open is a new panel that follows
+the editor as usual. Lock that one too for a third, and so on. A locked preview
+still updates as its document is edited, keeps its last render if the document is
+closed, and comes back locked after a window reload. Unlocking makes it the
+following preview again — any other following preview closes, since only one can
+follow the editor.
 
 This sits alongside VS Code's built-in Markdown preview rather than replacing it,
 so a `.md` file's title bar carries both buttons. The built-in one keeps the
