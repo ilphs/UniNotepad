@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.8.2 — 2026-09-30
+
+- **Preview tabs are named exactly like their file** — `notes.md` rather than
+  `Preview notes.md` (or `[Locked] Preview notes.md` for a locked one), so the
+  name no longer gets cut off in a narrow tab. The `<>` tab icon marks a tab as a
+  preview; whether it is locked shows on its title-bar lock button.
+
+## 0.8.1 — 2026-09-30
+
+- **Right-click → Open Preview (UniNote) now opens a tab per file.** Choosing it
+  in the Explorer or on an editor tab used to swap the one preview over to the
+  clicked file; each file now gets its own locked preview tab, so walking down a
+  folder stacks one tab per file. Choosing a file that already has a preview tab
+  brings that tab forward instead of adding a duplicate. The editor-title button
+  and `Cmd/Ctrl+K Shift+M` are unchanged — one preview that follows the editor.
+
 ## 0.8.0 — 2026-09-30
 
 - **Several previews at once: lock a preview to its document.** A focused

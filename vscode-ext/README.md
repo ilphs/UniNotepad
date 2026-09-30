@@ -20,7 +20,8 @@ full-bleed layout for a standalone `.mmd` file that *is* one diagram.
 
 | Action | How |
 |---|---|
-| Open the preview | `Cmd/Ctrl+K Shift+M`, the diagram icon in the editor title bar, or **Open Preview (UniNote)** when you right-click the file in the Explorer or its editor tab |
+| Open the preview | `Cmd/Ctrl+K Shift+M` or the diagram icon in the editor title bar |
+| Preview several files as tabs | Right-click a file in the Explorer or its editor tab → **Open Preview (UniNote)** — each file gets its own locked tab; choosing a file that already has one brings that tab forward |
 | Zoom text + diagrams | `Cmd/Ctrl+=` / `Cmd/Ctrl+-` / `Cmd/Ctrl+0` (preview focused) |
 | Pan a zoomed diagram | Click and drag inside it |
 | Diagram backdrop | Hover a diagram → **Transparent** / **Backdrop** in its toolbar |
@@ -34,9 +35,8 @@ Editors it cannot render — a `.ts` file, an output channel, or the preview its
 taking focus — leave the last render in place rather than blanking the pane.
 
 To keep several previews open side by side, **lock** one: the lock button in a
-focused preview's title bar pins it to its document (the tab reads
-`[Locked] Preview …`), and the next preview you open is a new panel that follows
-the editor as usual. Lock that one too for a third, and so on. A locked preview
+focused preview's title bar pins it to its document, and the next preview you
+open is a new panel that follows the editor as usual. Lock that one too for a third, and so on. A locked preview
 still updates as its document is edited, keeps its last render if the document is
 closed, and comes back locked after a window reload. Unlocking makes it the
 following preview again — any other following preview closes, since only one can

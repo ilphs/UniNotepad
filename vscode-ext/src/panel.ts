@@ -53,9 +53,11 @@ function previewable(doc: vscode.TextDocument): boolean {
   );
 }
 
-function titleFor(doc: vscode.TextDocument, locked: boolean): string {
-  const name = doc.uri.path.split("/").pop() ?? "";
-  return locked ? `[Locked] Preview ${name}` : `Preview ${name}`;
+/** Every preview tab is named exactly like its source file: the `<>` tab icon
+ *  already says "preview", and a prefix only pushes the file name out of a
+ *  narrow tab. Follows the target on retarget, so it stays accurate. */
+function titleFor(doc: vscode.TextDocument): string {
+  return doc.uri.path.split("/").pop() ?? "";
 }
 
 /** Context key read by the lock/unlock `when` clauses in package.json: whether
@@ -116,13 +118,13 @@ export class PreviewPanel {
   private htmlWaiters = new Map<number, (html: string) => void>();
   private htmlToken = 0;
 
-  /** `column` only matters when a panel is created — while a following panel
+  /** The following preview: the editor-title button and the open keybinding.
+   *
+   *  `column` only matters when a panel is created — while a following panel
    *  exists, every later call retargets it in place and `reveal`s whatever column
    *  it is already in, so a second file previewed from a different origin cannot
-   *  relocate it. Locked panels are never retargeted from here. Defaults to `Beside` for the editor-title button, which is
-   *  explicitly labelled "to the Side"; the Explorer/tab context menu passes
-   *  `Active` instead, so previewing a file it did not open a split for lands as
-   *  another tab next to the source rather than spawning a new column. */
+   *  relocate it. Locked panels are never retargeted from here. Defaults to
+   *  `Beside` because the button is explicitly labelled "to the Side". */
   static show(
     doc: vscode.TextDocument,
     extensionUri: vscode.Uri,
@@ -138,11 +140,46 @@ export class PreviewPanel {
     }
     const panel = vscode.window.createWebviewPanel(
       VIEW_TYPE,
-      titleFor(doc, false),
+      titleFor(doc),
       { viewColumn: column, preserveFocus: true },
       PreviewPanel.webviewOptions(extensionUri),
     );
     PreviewPanel.following = new PreviewPanel(panel, doc, extensionUri, false);
+  }
+
+  /** The Explorer / editor-tab context menu: a preview of *that* file in a tab
+   *  of its own, locked to it — so right-clicking down a folder stacks one tab
+   *  per file. A file that already has a locked tab gets that tab brought
+   *  forward instead of a duplicate (a second copy would cost another retained
+   *  webview and be indistinguishable from the first).
+   *
+   *  Locked rather than following because the menu names a file explicitly,
+   *  which is what locking means, and because a second following panel would
+   *  only mirror the first. The following panel is not touched.
+   *
+   *  `Active` (not `Beside`): the entry point is not labelled "to the Side", so
+   *  the tab lands in the current column next to the source instead of
+   *  splitting the window. */
+  static openLocked(
+    doc: vscode.TextDocument,
+    extensionUri: vscode.Uri,
+    column: vscode.ViewColumn = vscode.ViewColumn.Active,
+  ): void {
+    const uri = doc.uri.toString();
+    for (const p of PreviewPanel.all) {
+      if (p.locked && p.doc.uri.toString() === uri) {
+        p.panel.reveal(p.panel.viewColumn, /* preserveFocus */ true);
+        return;
+      }
+    }
+    const panel = vscode.window.createWebviewPanel(
+      VIEW_TYPE,
+      titleFor(doc),
+      { viewColumn: column, preserveFocus: true },
+      PreviewPanel.webviewOptions(extensionUri),
+    );
+    // Registers itself in `all`; locked panels never take the following slot.
+    new PreviewPanel(panel, doc, extensionUri, true);
   }
 
   /** Rebuild a panel VS Code restored after a window reload. The source document
@@ -216,7 +253,7 @@ export class PreviewPanel {
     PreviewPanel.all.add(this);
     // Set here rather than trusted from creation/restore: a restored panel comes
     // back with whatever title it was serialized with.
-    this.panel.title = titleFor(doc, locked);
+    this.panel.title = titleFor(doc);
     // Tab icon. Not serialized across a window reload, so it is set here — the
     // constructor is the one path both `show` and `restore` go through.
     this.panel.iconPath = {
@@ -332,7 +369,7 @@ export class PreviewPanel {
       this.renderTimer = undefined;
     }
     this.doc = doc;
-    this.panel.title = titleFor(doc, this.locked);
+    this.panel.title = titleFor(doc);
     this.pushContent();
   }
 
@@ -353,7 +390,6 @@ export class PreviewPanel {
       PreviewPanel.following = this;
     }
     this.locked = locked;
-    this.panel.title = titleFor(this.doc, locked);
     this.pushLock();
     if (this.panel.active) setLockedContext(locked);
   }

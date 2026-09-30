@@ -197,9 +197,13 @@ const vscode = {
     onDidChangeTextDocument: event(docChangeListeners),
     onDidChangeConfiguration: event([]),
     onDidCloseTextDocument: event(closeDocListeners),
+    // The sample document for its own URI, otherwise a copy carrying the URI
+    // asked for — the context-menu tests open several distinct files.
     openTextDocument: (u) => {
       openedUris.push(u);
-      return Promise.resolve(doc);
+      return Promise.resolve(
+        u.toString() === doc.uri.toString() ? doc : Object.assign({}, doc, { uri: mkUri(u.toString()) }),
+      );
     },
     getConfiguration: () => ({
       get: (k, d) => (k in config ? config[k] : d),
@@ -302,7 +306,7 @@ assert.strictEqual(content.text, "# Title\n\nbody text\n");
 assert.strictEqual(content.fileType, "markdown");
 ok("ready → settings + content pushed with the document text");
 
-assert.strictEqual(panelStub.title, "Preview sample.md");
+assert.strictEqual(panelStub.title, "sample.md");
 ok("panel titled after its source document");
 
 // --- .mmd detection, and: running open from a second document retargets the one
@@ -317,7 +321,7 @@ const mmdContent = posted.find((m) => m.type === "content");
 assert.ok(mmdContent, "retargeting did not push the new document");
 assert.strictEqual(mmdContent.fileType, "mermaid", "a .mmd document must render as one diagram");
 assert.strictEqual(mmdContent.uri, "file:///tmp/chart.mmd", "content must carry the new source URI");
-assert.strictEqual(panelStub.title, "Preview chart.mmd", "the panel title must follow the target");
+assert.strictEqual(panelStub.title, "chart.mmd", "the panel title must follow the target");
 ok(".mmd typed as mermaid; open retargets the single panel and retitles it");
 
 // --- following the active editor
@@ -352,7 +356,7 @@ const followed = posted.find((m) => m.type === "content");
 assert.ok(followed, "switching editors did not push the new document");
 assert.strictEqual(followed.uri, "file:///tmp/notes.md");
 assert.strictEqual(followed.fileType, "markdown");
-assert.strictEqual(panelStub.title, "Preview notes.md");
+assert.strictEqual(panelStub.title, "notes.md");
 ok("switching to another Markdown editor retargets the preview");
 
 // Closing the previewed document used to dispose the panel. With one panel
@@ -418,21 +422,49 @@ ok("setSetting reaches configuration");
 
 (async () => {
   // --- context-menu path: the clicked URI is what gets previewed, with no
-  // active editor involved (in the explorer the file need not even be open)
+  // active editor involved (in the explorer the file need not even be open),
+  // in a locked tab of its own — one per file, however often it is chosen.
+  const followerStub = panelStub;
+  const followerPostsBefore = followerStub.posted.length;
   const savedEditor = vscode.window.activeTextEditor;
   vscode.window.activeTextEditor = undefined;
-  const revealsBefore = panelStub.reveals;
   const createdBefore = createdPanels;
-  await vscode.commands.executeCommand(
-    "uninotepadPreview.openFromExplorer",
-    mkUri("file:///tmp/sample.md"),
-  );
-  vscode.window.activeTextEditor = savedEditor;
+  const fromExplorer = (path) =>
+    vscode.commands.executeCommand("uninotepadPreview.openFromExplorer", mkUri("file://" + path));
+
+  await fromExplorer("/tmp/sample.md");
   assert.strictEqual(openedUris.length, 1, "the clicked URI was never opened");
   assert.strictEqual(openedUris[0].toString(), "file:///tmp/sample.md");
-  assert.strictEqual(createdPanels, createdBefore, "context menu stacked a second panel");
-  assert.ok(panelStub.reveals > revealsBefore, "existing panel not revealed");
-  ok("explorer/tab context menu previews the clicked URI without an active editor");
+  assert.strictEqual(createdPanels, createdBefore + 1, "context menu did not open a tab of its own");
+  const explorerA = panelStub;
+  assert.strictEqual(explorerA.title, "sample.md", "context-menu tab must be locked");
+  assert.strictEqual(
+    followerStub.posted.length,
+    followerPostsBefore,
+    "the context menu retargeted the following panel",
+  );
+  ok("explorer/tab context menu opens the clicked URI as its own locked tab");
+
+  const revealsBefore = explorerA.reveals;
+  await fromExplorer("/tmp/sample.md");
+  assert.strictEqual(createdPanels, createdBefore + 1, "the same file got a duplicate tab");
+  assert.ok(explorerA.reveals > revealsBefore, "the existing tab was not brought forward");
+  ok("choosing the same file again brings its tab forward instead of duplicating");
+
+  await fromExplorer("/tmp/notes.md");
+  assert.strictEqual(createdPanels, createdBefore + 2, "a different file did not add a tab");
+  const explorerB = panelStub;
+  assert.strictEqual(explorerB.title, "notes.md");
+  assert.notStrictEqual(explorerB, explorerA);
+  ok("a different file adds another tab");
+
+  // Hand the rest of the suite back its following panel.
+  vscode.window.activeTextEditor = savedEditor;
+  explorerB.dispose();
+  explorerA.dispose();
+  panelStub = followerStub;
+  messageHandler = followerStub.handler;
+  for (const p of panels) p.active = p === followerStub;
 
   // --- export round-trip
   posted.length = 0;
@@ -497,7 +529,7 @@ ok("setSetting reaches configuration");
   lockedP.focus();
   assert.strictEqual(contextKeys.get("uninotepadPreview.activeLocked"), false);
   vscode.commands.executeCommand("uninotepadPreview.lock");
-  assert.strictEqual(lockedP.title, "[Locked] Preview sample.md");
+  assert.strictEqual(lockedP.title, "sample.md");
   assert.strictEqual(lockedP.posted.at(-1).type, "lock");
   assert.strictEqual(lockedP.posted.at(-1).locked, true, "lock not persisted into the webview state");
   assert.strictEqual(contextKeys.get("uninotepadPreview.activeLocked"), true, "title button not switched");
@@ -515,7 +547,7 @@ ok("setSetting reaches configuration");
   assert.strictEqual(createdPanels, 1, "open with only a locked panel must create a following one");
   const followerP = panelStub;
   followerP.handler({ type: "ready" });
-  assert.strictEqual(followerP.title, "Preview notes.md");
+  assert.strictEqual(followerP.title, "notes.md");
   lockedP.posted.length = 0;
   followerP.posted.length = 0;
   switchEditor(chartDoc);
@@ -557,7 +589,7 @@ ok("setSetting reaches configuration");
   // Restore: locked panels all come back; a second following one is dropped.
   const restoredLocked = makePanel();
   await serializer.deserializeWebviewPanel(restoredLocked, { uri: "file:///tmp/sample.md", locked: true });
-  assert.strictEqual(restoredLocked.title, "[Locked] Preview sample.md", "locked panel not restored locked");
+  assert.strictEqual(restoredLocked.title, "sample.md", "locked panel not restored locked");
   let droppedFollower = false;
   const extraFollower = makePanel();
   extraFollower.dispose = () => {
@@ -577,7 +609,7 @@ ok("setSetting reaches configuration");
   lockedP.focus();
   vscode.commands.executeCommand("uninotepadPreview.unlock");
   assert.ok(secondClosed, "two panels were left following the editor");
-  assert.strictEqual(lockedP.title, "Preview sample.md");
+  assert.strictEqual(lockedP.title, "sample.md");
   assert.strictEqual(contextKeys.get("uninotepadPreview.activeLocked"), false);
   lockedP.posted.length = 0;
   switchEditor(notesDoc);
