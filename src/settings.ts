@@ -3,20 +3,20 @@
  * These are app-wide toggles, not per-tab: word wrap and save-time text options.
  */
 
-const WRAP_KEY = "uninotepad.wordWrap";
-const SHOW_WHITESPACE_KEY = "uninotepad.showWhitespace";
-const SHOW_LINE_NUMBERS_KEY = "uninotepad.showLineNumbers";
-const FONT_FAMILY_KEY = "uninotepad.editorFontFamily";
+export const WRAP_KEY = "uninotepad.wordWrap";
+export const SHOW_WHITESPACE_KEY = "uninotepad.showWhitespace";
+export const SHOW_LINE_NUMBERS_KEY = "uninotepad.showLineNumbers";
+export const FONT_FAMILY_KEY = "uninotepad.editorFontFamily";
 const TRIM_KEY = "uninotepad.trimTrailingOnSave";
 const FINAL_NL_KEY = "uninotepad.ensureFinalNewline";
 const PREVIEW_KEY = "uninotepad.markdownPreview";
 const RATIO_KEY = "uninotepad.previewRatio";
-const INDENT_TABS_KEY = "uninotepad.indentUseTabs";
-const INDENT_WIDTH_KEY = "uninotepad.indentWidth";
+export const INDENT_TABS_KEY = "uninotepad.indentUseTabs";
+export const INDENT_WIDTH_KEY = "uninotepad.indentWidth";
 const MERMAID_BG_KEY = "uninotepad.mermaidBg";
 const MERMAID_BG_ON_KEY = "uninotepad.mermaidBgEnabled";
 const FONT_SIZE_KEY = "uninotepad.editorFontSize";
-const PREVIEW_WIDTH_KEY = "uninotepad.previewContentWidth";
+export const PREVIEW_WIDTH_KEY = "uninotepad.previewContentWidth";
 const PASTE_MD_KEY = "uninotepad.pasteHtmlAsMarkdown";
 
 /** Indent width bounds (columns). */

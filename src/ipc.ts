@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { EncodingId, EolId, FileTypeId } from "./state";
 
 export interface OpenedFile {
@@ -78,15 +79,17 @@ export interface TabEntry {
   previewVisible?: boolean | null;
 }
 
-export interface SessionManifest {
-  version: number;
+/** This window's slice of `session.json`. Rust merges every window's slice
+ *  into one versioned manifest (see `session/model.rs`), so the frontend never
+ *  sees — or writes — other windows' tabs or the file's version. */
+export interface WindowSession {
   activeTabId: string | null;
   nextUntitled: number;
   tabs: TabEntry[];
 }
 
 export interface LoadedSession {
-  manifest: SessionManifest;
+  session: WindowSession;
   backups: Record<string, string>;
 }
 
@@ -120,12 +123,29 @@ export const ipc = {
     invoke<void>("set_recent_files", { paths }).catch(() => {}),
   syncThemeMenu,
 
+  // Both are scoped to the calling window by Rust (its label picks the slot).
   loadSession: () => invoke<LoadedSession | null>("load_session"),
-  persistSession: (manifestJson: string, dirtyBackups: [string, string][]) =>
-    invoke<void>("persist_session", { manifestJson, dirtyBackups }),
+  persistSession: (sessionJson: string, dirtyBackups: [string, string][]) =>
+    invoke<void>("persist_session", { sessionJson, dirtyBackups }),
   deleteBackup: (tabId: string) => invoke<void>("delete_backup", { tabId }),
 
   frontendReady: () => invoke<void>("frontend_ready"),
+
+  // Multi-window — src-tauri/src/windows.rs (+ forget_window in
+  // commands/session.rs). The close trio is sequenced by src/windows.ts.
+  newWindow: () => invoke<void>("new_window"),
+  /** Resolves true when this is the last window (its tabs stay for next launch). */
+  beginCloseWindow: () => invoke<boolean>("begin_close_window"),
+  cancelCloseWindow: () => invoke<void>("cancel_close_window"),
+  /** Drop this window's tabs from the session for good (non-last close). */
+  forgetWindow: () => invoke<void>("forget_window"),
+  // Best-effort: a lost update only costs cross-window de-duplication.
+  setOpenPaths: (paths: string[]) =>
+    invoke<void>("set_open_paths", { paths }).catch(() => {}),
+  /** True when another window had `path` open and has been brought forward
+   *  with that tab active; on failure, fall back to opening it here. */
+  focusPathOwner: (path: string) =>
+    invoke<boolean>("focus_path_owner", { path }).catch(() => false),
 };
 
 /** Rebuild the native menu so View ▸ Theme's check marks show `family` (e.g.
@@ -137,15 +157,25 @@ export function syncThemeMenu(family: string, mode: string): void {
   void invoke<void>("set_theme_menu", { family, mode }).catch(() => {});
 }
 
+// `open-paths` and `menu` are window-scoped: Rust sends each to one window
+// (the last focused) with `emit_to`. They must be heard through
+// `getCurrentWebviewWindow().listen`, which subscribes for this window's label
+// only. The global `listen` subscribes with target `Any`, and Tauri delivers
+// every event to an `Any` listener regardless of its target — so with it, a
+// menu click aimed at one window would still run in all of them.
+
 export function onOpenPaths(cb: (paths: string[]) => void): Promise<UnlistenFn> {
-  return listen<string[]>("open-paths", (e) => cb(e.payload));
+  return getCurrentWebviewWindow().listen<string[]>("open-paths", (e) => cb(e.payload));
 }
 
 export function onMenu(cb: (id: string) => void): Promise<UnlistenFn> {
-  return listen<string>("menu", (e) => cb(e.payload));
+  return getCurrentWebviewWindow().listen<string>("menu", (e) => cb(e.payload));
 }
 
-/** Fires when a watched file changes on disk (created/modified/deleted). */
+/** Fires when a watched file changes on disk (created/modified/deleted).
+ *  Deliberately app-wide (Rust broadcasts it, global `listen` here): the same
+ *  file can be open in several windows, and each one reconciles only its own
+ *  tabs by path, so a window without the file just ignores it. */
 export function onFileChanged(cb: (p: FileChangedPayload) => void): Promise<UnlistenFn> {
   return listen<FileChangedPayload>("file-changed", (e) => cb(e.payload));
 }

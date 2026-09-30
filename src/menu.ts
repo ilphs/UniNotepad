@@ -34,6 +34,8 @@ import {
   openPath,
 } from "./tabs";
 import { store } from "./state";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { ipc } from "./ipc";
 import { openRecentDialog, openAbout } from "./dialogs";
 import { checkForUpdates } from "./updater";
 import { openPreferences } from "./preferences";
@@ -81,6 +83,14 @@ export function handleMenu(id: string): void {
   switch (id) {
     case "file.new":
       newUntitled();
+      break;
+    case "file.newWindow":
+      void ipc.newWindow();
+      break;
+    // Through close() rather than a direct destroy, so it runs the same close
+    // flow (last-window vs discard prompt) as the title-bar button: windows.ts.
+    case "file.closeWindow":
+      void getCurrentWindow().close();
       break;
     case "file.open":
       void openDialog();

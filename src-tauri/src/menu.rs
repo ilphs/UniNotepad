@@ -28,6 +28,12 @@
 use tauri::menu::{CheckMenuItemBuilder, Menu, MenuItemBuilder, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Runtime};
 
+/// Id of the macOS Window submenu. `rebuild_menu` (lib.rs) looks it up after
+/// each rebuild to register it as NSApp's windows menu, which is what makes
+/// macOS list the open windows there and route Cmd+` through them.
+#[cfg(target_os = "macos")]
+pub const WINDOW_MENU_ID: &str = "window";
+
 /// The built-in theme families, in menu order. Each id is the suffix of the
 /// menu id (`view.theme.<id>`) *and* the value stored by the frontend as
 /// `uninotepad.theme`, so the two lists must stay in sync with `src/themes.ts`.
@@ -121,7 +127,15 @@ pub fn build<R: Runtime>(
     let file_menu = Submenu::new(app, "File", true)?;
     menu.append(&file_menu)?;
 
+    // Tab/window keys follow Ghostty's defaults: T = tab, N = window, with
+    // Reopen Closed Tab (Shift+T) and Close Window (Shift+W) matching it too.
+    // One layout on every OS via CmdOrCtrl — Ghostty's Linux build shifts these
+    // to Ctrl+Shift only because a terminal must pass Ctrl+letter to the shell,
+    // which an editor does not, and Ctrl+Shift+T is Reopen Closed Tab here.
     let new_tab = MenuItemBuilder::with_id("file.new", "New Tab")
+        .accelerator("CmdOrCtrl+T")
+        .build(app)?;
+    let new_window = MenuItemBuilder::with_id("file.newWindow", "New Window")
         .accelerator("CmdOrCtrl+N")
         .build(app)?;
     let open = MenuItemBuilder::with_id("file.open", "Open…")
@@ -159,6 +173,13 @@ pub fn build<R: Runtime>(
     let close_tab = MenuItemBuilder::with_id("file.close", "Close Tab")
         .accelerator("CmdOrCtrl+W")
         .build(app)?;
+    // A custom item, not `PredefinedMenuItem::close_window`: the predefined one
+    // closes through the OS and emits no `menu` event, and Windows/Linux lack
+    // it. Routing through the frontend runs the same close flow as the title
+    // bar's close button (onCloseRequested in src/windows.ts).
+    let close_window = MenuItemBuilder::with_id("file.closeWindow", "Close Window")
+        .accelerator("CmdOrCtrl+Shift+W")
+        .build(app)?;
     // Bulk close entries — no accelerators (they mirror the tab context menu).
     let close_others =
         MenuItemBuilder::with_id("file.closeOthers", "Close Other Tabs").build(app)?;
@@ -168,6 +189,7 @@ pub fn build<R: Runtime>(
 
     file_menu.append_items(&[
         &new_tab,
+        &new_window,
         &open,
         &open_recent,
         &PredefinedMenuItem::separator(app)?,
@@ -188,6 +210,8 @@ pub fn build<R: Runtime>(
         &close_others,
         &close_right,
         &close_all,
+        &PredefinedMenuItem::separator(app)?,
+        &close_window,
     ])?;
 
     // Populate the Open Recent submenu now that it is attached to File. A
@@ -448,6 +472,22 @@ pub fn build<R: Runtime>(
             .checked(*id == mode)
             .build(app)?;
         theme_menu.append(&item)?;
+    }
+
+    // Window — the macOS standard menu. Predefined items so the OS drives them
+    // on the key window; the list of open windows below them is added by macOS
+    // itself once `rebuild_menu` registers this submenu (see WINDOW_MENU_ID).
+    // Windows/Linux have no such convention, so they get none.
+    #[cfg(target_os = "macos")]
+    {
+        let window_menu = Submenu::with_id(app, WINDOW_MENU_ID, "Window", true)?;
+        menu.append(&window_menu)?;
+        window_menu.append_items(&[
+            &PredefinedMenuItem::minimize(app, None)?,
+            &PredefinedMenuItem::maximize(app, Some("Zoom"))?,
+            &PredefinedMenuItem::separator(app)?,
+            &PredefinedMenuItem::bring_all_to_front(app, None)?,
+        ])?;
     }
 
     // Help — macOS already carries About in its application menu.

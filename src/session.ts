@@ -1,12 +1,11 @@
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { emit, listen } from "@tauri-apps/api/event";
 import { store, FILE_TYPE_IDS, type Tab, type EncodingId, type EolId, type FileTypeId } from "./state";
-import { ipc, type SessionManifest, type TabEntry } from "./ipc";
+import { ipc, type WindowSession, type TabEntry } from "./ipc";
 import { makeState, syncTabFromView } from "./editor";
 import { previewRatio, editorFontSize, isPreviewEnabled } from "./settings";
 
 const DEBOUNCE_MS = 1500;
 const SAFETY_INTERVAL_MS = 30_000;
-const MANIFEST_VERSION = 1;
 
 /** Tabs whose backup content changed since the last successful flush. */
 const pendingBackups = new Set<string>();
@@ -67,7 +66,8 @@ export function dropPending(tabId: string): void {
   pendingBackups.delete(tabId);
 }
 
-function buildManifest(): SessionManifest {
+/** This window's slice of the session; Rust merges it with the others. */
+function buildWindowSession(): WindowSession {
   const { tabs, activeTabId, nextUntitled } = store.state;
   const entries: TabEntry[] = tabs.map((t) => ({
     id: t.id,
@@ -88,7 +88,7 @@ function buildManifest(): SessionManifest {
     editorVisible: t.editorVisible,
     previewVisible: t.previewVisible,
   }));
-  return { version: MANIFEST_VERSION, activeTabId, nextUntitled, tabs: entries };
+  return { activeTabId, nextUntitled, tabs: entries };
 }
 
 /** Flush now: sync live view, write pending backups + manifest atomically. */
@@ -102,7 +102,7 @@ export async function flushNow(): Promise<void> {
     const active = store.activeTab;
     if (active) syncTabFromView(active);
 
-    const manifest = buildManifest();
+    const session = buildWindowSession();
     const backups: [string, string][] = [];
     for (const id of pendingBackups) {
       const t = store.tabById(id);
@@ -110,7 +110,7 @@ export async function flushNow(): Promise<void> {
     }
 
     const snapshot = new Set(pendingBackups);
-    await ipc.persistSession(JSON.stringify(manifest), backups);
+    await ipc.persistSession(JSON.stringify(session), backups);
     // Only clear ids we actually just wrote (new edits during the await stay).
     for (const id of snapshot) pendingBackups.delete(id);
     // Success: clear any prior failure and drop the indicator if it was shown.
@@ -192,14 +192,14 @@ export async function restoreSession(): Promise<void> {
     loaded = null;
   }
 
-  if (!loaded || loaded.manifest.tabs.length === 0) {
+  if (!loaded || loaded.session.tabs.length === 0) {
     return; // caller creates a fresh untitled tab
   }
 
-  store.state.nextUntitled = loaded.manifest.nextUntitled || 1;
+  store.state.nextUntitled = loaded.session.nextUntitled || 1;
   const { backups } = loaded;
 
-  for (const entry of loaded.manifest.tabs) {
+  for (const entry of loaded.session.tabs) {
     if (entry.path === null) {
       // Untitled: content lives only in the backup.
       const doc = backups[entry.id] ?? "";
@@ -277,27 +277,34 @@ export async function restoreSession(): Promise<void> {
 
   const first = store.state.tabs[0];
   store.state.activeTabId =
-    loaded.manifest.activeTabId &&
-    store.state.tabs.some((t) => t.id === loaded!.manifest.activeTabId)
-      ? loaded.manifest.activeTabId
+    loaded.session.activeTabId &&
+    store.state.tabs.some((t) => t.id === loaded!.session.activeTabId)
+      ? loaded.session.activeTabId
       : (first?.id ?? null);
 }
 
 // ---- Triggers --------------------------------------------------------------
+
+/** Broadcast name asking every window to flush (see flushAllWindows). */
+const FLUSH_ALL_EVENT = "session-flush-all";
+
+/** Flush this window and ask every other window to flush too — before
+ *  something ends the whole process without close requests (an update's
+ *  install + relaunch). The others flush asynchronously with no ack; callers
+ *  run it ahead of a step that takes seconds anyway (the download). */
+export async function flushAllWindows(): Promise<void> {
+  await emit(FLUSH_ALL_EVENT).catch(() => {});
+  await flushNow();
+}
 
 export function initSessionTriggers(): void {
   window.addEventListener("blur", () => void flushNow());
   setInterval(() => {
     if (pendingBackups.size > 0) void flushNow();
   }, SAFETY_INTERVAL_MS);
-
-  // Final flush on window close, then destroy.
-  const win = getCurrentWindow();
-  void win.onCloseRequested(async (e) => {
-    e.preventDefault();
-    await flushNow();
-    await win.destroy();
-  });
+  // App-wide on purpose (global `listen`): every window must answer. The
+  // final flush on close lives in windows.ts, with the multi-window close flow.
+  void listen(FLUSH_ALL_EVENT, () => void flushNow());
 }
 
 export function basename(p: string): string {

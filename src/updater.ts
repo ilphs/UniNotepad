@@ -17,6 +17,7 @@
  */
 import { check, type Update, type DownloadEvent } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { flushAllWindows } from "./session";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { invoke } from "@tauri-apps/api/core";
 import { openModal } from "./modal";
@@ -228,6 +229,10 @@ async function runInstall(
   };
 
   try {
+    // Installing ends this process without close requests (the Windows
+    // installer kills it; relaunch() exits it elsewhere), so get every
+    // window's latest edits onto disk first.
+    await flushAllWindows();
     await update.downloadAndInstall(onEvent);
     // On success most platforms need an explicit relaunch to load the new build.
     installBtn.textContent = "Restarting…";

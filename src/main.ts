@@ -22,6 +22,8 @@ import { handleZoomShortcut } from "./mermaid-view";
 import { initWindowTitle, refreshWindowTitle } from "./title";
 import { syncRecentMenu } from "./recent";
 import { checkForUpdates } from "./updater";
+import { initWindowClose, initOpenPathSync, initCrossWindowPrefs } from "./windows";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 // Apply the saved theme before first paint. "system" is resolved here too (JS
 // reads prefers-color-scheme), so there is no CSS fallback and no flash.
@@ -70,8 +72,12 @@ async function bootstrap(): Promise<void> {
   await onMenu(handleMenu);
   await onOpenPaths((paths) => void openPaths(paths));
   await onFileDrop((paths) => void openPaths(paths));
+  // After onOpenPaths: from here on other windows may forward files to us.
+  initOpenPathSync();
   initContextMenus(editorHost, tabbar);
   initSessionTriggers();
+  initWindowClose();
+  initCrossWindowPrefs();
 
   // Live external-change detection. Register the listener, then start watching
   // every restored file-backed tab (tabs opened later watch themselves).
@@ -158,7 +164,9 @@ async function bootstrap(): Promise<void> {
     // "S"=Shift, "A"=Alt in that fixed order. Ctrl+Tab and Ctrl+"+" (the
     // shifted zoom-in) stay with their dedicated listeners above.
     const accelTable: Record<string, string> = {
-      "C+n": "file.new",
+      "C+t": "file.new",
+      "C+n": "file.newWindow",
+      "CS+w": "file.closeWindow",
       "C+o": "file.open",
       "C+s": "file.save",
       "CS+s": "file.saveAs",
@@ -216,7 +224,12 @@ async function bootstrap(): Promise<void> {
   // (session restore, first paint). Silent by design: a found update only lights
   // the status-bar chip; failures are swallowed. Menu → "Check for Updates…"
   // triggers the interactive path instead.
-  setTimeout(() => void checkForUpdates(false), 4000);
+  //
+  // Main window only: every window runs this bootstrap, and one check per
+  // launch is enough (Rust always opens `main` at launch).
+  if (getCurrentWindow().label === "main") {
+    setTimeout(() => void checkForUpdates(false), 4000);
+  }
 }
 
 void bootstrap();

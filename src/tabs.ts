@@ -71,6 +71,11 @@ export function newUntitled(): void {
  *  Tab); null leaves the tab on extension detection. */
 export async function openPath(path: string, fileType: FileTypeId | null = null): Promise<void> {
   const existing = store.state.tabs.find((t) => t.path === path);
+  // Open in another window already → that window activates its tab and comes
+  // forward instead (one buffer per file; see focus_path_owner in windows.rs).
+  // Checked only when this window lacks the file, so the owner's own handling
+  // of the forwarded path takes the branch below and never asks again.
+  if (!existing && (await ipc.focusPathOwner(path))) return;
   if (existing) {
     recordRecent(path);
     // Only a caller-supplied pick overrides what the open tab already has.

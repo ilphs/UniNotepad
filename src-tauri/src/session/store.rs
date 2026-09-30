@@ -45,9 +45,10 @@ impl SessionPaths {
     }
 }
 
-pub fn write_manifest(paths: &SessionPaths, manifest_json: &str) -> std::io::Result<()> {
+pub fn write_manifest(paths: &SessionPaths, manifest: &SessionManifest) -> std::io::Result<()> {
     paths.ensure_dirs()?;
-    atomic_write_bytes(&paths.manifest, manifest_json.as_bytes())
+    let json = manifest.to_disk_json()?;
+    atomic_write_bytes(&paths.manifest, json.as_bytes())
 }
 
 pub fn write_backup(paths: &SessionPaths, tab_id: &str, content: &str) -> std::io::Result<()> {
@@ -68,11 +69,12 @@ pub fn read_backup(paths: &SessionPaths, tab_id: &str) -> Option<String> {
     std::fs::read_to_string(paths.backup_file(tab_id)).ok()
 }
 
-/// Read + parse the manifest. On a corrupt manifest, rename it aside for
-/// forensics and return None so the caller starts a fresh session.
+/// Read + parse the manifest (any known version; v1 migrates to v2). On a
+/// corrupt or unknown-version manifest, rename it aside for forensics and
+/// return None so the caller starts a fresh session.
 pub fn read_manifest(paths: &SessionPaths) -> Option<SessionManifest> {
     let raw = std::fs::read_to_string(&paths.manifest).ok()?;
-    match serde_json::from_str::<SessionManifest>(&raw) {
+    match SessionManifest::parse(&raw) {
         Ok(m) => Some(m),
         Err(_) => {
             let corrupt = paths.manifest.with_extension("json.corrupt");
@@ -127,10 +129,10 @@ mod tests {
     #[test]
     fn manifest_overwrite_is_atomic_and_reads_back() {
         let p = temp_paths();
-        write_manifest(&p, r#"{"version":1,"activeTabId":null,"nextUntitled":1,"tabs":[]}"#).unwrap();
+        write_manifest(&p, &SessionManifest::empty()).unwrap();
         let m = read_manifest(&p).expect("manifest should parse");
-        assert_eq!(m.version, 1);
-        assert!(m.tabs.is_empty());
+        assert_eq!(m.version, 2);
+        assert!(m.windows.is_empty());
         let _ = std::fs::remove_dir_all(&p.root);
     }
 
@@ -154,6 +156,43 @@ mod tests {
         gc_orphan_backups(&p, &["keep".to_string()]);
         assert_eq!(read_backup(&p, "keep").as_deref(), Some("x"));
         assert_eq!(read_backup(&p, "drop"), None);
+        let _ = std::fs::remove_dir_all(&p.root);
+    }
+
+    /// A v1 file left by an older build reads back as a single `main` window.
+    #[test]
+    fn v1_file_on_disk_reads_as_main_window() {
+        let p = temp_paths();
+        p.ensure_dirs().unwrap();
+        std::fs::write(
+            &p.manifest,
+            r#"{"version":1,"activeTabId":"a","nextUntitled":2,"tabs":[{"id":"a","title":"x"}]}"#,
+        )
+        .unwrap();
+        let m = read_manifest(&p).expect("v1 should migrate");
+        assert_eq!(m.windows.len(), 1);
+        assert_eq!(m.windows[0].label, super::super::model::MAIN_WINDOW_LABEL);
+        let _ = std::fs::remove_dir_all(&p.root);
+    }
+
+    /// GC over the union of every window's tabs keeps each window's backups —
+    /// the data-loss case a per-window GC would hit.
+    #[test]
+    fn gc_with_all_windows_keeps_every_windows_backups() {
+        let p = temp_paths();
+        write_backup(&p, "tab-main", "a").unwrap();
+        write_backup(&p, "tab-second", "b").unwrap();
+        write_backup(&p, "tab-orphan", "c").unwrap();
+        let m = SessionManifest::parse(
+            r#"{"version":2,"windows":[
+                {"label":"main","tabs":[{"id":"tab-main"}]},
+                {"label":"win-1","tabs":[{"id":"tab-second"}]}]}"#,
+        )
+        .unwrap();
+        gc_orphan_backups(&p, &m.tab_ids());
+        assert_eq!(read_backup(&p, "tab-main").as_deref(), Some("a"));
+        assert_eq!(read_backup(&p, "tab-second").as_deref(), Some("b"));
+        assert_eq!(read_backup(&p, "tab-orphan"), None);
         let _ = std::fs::remove_dir_all(&p.root);
     }
 }

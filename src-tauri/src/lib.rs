@@ -4,22 +4,71 @@ mod fsio;
 mod menu;
 mod session;
 mod watcher;
+mod windows;
 
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use tauri::{AppHandle, Emitter, Manager, Runtime, State};
+use tauri::{
+    AppHandle, Emitter, EventTarget, Manager, Runtime, State, WebviewWindow, Window, WindowEvent,
+};
+
+use session::model::MAIN_WINDOW_LABEL;
 
 /// Queue for "open these files" requests that may arrive (esp. on macOS via
-/// `RunEvent::Opened`) before the WebView has finished loading. The frontend
-/// calls `frontend_ready` once it is listening, which drains the queue.
+/// `RunEvent::Opened`) before the target window's WebView has finished
+/// loading. Each window's frontend calls `frontend_ready` once it is
+/// listening, which marks it ready and drains the queue into it.
 #[derive(Default)]
 struct PendingOpen(Mutex<PendingState>);
 
 #[derive(Default)]
 struct PendingState {
-    ready: bool,
+    /// Labels of windows whose frontend has registered its listeners.
+    ready: HashSet<String>,
+    /// One queue for the app, not per window: whichever window becomes ready
+    /// first takes it. Normally that is the target anyway (the queue only
+    /// fills while the target is still loading), and a file opening in the
+    /// "wrong" window of the same app beats it waiting for one that may have
+    /// been closed meanwhile.
     queue: Vec<String>,
+}
+
+/// Label of the window that last gained focus — where window-scoped events
+/// (menu clicks, files to open) go. Tracked from `WindowEvent::Focused` rather
+/// than asked for at emit time: a menu click can momentarily unfocus the
+/// window it belongs to on some platforms, and on macOS a click in the app
+/// menu with every window minimized still has to land somewhere sensible.
+#[derive(Default)]
+struct LastFocused(Mutex<Option<String>>);
+
+/// The window that should receive a window-scoped event: the last focused one
+/// if it still exists, else `main`, else any open window. `None` only when no
+/// window is open (macOS keeps the app alive after its last window closes).
+fn target_window<R: Runtime>(app: &AppHandle<R>) -> Option<WebviewWindow<R>> {
+    let last = app
+        .state::<LastFocused>()
+        .0
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone();
+    last.and_then(|label| app.get_webview_window(&label))
+        .or_else(|| app.get_webview_window(MAIN_WINDOW_LABEL))
+        .or_else(|| app.webview_windows().into_values().next())
+}
+
+/// Emit to one window only. The frontend must listen through
+/// `getCurrentWebviewWindow().listen` for this to be exclusive: the global JS
+/// `listen` subscribes with target `Any` and receives events aimed at every
+/// window (see `src/ipc.ts`).
+fn emit_to_window<R: Runtime, S: serde::Serialize + Clone>(
+    app: &AppHandle<R>,
+    label: &str,
+    event: &str,
+    payload: S,
+) {
+    let _ = app.emit_to(EventTarget::webview_window(label), event, payload);
 }
 
 /// Turn argv (or a set of path strings) into existing absolute file paths,
@@ -40,19 +89,25 @@ fn paths_from_args<I: IntoIterator<Item = String>>(args: I, cwd: &Path) -> Vec<S
         .collect()
 }
 
-/// Emit paths to the frontend, or queue them if it is not ready yet.
+/// Emit paths to the target window, or queue them if it is not ready yet.
 fn deliver_paths<R: Runtime>(app: &AppHandle<R>, paths: Vec<String>) {
     if paths.is_empty() {
         return;
     }
+    // Resolved before taking the PendingOpen lock, so the two locks are never
+    // held together.
+    let target = target_window(app).map(|w| w.label().to_string());
     let state = app.state::<PendingOpen>();
     // Recover from a poisoned lock instead of panicking: under release
     // panic="abort" a poisoned mutex would otherwise take the whole app down.
     let mut s = state.0.lock().unwrap_or_else(|e| e.into_inner());
-    if s.ready {
-        let _ = app.emit("open-paths", paths);
-    } else {
-        s.queue.extend(paths);
+    match target {
+        Some(label) if s.ready.contains(&label) => {
+            drop(s);
+            emit_to_window(app, &label, "open-paths", paths);
+        }
+        // Not loaded yet, or no window at all: the next `frontend_ready` takes it.
+        _ => s.queue.extend(paths),
     }
 }
 
@@ -104,7 +159,13 @@ fn rebuild_menu<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
         (s.recent.clone(), s.family.clone(), s.mode.clone())
     };
     let menu = menu::build(app, &recent, &family, &mode)?;
-    app.set_menu(menu)?;
+    app.set_menu(menu.clone())?;
+    // Every rebuild makes a new Window submenu, so macOS has to be told again
+    // which one lists the open windows (it keeps pointing at the old one).
+    #[cfg(target_os = "macos")]
+    if let Some(tauri::menu::MenuItemKind::Submenu(window_menu)) = menu.get(menu::WINDOW_MENU_ID) {
+        window_menu.set_as_windows_menu_for_nsapp()?;
+    }
     Ok(())
 }
 
@@ -148,13 +209,41 @@ fn is_appimage() -> bool {
 }
 
 #[tauri::command]
-fn frontend_ready(app: AppHandle, state: State<PendingOpen>) {
+fn frontend_ready(app: AppHandle, window: Window, state: State<PendingOpen>) {
+    let label = window.label().to_string();
     let mut s = state.0.lock().unwrap_or_else(|e| e.into_inner());
-    s.ready = true;
+    s.ready.insert(label.clone());
     if !s.queue.is_empty() {
         let paths = std::mem::take(&mut s.queue);
         drop(s);
-        let _ = app.emit("open-paths", paths);
+        emit_to_window(&app, &label, "open-paths", paths);
+    }
+}
+
+/// Keep `LastFocused` and `PendingOpen.ready` in step with the window set.
+fn on_window_event(window: &Window, event: &WindowEvent) {
+    let label = window.label();
+    match event {
+        WindowEvent::Focused(true) => {
+            let state = window.state::<LastFocused>();
+            *state.0.lock().unwrap_or_else(|e| e.into_inner()) = Some(label.to_string());
+        }
+        WindowEvent::Destroyed => {
+            {
+                let state = window.state::<LastFocused>();
+                let mut last = state.0.lock().unwrap_or_else(|e| e.into_inner());
+                if last.as_deref() == Some(label) {
+                    // `target_window` falls back to main / any window.
+                    *last = None;
+                }
+            }
+            // A label can be reused by a later window, whose frontend has to
+            // report ready again before files are sent to it.
+            let state = window.state::<PendingOpen>();
+            state.0.lock().unwrap_or_else(|e| e.into_inner()).ready.remove(label);
+            windows::on_destroyed(window.app_handle(), label);
+        }
+        _ => {}
     }
 }
 
@@ -169,8 +258,8 @@ pub fn run() {
             let args = argv.into_iter().skip(1);
             let paths = paths_from_args(args, &cwd);
             deliver_paths(app, paths);
-            // Bring the existing window forward.
-            if let Some(w) = app.get_webview_window("main") {
+            // Bring forward the window the paths went to (the last focused).
+            if let Some(w) = target_window(app) {
                 let _ = w.set_focus();
             }
         }))
@@ -184,8 +273,12 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .manage(PendingOpen::default())
+        .manage(LastFocused::default())
         .manage(MenuState::default())
         .manage(watcher::WatcherState::default())
+        .manage(commands::session::SessionState::default())
+        .manage(windows::WindowRegistry::default())
+        .on_window_event(on_window_event)
         .invoke_handler(tauri::generate_handler![
             frontend_ready,
             set_recent_files,
@@ -199,6 +292,12 @@ pub fn run() {
             commands::session::load_session,
             commands::session::persist_session,
             commands::session::delete_backup,
+            commands::session::forget_window,
+            windows::new_window,
+            windows::begin_close_window,
+            windows::cancel_close_window,
+            windows::set_open_paths,
+            windows::focus_path_owner,
             watcher::watch_file,
             watcher::unwatch_file,
         ])
@@ -210,10 +309,18 @@ pub fn run() {
             // rebuilds through the same path.
             rebuild_menu(handle)?;
 
-            // Route menu clicks to the frontend as a `menu` event.
+            // Route menu clicks to the frontend as a `menu` event — to one
+            // window only. The menu is app-wide (macOS) or identical per
+            // window, so a broadcast would make every window run the command:
+            // one Cmd+S saving in all of them.
             app.on_menu_event(|app, event| {
-                let _ = app.emit("menu", event.id().0.clone());
+                if let Some(w) = target_window(app) {
+                    emit_to_window(app, w.label(), "menu", event.id().0.clone());
+                }
             });
+
+            // Reopen the previous session's other windows (main restores itself).
+            windows::restore_windows(handle);
 
             // Files passed on the command line at first launch.
             let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));

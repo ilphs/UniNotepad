@@ -31,6 +31,10 @@ import { syncThemeMenu } from "./ipc";
 const FAMILY_KEY = "uninotepad.theme";
 const MODE_KEY = "uninotepad.themeMode";
 
+/** Both theme axes' storage keys, for applying a change another window made
+ *  (see initCrossWindowPrefs in windows.ts). */
+export const THEME_STORAGE_KEYS: readonly string[] = [FAMILY_KEY, MODE_KEY];
+
 /** Held in a module constant rather than re-queried per call: a MediaQueryList
  *  with no live reference has been collected by some WebKit builds, silently
  *  killing its listener. That used to be harmless because CSS drove "system";
@@ -147,6 +151,14 @@ export function setThemeFamily(family: ThemeFamily): void {
 export function setThemeMode(mode: ThemeMode): void {
   localStorage.setItem(MODE_KEY, mode);
   commit();
+}
+
+/** Repaint from storage after another window changed the theme. No menu sync:
+ *  the native menu is app-wide and the window that made the change already
+ *  pushed the new check marks. */
+export function reapplyStoredTheme(): void {
+  apply();
+  announce();
 }
 
 /** Shared tail of both setters: repaint, notify listeners, and push the new
