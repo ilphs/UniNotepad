@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.8.0 — 2026-09-30
 
 - **Several previews at once: lock a preview to its document.** A focused
   preview's title bar has a lock button (**UniNotepad: Lock Preview to This
