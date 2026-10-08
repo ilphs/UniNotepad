@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.0 — 2026-10-08
+
+- **Local images show in the preview.** `![](./diagram.svg)` and other local
+  images (PNG, JPG, GIF, WebP, …) are read relative to the Markdown file's own
+  folder and shown inline. An SVG is rendered as an image, so any script inside it
+  never runs. Exported HTML carries the images along, so the file stands on its
+  own. An image that cannot be read stays as a dashed box with the reason in its
+  tooltip; an untitled document can only show absolute paths until it is saved.
+
 ## 0.8.2 — 2026-09-30
 
 - **Preview tabs are named exactly like their file** — `notes.md` rather than
