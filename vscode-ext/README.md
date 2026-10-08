@@ -29,6 +29,11 @@ full-bleed layout for a standalone `.mmd` file that *is* one diagram.
 
 Works on `.md` and on standalone `.mmd` / `.mermaid` files.
 
+Local images — `![](./diagram.svg)`, PNG, JPG, GIF, WebP and the like — are
+resolved against the Markdown file's own folder and shown inline, SVG included
+(rendered as an image, so any script inside it never runs). An exported HTML file
+carries them along, so it stands on its own.
+
 The preview **follows the active editor**, like the built-in one: switch to
 another Markdown file and the preview switches with you, scrolled back to the top.
 Editors it cannot render — a `.ts` file, an output channel, or the preview itself
