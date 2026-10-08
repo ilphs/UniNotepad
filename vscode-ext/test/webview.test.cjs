@@ -181,6 +181,45 @@ const settle = () => new Promise((r) => setTimeout(r, 150));
   assert.strictEqual(w.__pwned, undefined, "injected script executed");
   ok("DOMPurify strips inline handlers and script tags");
 
+  // ---- local images ----
+  posted.length = 0;
+  const imgDoc = "![logo](./img/logo.svg) ![remote](https://example.com/r.png) ![gone](./missing.svg)";
+  send(w, { type: "content", fileType: "markdown", text: imgDoc });
+  await settle();
+  let imgs = host.querySelectorAll(".md-body img");
+  assert.strictEqual(imgs[0].getAttribute("src"), null, "local src left in place to load against the webview origin");
+  assert.strictEqual(imgs[0].getAttribute("data-local-src"), "./img/logo.svg");
+  assert.strictEqual(imgs[1].getAttribute("src"), "https://example.com/r.png", "remote src must be left to the CSP");
+  let reqs = posted.filter((m) => m.type === "readImage");
+  assert.deepStrictEqual(
+    reqs.map((m) => [m.src, m.knownMtime]),
+    [["./img/logo.svg", null], ["./missing.svg", null]],
+    "local images not requested from the host: " + JSON.stringify(posted),
+  );
+  ok("local image srcs are parked and requested from the host; remote ones are not");
+
+  const SVG_URI = "data:image/svg+xml;base64,PHN2Zy8+";
+  send(w, { type: "image", id: reqs[0].id, mtimeMs: 5, dataUri: SVG_URI });
+  send(w, { type: "image", id: reqs[1].id, mtimeMs: null, dataUri: null, error: "missing.svg: not found" });
+  await settle();
+  assert.strictEqual(imgs[0].getAttribute("src"), SVG_URI);
+  assert.strictEqual(imgs[0].getAttribute("data-local-src"), null);
+  assert.ok(imgs[2].classList.contains("md-img-missing"), "failed image not marked");
+  assert.strictEqual(imgs[2].title, "missing.svg: not found");
+  ok("host replies fill images in as data: URIs, and failures carry the reason");
+
+  posted.length = 0;
+  send(w, { type: "content", fileType: "markdown", text: imgDoc + " " });
+  await settle();
+  reqs = posted.filter((m) => m.type === "readImage");
+  assert.strictEqual(reqs[0].knownMtime, 5, "re-render did not offer the cached mtime");
+  send(w, { type: "image", id: reqs[0].id, mtimeMs: 5, dataUri: null });
+  send(w, { type: "image", id: reqs[1].id, mtimeMs: null, dataUri: null, error: "x" });
+  await settle();
+  imgs = host.querySelectorAll(".md-body img");
+  assert.strictEqual(imgs[0].getAttribute("src"), SVG_URI, "unchanged image not served from the cache");
+  ok("an unchanged image is reused from the cache on re-render");
+
   // ---- link interception ----
   send(w, { type: "content", fileType: "markdown", text: "[out](https://example.com/x) and [rel](./a.md)" });
   await settle();

@@ -680,6 +680,15 @@ body {
   white-space: pre-wrap;
 }
 .md-body img { max-width: 100%; }
+/* A local image that could not be read: keep a visible box (the alt text, if
+   any, shows inside it) — the reason is in its tooltip. */
+.md-body img.md-img-missing {
+  display: inline-block;
+  min-width: 1.5em;
+  min-height: 1.5em;
+  outline: 1px dashed currentColor;
+  opacity: 0.6;
+}
 .md-body hr { border: none; border-top: 1px solid var(--border); margin: 1.2em 0; }
 /* Tables track the available width instead of hugging their content.
    `display:block` used to sit here to get `overflow-x` for wide tables, but a

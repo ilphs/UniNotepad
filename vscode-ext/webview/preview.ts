@@ -34,7 +34,7 @@ import {
   setPreviewZoomHandler,
 } from "./mermaid-view";
 import { previewContentWidth } from "./settings";
-import type { PreviewFileType } from "../shared/protocol";
+import type { HostToWebview, PreviewFileType } from "../shared/protocol";
 
 let previewHost: HTMLElement;
 
@@ -58,6 +58,7 @@ function ensureMods(): Promise<{ marked: Marked; DOMPurify: Purify }> {
     loading = Promise.all([import("marked"), import("dompurify")]).then(
       ([{ marked }, { default: DOMPurify }]) => {
         marked.setOptions({ gfm: true, breaks: false });
+        DOMPurify.addHook("afterSanitizeAttributes", deferLocalImage);
         mods = { marked, DOMPurify };
         return mods;
       },
@@ -150,7 +151,99 @@ async function renderNow(): Promise<void> {
   const mdBody = ensureMdBody();
   mdBody.innerHTML = DOMPurify.sanitize(marked.parse(docText) as string);
   wrapTables(mdBody);
+  // Host round-trips, not DOM work, so they overlap mermaid. Never rejects: a
+  // failed image is marked on its own <img>.
+  const images = inlineLocalImages(mdBody, myRun);
   await renderMermaid(mdBody, myRun);
+  await images;
+}
+
+// ---- Local images ----------------------------------------------------------
+
+/** Where a local `<img src>` waits while the host reads its bytes. */
+const LOCAL_SRC_ATTR = "data-local-src";
+
+/** Any URL scheme; two or more letters so a Windows drive stays a path. */
+const HAS_SCHEME = /^[a-z][a-z0-9+.-]+:/i;
+
+/** A src the host should read: a path or a `file:` URL. Remote and `data:`
+ *  srcs are left to the CSP. */
+function isLocalSrc(src: string): boolean {
+  const path = src.split("#")[0];
+  if (path === "") return false;
+  return /^file:/i.test(path) || !HAS_SCHEME.test(path);
+}
+
+/** DOMPurify hook: park a local image's src before the HTML reaches the DOM.
+ *  Left in place it would resolve against the webview's own origin and be
+ *  refused by the CSP; parked, it loads nothing until inlineLocalImages swaps in
+ *  the bytes the host read. */
+function deferLocalImage(node: Element): void {
+  if (node.tagName !== "IMG") return;
+  const src = node.getAttribute("src");
+  if (!src || !isLocalSrc(src)) return;
+  node.setAttribute(LOCAL_SRC_ATTR, src);
+  node.removeAttribute("src");
+}
+
+type ImageReply = Extract<HostToWebview, { type: "image" }>;
+
+let imageReqId = 0;
+const imageWaiters = new Map<number, (reply: ImageReply) => void>();
+
+/** Route a host `image` reply to the request waiting on it. */
+export function onImageReply(msg: ImageReply): void {
+  const waiter = imageWaiters.get(msg.id);
+  if (!waiter) return;
+  imageWaiters.delete(msg.id);
+  waiter(msg);
+}
+
+function requestImage(src: string, knownMtime: number | null): Promise<ImageReply> {
+  const id = ++imageReqId;
+  return new Promise((resolve) => {
+    imageWaiters.set(id, resolve);
+    post({ type: "readImage", id, src, knownMtime });
+  });
+}
+
+/** Last reply per (document, src). Every edit re-renders, so an unchanged image
+ *  costs the host a stat instead of a read and a base64 trip across the channel. */
+const imageCache = new Map<string, { mtimeMs: number | null; dataUri: string }>();
+
+/** Fill in every image deferLocalImage parked with the `data:` URI the host
+ *  read relative to the source document. Shown through `<img>`, an SVG runs no
+ *  script and fetches nothing. A failure leaves the image empty with the reason
+ *  in its tooltip. */
+async function inlineLocalImages(mdBody: HTMLElement, myRun: number): Promise<void> {
+  const imgs = Array.from(mdBody.querySelectorAll<HTMLImageElement>(`img[${LOCAL_SRC_ATTR}]`));
+  if (imgs.length === 0) return;
+  const doc = sourceUri();
+  const used = new Set<string>();
+  await Promise.all(
+    imgs.map(async (img) => {
+      const src = img.getAttribute(LOCAL_SRC_ATTR) ?? "";
+      const key = `${doc}\0${src}`;
+      used.add(key);
+      const cached = imageCache.get(key);
+      const reply = await requestImage(src, cached?.mtimeMs ?? null);
+      // null without an error only when knownMtime matched: reuse the cache.
+      const dataUri = reply.dataUri ?? (reply.error ? undefined : cached?.dataUri);
+      if (dataUri) imageCache.set(key, { mtimeMs: reply.mtimeMs, dataUri });
+      if (renderSeq !== myRun) return;
+      if (dataUri) {
+        img.removeAttribute(LOCAL_SRC_ATTR);
+        img.src = dataUri;
+      } else {
+        img.classList.add("md-img-missing");
+        img.title = reply.error ?? `Could not load ${src}`;
+      }
+    }),
+  );
+  // Drop what this document no longer shows, so the cache tracks one document's
+  // images rather than every image ever previewed.
+  if (renderSeq !== myRun) return;
+  for (const key of imageCache.keys()) if (!used.has(key)) imageCache.delete(key);
 }
 
 /** Give every table its own horizontal scroll viewport.

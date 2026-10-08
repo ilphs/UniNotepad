@@ -44,6 +44,15 @@ export interface ResolvedLink {
   binary: boolean;
 }
 
+/** An image a Markdown document references, read for the preview (see read_image). */
+export interface ImageData {
+  /** Absolute path the src resolved to. */
+  path: string;
+  mtimeMs: number | null;
+  /** The image as a `data:` URI; null when `knownMtime` matched (cache is current). */
+  dataUri: string | null;
+}
+
 /** Emitted by the backend when a watched file changes on disk. `path` echoes
  *  the exact string passed to watchFile, so it matches a tab's `path`. */
 export interface FileChangedPayload {
@@ -111,6 +120,11 @@ export const ipc = {
    *  must already be fragment-free, unwrapped and percent-decoded. */
   resolveLink: (base: string, href: string) =>
     invoke<ResolvedLink>("resolve_link", { base, href }),
+
+  /** Read a preview image as a `data:` URI. `base` is the document's path (null
+   *  for an untitled tab); pass the last `mtimeMs` to skip an unchanged re-read. */
+  readImage: (base: string | null, href: string, knownMtime: number | null) =>
+    invoke<ImageData>("read_image", { base, href, knownMtime }),
 
   // Watch/unwatch are best-effort: a failed watch just means no live updates
   // (the focus-mtime fallback still catches changes), so errors are swallowed.

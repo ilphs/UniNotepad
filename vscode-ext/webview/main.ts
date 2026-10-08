@@ -12,6 +12,7 @@ import { applyMermaidBg, handleZoom } from "./mermaid-view";
 import {
   applyPreviewZoom,
   mountPreview,
+  onImageReply,
   renderedHtml,
   setContent,
   setScrollFraction,
@@ -50,6 +51,9 @@ window.addEventListener("message", (e: MessageEvent<HostToWebview>) => {
       return;
     case "requestHtml":
       post({ type: "html", token: msg.token, html: renderedHtml() });
+      return;
+    case "image":
+      onImageReply(msg);
       return;
   }
 });

@@ -46,7 +46,11 @@ export type HostToWebview =
   | { type: "lock"; locked: boolean }
   /** Ask for the rendered `.md-body` innerHTML. `token` comes back on the reply
    *  so a second export started before the first answered can't be crossed. */
-  | { type: "requestHtml"; token: number };
+  | { type: "requestHtml"; token: number }
+  /** Answer to `readImage`, matched by `id`. `dataUri` is null either on error
+   *  (`error` says why) or because `knownMtime` matched — the webview's cached
+   *  copy is current. */
+  | { type: "image"; id: number; mtimeMs: number | null; dataUri: string | null; error?: string };
 
 export type WebviewToHost =
   /** The webview finished mounting and can accept content. The host holds the
@@ -63,4 +67,9 @@ export type WebviewToHost =
   | { type: "html"; token: number; html: string }
   /** A link click inside the rendered Markdown. Handled host-side so `http(s)`
    *  goes to the browser and a relative path opens as a workspace document. */
-  | { type: "openLink"; href: string };
+  | { type: "openLink"; href: string }
+  /** A local `<img src>` from the Markdown, to be read relative to the source
+   *  document and returned as a `data:` URI — the webview cannot reach the
+   *  document's folder itself. `knownMtime` is the last reply's `mtimeMs` for
+   *  this src, so an unchanged image is not re-sent. */
+  | { type: "readImage"; id: number; src: string; knownMtime: number | null };

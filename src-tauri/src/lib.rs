@@ -289,6 +289,7 @@ pub fn run() {
             commands::file::save_file,
             commands::file::stat_file,
             commands::file::resolve_link,
+            commands::file::read_image,
             commands::session::load_session,
             commands::session::persist_session,
             commands::session::delete_backup,

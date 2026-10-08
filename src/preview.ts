@@ -64,6 +64,7 @@ function ensureMods(): Promise<{ marked: Marked; DOMPurify: Purify }> {
       ([{ marked }, { default: DOMPurify }]) => {
         marked.setOptions({ gfm: true, breaks: false });
         marked.use({ renderer: { heading: headingWithId } });
+        DOMPurify.addHook("afterSanitizeAttributes", deferLocalImage);
         // Fenced code is left as plain `<pre><code class="language-…">` by marked;
         // it's syntax-highlighted after sanitize by reusing CodeMirror's own
         // grammars + HighlightStyle (highlightCodeBlocks), so the preview shares
@@ -331,9 +332,90 @@ async function renderNow(): Promise<void> {
   mdBody.innerHTML = DOMPurify.sanitize(marked.parse(doc) as string);
   prefixAnchorLinks(mdBody);
   wrapTables(mdBody);
+  // Disk reads, not DOM work, so they overlap highlighting and mermaid. Never
+  // rejects: a failed image is marked on its own <img>.
+  const images = inlineLocalImages(mdBody, myRun);
   await highlightCodeBlocks(mdBody, myRun);
   if (renderSeq !== myRun || previewHost.hidden) return;
   await renderMermaid(mdBody, myRun);
+  await images;
+}
+
+// ---- Local images ----------------------------------------------------------
+
+/** Where a local `<img src>` waits while its bytes are fetched. */
+const LOCAL_SRC_ATTR = "data-local-src";
+
+/** DOMPurify hook: park a local image's src before the HTML reaches the DOM.
+ *
+ *  The webview's origin is the app bundle, so `./diagram.svg` left in `src`
+ *  would resolve there and miss (a stray 404 at best). Moving it aside means the
+ *  image loads nothing until inlineLocalImages swaps in the file's bytes.
+ *  Remote and `data:` srcs are left alone — parseLocalHref refuses any scheme
+ *  but `file:` — and stay subject to the CSP (`img-src 'self' data:`). */
+function deferLocalImage(node: Element): void {
+  if (node.tagName !== "IMG") return;
+  const src = node.getAttribute("src");
+  if (!src || !parseLocalHref(src)) return;
+  node.setAttribute(LOCAL_SRC_ATTR, src);
+  node.removeAttribute("src");
+}
+
+/** Last read per (document, src). Every keystroke re-renders, so an unchanged
+ *  image costs a stat in Rust instead of a read and a base64 round-trip. */
+const imageCache = new Map<string, { mtimeMs: number | null; dataUri: string }>();
+
+/** Fill in every image deferLocalImage parked, as a `data:` URI read by Rust
+ *  (read_image) relative to the document's own folder. Shown through `<img>`, an
+ *  SVG runs no script and fetches nothing — which is also why the bytes are never
+ *  inlined as markup. The `data:` URI also makes an HTML export self-contained.
+ *  A failure leaves the image empty with the reason in its tooltip. */
+async function inlineLocalImages(mdBody: HTMLElement, myRun: number): Promise<void> {
+  const imgs = Array.from(mdBody.querySelectorAll<HTMLImageElement>(`img[${LOCAL_SRC_ATTR}]`));
+  if (imgs.length === 0) return;
+  const base = store.activeTab?.path ?? null;
+  const used = new Set<string>();
+  await Promise.all(
+    imgs.map(async (img) => {
+      const src = img.getAttribute(LOCAL_SRC_ATTR) ?? "";
+      const key = `${base ?? ""}\0${src}`;
+      used.add(key);
+      try {
+        const dataUri = await readLocalImage(base, src, key);
+        if (renderSeq !== myRun) return;
+        img.removeAttribute(LOCAL_SRC_ATTR);
+        img.src = dataUri;
+      } catch (err) {
+        if (renderSeq !== myRun) return;
+        img.classList.add("md-img-missing");
+        img.title = String(err);
+      }
+    }),
+  );
+  // Drop what this document no longer shows, so the cache tracks one document's
+  // images rather than every image ever previewed.
+  if (renderSeq !== myRun) return;
+  for (const key of imageCache.keys()) if (!used.has(key)) imageCache.delete(key);
+}
+
+async function readLocalImage(base: string | null, src: string, key: string): Promise<string> {
+  const link = parseLocalHref(src);
+  if (!link) throw new Error(`Unsupported image source: ${src}`);
+  const cached = imageCache.get(key);
+  const known = cached?.mtimeMs ?? null;
+  let data;
+  try {
+    data = await ipc.readImage(base, link.path, known);
+  } catch (err) {
+    // Same fallback as links: `%` may really be in the file name.
+    if (link.raw === link.path) throw err;
+    data = await ipc.readImage(base, link.raw, known);
+  }
+  // null only when `known` matched, i.e. there is a cached copy to reuse.
+  const dataUri = data.dataUri ?? cached?.dataUri;
+  if (!dataUri) throw new Error(`${data.path}: no image data`);
+  imageCache.set(key, { mtimeMs: data.mtimeMs, dataUri });
+  return dataUri;
 }
 
 /** Point a document's own `#anchor` links at the prefixed heading ids, so the

@@ -26,6 +26,7 @@
  */
 import * as vscode from "vscode";
 import type { HostToWebview, PreviewFileType, PreviewSettings, WebviewToHost } from "../shared/protocol";
+import { readPreviewImage } from "./images";
 
 export const VIEW_TYPE = "uninotepad.markdownPreview";
 
@@ -502,6 +503,22 @@ export class PreviewPanel {
       case "openLink":
         void this.openLink(msg.href);
         return;
+      case "readImage":
+        void this.readImage(msg.id, msg.src, msg.knownMtime);
+        return;
+    }
+  }
+
+  /** Answer a `readImage`. Always replies, error or not — the webview awaits
+   *  every request it makes. Resolved against the document the panel shows now;
+   *  a reply that lands after a retarget is dropped by the webview's render token. */
+  private async readImage(id: number, src: string, knownMtime: number | null): Promise<void> {
+    try {
+      const r = await readPreviewImage(this.doc.uri, src, knownMtime);
+      this.post({ type: "image", id, mtimeMs: r.mtimeMs, dataUri: r.dataUri });
+    } catch (e) {
+      const error = e instanceof Error ? e.message : String(e);
+      this.post({ type: "image", id, mtimeMs: null, dataUri: null, error });
     }
   }
 

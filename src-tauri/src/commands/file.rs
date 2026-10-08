@@ -4,6 +4,8 @@ use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
+use base64::engine::general_purpose::STANDARD as BASE64;
+use base64::Engine;
 use serde::Serialize;
 use tauri::State;
 
@@ -269,6 +271,19 @@ fn looks_binary(path: &Path) -> bool {
     }
 }
 
+/// An href as a filesystem path: absolute as written, otherwise joined to the
+/// directory of `base` (the linking document). Not normalized.
+fn join_link(base: &str, href: &str) -> Result<PathBuf, String> {
+    let href_path = Path::new(href);
+    if href_path.is_absolute() {
+        return Ok(href_path.to_path_buf());
+    }
+    let dir = Path::new(base)
+        .parent()
+        .ok_or_else(|| format!("{base}: no parent directory to resolve against"))?;
+    Ok(dir.join(href_path))
+}
+
 /// Resolve a link target found inside a document against the document's own
 /// path, and report enough for the frontend to decide what to do with it.
 ///
@@ -279,16 +294,7 @@ fn looks_binary(path: &Path) -> bool {
 /// to one place in the frontend.
 #[tauri::command]
 pub fn resolve_link(base: String, href: String) -> Result<ResolvedLink, String> {
-    let href_path = Path::new(&href);
-    let joined = if href_path.is_absolute() {
-        href_path.to_path_buf()
-    } else {
-        let dir = Path::new(&base)
-            .parent()
-            .ok_or_else(|| format!("{base}: no parent directory to resolve against"))?;
-        dir.join(href_path)
-    };
-    let normalized = lexical_normalize(&joined);
+    let normalized = lexical_normalize(&join_link(&base, &href)?);
     let meta = std::fs::metadata(&normalized).ok();
     let exists = meta.is_some();
     let is_dir = meta.as_ref().is_some_and(|m| m.is_dir());
@@ -305,6 +311,91 @@ pub fn resolve_link(base: String, href: String) -> Result<ResolvedLink, String> 
         exists,
         is_dir,
     })
+}
+
+// ---- Preview images ----------------------------------------------------------
+
+/// Images past this are refused: the bytes travel to the webview as a base64
+/// `data:` URI (a third larger again), and a preview is no place for a photo dump.
+const IMAGE_MAX_BYTES: u64 = 20 * 1024 * 1024;
+
+/// MIME type for the image extensions the preview will inline. The allow-list is
+/// also the read policy: a document can name any path, so only files that are
+/// plainly images are ever read on its behalf.
+fn image_mime(path: &Path) -> Option<&'static str> {
+    let ext = path.extension()?.to_str()?.to_ascii_lowercase();
+    Some(match ext.as_str() {
+        "svg" => "image/svg+xml",
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "bmp" => "image/bmp",
+        "ico" => "image/x-icon",
+        "avif" => "image/avif",
+        _ => return None,
+    })
+}
+
+#[derive(Serialize)]
+pub struct ImageData {
+    /// Absolute path the image resolved to.
+    pub path: String,
+    #[serde(rename = "mtimeMs")]
+    pub mtime_ms: Option<u64>,
+    /// The image as a `data:` URI. None when the caller's `known_mtime` still
+    /// matches the file: its cached copy is current and nothing was read.
+    #[serde(rename = "dataUri")]
+    pub data_uri: Option<String>,
+}
+
+/// Read an image a Markdown document references, for the preview pane.
+///
+/// The webview's origin is the app bundle, so a relative `<img src>` there can
+/// never reach the document's folder; the preview hands the src here instead and
+/// swaps in the returned `data:` URI. That keeps the CSP at `img-src 'self'
+/// data:`, and an SVG shown through `<img>` runs no script and loads nothing
+/// external. `base` is the document's path — None for an untitled tab, which can
+/// then only show absolute paths. `href` is decoded the same way as for
+/// `resolve_link`.
+///
+/// Async so a large image is read off the main thread.
+#[tauri::command]
+pub async fn read_image(
+    base: Option<String>,
+    href: String,
+    known_mtime: Option<u64>,
+) -> Result<ImageData, String> {
+    load_image(base.as_deref(), &href, known_mtime)
+}
+
+fn load_image(base: Option<&str>, href: &str, known_mtime: Option<u64>) -> Result<ImageData, String> {
+    let joined = match base {
+        Some(b) => join_link(b, href)?,
+        None if Path::new(href).is_absolute() => PathBuf::from(href),
+        None => return Err("save this document first to show relative images".to_string()),
+    };
+    let path = lexical_normalize(&joined);
+    let shown = path.to_string_lossy().into_owned();
+    let mime = image_mime(&path).ok_or_else(|| format!("{shown}: not a supported image type"))?;
+    let meta = std::fs::metadata(&path).map_err(|e| format!("{shown}: {e}"))?;
+    if !meta.is_file() {
+        return Err(format!("{shown}: not a file"));
+    }
+    if meta.len() > IMAGE_MAX_BYTES {
+        return Err(format!(
+            "{shown}: image is {} MB, over the {} MB preview limit",
+            meta.len() / (1024 * 1024),
+            IMAGE_MAX_BYTES / (1024 * 1024)
+        ));
+    }
+    let mtime = mtime_ms(&path);
+    if mtime.is_some() && mtime == known_mtime {
+        return Ok(ImageData { path: shown, mtime_ms: mtime, data_uri: None });
+    }
+    let bytes = std::fs::read(&path).map_err(|e| format!("{shown}: {e}"))?;
+    let data_uri = format!("data:{mime};base64,{}", BASE64.encode(bytes));
+    Ok(ImageData { path: shown, mtime_ms: mtime, data_uri: Some(data_uri) })
 }
 
 #[cfg(test)]
@@ -490,6 +581,56 @@ mod tests {
         .unwrap();
         assert!(r.exists);
         assert_eq!(r.path, canon(&target));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn load_image_inlines_an_svg_relative_to_the_document() {
+        let dir = temp_dir();
+        let doc = dir.join("index.md");
+        std::fs::create_dir_all(dir.join("img")).unwrap();
+        std::fs::write(dir.join("img").join("logo.svg"), b"<svg/>").unwrap();
+        let base = doc.to_string_lossy().into_owned();
+        let img = load_image(Some(&base), "./img/logo.svg", None).unwrap();
+        // base64("<svg/>") = PHN2Zy8+
+        assert_eq!(img.data_uri.as_deref(), Some("data:image/svg+xml;base64,PHN2Zy8+"));
+        assert!(img.mtime_ms.is_some());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn load_image_skips_the_read_when_the_cached_mtime_still_matches() {
+        let dir = temp_dir();
+        let doc = dir.join("index.md");
+        std::fs::write(dir.join("a.PNG"), b"\x89PNG").unwrap();
+        let base = doc.to_string_lossy().into_owned();
+        let first = load_image(Some(&base), "a.PNG", None).unwrap();
+        assert!(first.data_uri.unwrap().starts_with("data:image/png;base64,"));
+        let again = load_image(Some(&base), "a.PNG", first.mtime_ms).unwrap();
+        assert!(again.data_uri.is_none());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn load_image_refuses_what_is_not_an_image() {
+        let dir = temp_dir();
+        let doc = dir.join("index.md");
+        std::fs::write(dir.join("secret.txt"), b"x").unwrap();
+        let base = doc.to_string_lossy().into_owned();
+        let err = load_image(Some(&base), "secret.txt", None).err().unwrap();
+        assert!(err.contains("not a supported image type"), "unexpected error: {err}");
+        assert!(load_image(Some(&base), "missing.svg", None).is_err());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn load_image_without_a_base_takes_only_absolute_paths() {
+        let dir = temp_dir();
+        let svg = dir.join("x.svg");
+        std::fs::write(&svg, b"<svg/>").unwrap();
+        assert!(load_image(None, &svg.to_string_lossy(), None).unwrap().data_uri.is_some());
+        let err = load_image(None, "x.svg", None).err().unwrap();
+        assert!(err.contains("save this document first"), "unexpected error: {err}");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

@@ -29,6 +29,9 @@ const docChangeListeners = [];
 const visibleRangeListeners = [];
 const activeEditorListeners = [];
 const closeDocListeners = [];
+/** Files `workspace.fs` can see, by URI string, and every readFile it served. */
+const fakeFiles = new Map();
+const fileReads = [];
 
 function mkUri(str) {
   const u = {
@@ -149,6 +152,7 @@ const vscode = {
     },
   },
   ViewColumn: { One: 1, Two: 2, Three: 3, Beside: -2 },
+  FileType: { File: 1, Directory: 2 },
   ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },
   Disposable: class {
     constructor(fn) {
@@ -213,6 +217,15 @@ const vscode = {
       },
     }),
     fs: {
+      stat: (u) => {
+        const f = fakeFiles.get(u.toString());
+        if (!f) return Promise.reject(new Error(u.toString() + ": not found"));
+        return Promise.resolve({ type: 1, size: f.bytes.length, mtime: f.mtime });
+      },
+      readFile: (u) => {
+        fileReads.push(u.toString());
+        return Promise.resolve(fakeFiles.get(u.toString()).bytes);
+      },
       writeFile: (_uri, bytes) => {
         savedBytes = bytes;
         return Promise.resolve();
@@ -495,6 +508,35 @@ ok("setSetting reaches configuration");
   await second;
   assert.ok(Buffer.from(savedBytes).toString("utf8").includes("<p>fresh</p>"));
   ok("stale export token is ignored");
+
+  // --- local images: read relative to the document, as data: URIs
+  fakeFiles.set("file:///tmp/img/a b.svg", { bytes: Buffer.from("<svg/>"), mtime: 7 });
+  fakeFiles.set("file:///tmp/notes.txt", { bytes: Buffer.from("x"), mtime: 7 });
+  const imageReply = async (msg) => {
+    panelStub.posted.length = 0;
+    messageHandler(Object.assign({ type: "readImage", knownMtime: null }, msg));
+    for (let i = 0; i < 5; i++) await new Promise((r) => setImmediate(r));
+    const reply = panelStub.posted.find((m) => m.type === "image" && m.id === msg.id);
+    assert.ok(reply, "no image reply for request " + msg.id);
+    return reply;
+  };
+  let r = await imageReply({ id: 1, src: "img/a%20b.svg" });
+  assert.strictEqual(r.dataUri, "data:image/svg+xml;base64,PHN2Zy8+");
+  assert.strictEqual(r.mtimeMs, 7);
+  ok("readImage resolves against the document's folder and returns a data: URI");
+
+  fileReads.length = 0;
+  r = await imageReply({ id: 2, src: "img/a%20b.svg", knownMtime: 7 });
+  assert.strictEqual(r.dataUri, null);
+  assert.strictEqual(r.error, undefined);
+  assert.deepStrictEqual(fileReads, [], "an unchanged image was read again");
+  ok("readImage skips the read when the cached mtime still matches");
+
+  r = await imageReply({ id: 3, src: "./notes.txt" });
+  assert.ok(/not a supported image type/.test(r.error), "non-image read: " + JSON.stringify(r));
+  r = await imageReply({ id: 4, src: "./nope.png" });
+  assert.ok(r.error && r.dataUri === null, "missing image did not report an error");
+  ok("readImage refuses non-images and reports missing files");
 
   // --- dispose cleanup
   panelStub.dispose();
