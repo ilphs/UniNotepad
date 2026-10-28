@@ -909,7 +909,11 @@ ${body}
 }
 
 /** Open the OS print dialog. A print stylesheet (styles.css @media print) hides
- *  everything except the preview body, so "Save as PDF" yields the document. */
+ *  everything except the preview body, so "Save as PDF" yields the document.
+ *  NOTE: on macOS Tauri replaces window.print with an IPC call
+ *  (`plugin:webview|print`, needs `core:webview:allow-print` in capabilities)
+ *  that returns a Promise — a rejection used to vanish silently, so surface it.
+ *  Windows/Linux keep the native void-returning window.print. */
 export function printPreview(): void {
   if (previewHost.hidden) {
     void message("Open the preview (Markdown/Mermaid/JSON) before printing.", {
@@ -918,7 +922,12 @@ export function printPreview(): void {
     });
     return;
   }
-  window.print();
+  const result = window.print() as unknown;
+  if (result instanceof Promise) {
+    result.catch((err) => {
+      void message(`Failed to print:\n${err}`, { title: "UniNotepad", kind: "error" });
+    });
+  }
 }
 
 // ---- Split ratio / divider drag --------------------------------------------

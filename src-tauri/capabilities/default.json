@@ -8,6 +8,7 @@
     "core:window:allow-destroy",
     "core:window:allow-close",
     "core:window:allow-set-title",
+    "core:webview:allow-print",
     "core:app:allow-version",
     "core:event:default",
     "dialog:default",
