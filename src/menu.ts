@@ -42,7 +42,7 @@ import { openPreferences } from "./preferences";
 import { clearRecent } from "./recent";
 import { setThemeFamily, setThemeMode } from "./theme";
 import { isThemeFamily, isThemeMode } from "./themes";
-import { togglePreview, exportPreviewHtml, printPreview } from "./preview";
+import { togglePreview, exportPreviewHtml, exportPreviewPdf, printPreview } from "./preview";
 import { handleZoomShortcut } from "./mermaid-view";
 import {
   sortLinesAsc,
@@ -115,6 +115,9 @@ export function handleMenu(id: string): void {
       break;
     case "file.exportHtml":
       void exportPreviewHtml();
+      break;
+    case "file.exportPdf":
+      void exportPreviewPdf();
       break;
     case "file.print":
       printPreview();

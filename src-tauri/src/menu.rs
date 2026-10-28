@@ -164,6 +164,8 @@ pub fn build<R: Runtime>(
         .build(app)?;
     let export_html =
         MenuItemBuilder::with_id("file.exportHtml", "Export Preview as HTML…").build(app)?;
+    let export_pdf =
+        MenuItemBuilder::with_id("file.exportPdf", "Export Preview as PDF…").build(app)?;
     let print_preview = MenuItemBuilder::with_id("file.print", "Print Preview…")
         .accelerator("CmdOrCtrl+P")
         .build(app)?;
@@ -203,6 +205,7 @@ pub fn build<R: Runtime>(
     file_menu.append_items(&[
         &PredefinedMenuItem::separator(app)?,
         &export_html,
+        &export_pdf,
         &print_preview,
         &PredefinedMenuItem::separator(app)?,
         &reopen_closed,

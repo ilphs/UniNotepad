@@ -844,6 +844,32 @@ export async function exportPreviewHtml(): Promise<void> {
   }
 }
 
+/** Export the rendered preview straight to a PDF file. Same page layout as
+ *  Print Preview (the `@media print` rules in styles.css), but written by the
+ *  OS WebView's own PDF engine without going through the print dialog.
+ *  Related: src-tauri/src/commands/pdf.rs (per-platform implementation). */
+export async function exportPreviewPdf(): Promise<void> {
+  if (previewHost.hidden) {
+    await message("Open the preview (Markdown/Mermaid/JSON) before exporting.", {
+      title: "UniNotepad",
+      kind: "info",
+    });
+    return;
+  }
+  const tab = store.activeTab;
+  const title = tab ? tab.title : "export";
+  const path = await save({
+    defaultPath: title.replace(/\.[^.]+$/, "") + ".pdf",
+    filters: [{ name: "PDF", extensions: ["pdf"] }],
+  });
+  if (!path) return;
+  try {
+    await ipc.exportPdf(path);
+  } catch (err) {
+    await message(`Failed to export PDF:\n${err}`, { title: "UniNotepad", kind: "error" });
+  }
+}
+
 /** Wrap rendered body HTML in a minimal, self-contained HTML5 document. */
 function htmlDocument(title: string, body: string): string {
   const esc = title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");

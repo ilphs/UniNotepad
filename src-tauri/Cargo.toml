@@ -31,6 +31,24 @@ notify = "8"
 notify-debouncer-mini = "0.7"
 base64 = "0.22"
 
+# Native "Export Preview as PDF" (commands/pdf.rs) talks to each OS WebView
+# directly. Versions are pinned to what wry/tauri already link so no second copy
+# of these bindings ends up in the binary — bump together with tauri.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL", "NSDictionary", "NSGeometry"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSPrintInfo", "NSPrintOperation", "NSResponder", "NSView", "NSWindow"] }
+objc2-web-kit = { version = "0.3", default-features = false, features = ["std", "objc2-app-kit", "WKWebView"] }
+
+[target.'cfg(windows)'.dependencies]
+webview2-com = "0.38"
+windows = "0.61"
+windows-core = "0.61"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = "0.18"
+webkit2gtk = "=2.0.2"
+
 # Size-optimized release profile (lightweight binary).
 [profile.release]
 opt-level = "s"

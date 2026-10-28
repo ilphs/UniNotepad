@@ -126,6 +126,10 @@ export const ipc = {
   readImage: (base: string | null, href: string, knownMtime: number | null) =>
     invoke<ImageData>("read_image", { base, href, knownMtime }),
 
+  /** Render this window's preview to a PDF file with the OS WebView's print
+   *  engine (commands/pdf.rs) — `@media print` styles apply, no dialog. */
+  exportPdf: (path: string) => invoke<void>("export_pdf", { path }),
+
   // Watch/unwatch are best-effort: a failed watch just means no live updates
   // (the focus-mtime fallback still catches changes), so errors are swallowed.
   watchFile: (path: string) => invoke<void>("watch_file", { path }).catch(() => {}),
